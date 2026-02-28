@@ -366,7 +366,7 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
                   <div>
                     <p className="text-sm text-muted-foreground mb-2">Data Categories</p>
                     <div className="flex flex-wrap gap-2">
-                      {request.dataCategories.map((cat) => (
+                      {(request.dataCategories || []).map((cat) => (
                         <Badge key={cat} variant="outline">{cat}</Badge>
                       ))}
                     </div>
@@ -374,7 +374,7 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
                   <div>
                     <p className="text-sm text-muted-foreground mb-2">Related Applications</p>
                     <div className="flex flex-wrap gap-2">
-                      {request.relatedApplications.map((app) => (
+                      {(request.relatedApplications || []).map((app) => (
                         <Badge key={app} variant="secondary">
                           <Building className="h-3 w-3 mr-1" />
                           {app}
@@ -385,7 +385,7 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
                   <div>
                     <p className="text-sm text-muted-foreground mb-2">Related Consents</p>
                     <div className="flex flex-wrap gap-2">
-                      {request.relatedConsents.map((con) => (
+                      {(request.relatedConsents || []).map((con) => (
                         <Badge key={con} variant="outline">{con}</Badge>
                       ))}
                     </div>

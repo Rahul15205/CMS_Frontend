@@ -1,4 +1,7 @@
+import { useState } from "react";
 import { DashboardLayout, PageSection, SectionTitle } from "@/components/layout/DashboardLayout";
+import { useToast } from "@/hooks/use-toast";
+import { AddIntegrationDialog } from "@/components/integrations/AddIntegrationDialog";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
@@ -141,15 +144,18 @@ export default function Integrations() {
   const connectedCount = integrations.filter(i => i.status === "connected").length;
   const failedCount = integrations.filter(i => i.status === "error").length;
   const totalApiCalls = integrations.reduce((sum, i) => sum + i.apiCalls, 0);
+  const { toast } = useToast();
+  const [showAddDialog, setShowAddDialog] = useState(false);
 
   return (
+    <>
     <DashboardLayout
       title="Integrations"
 
       actions={
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button size="sm">
+            <Button size="sm" onClick={() => setShowAddDialog(true)}>
               <Plus className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Add Integration</span>
             </Button>
@@ -304,5 +310,11 @@ export default function Integrations() {
         </div>
       </PageSection>
     </DashboardLayout>
+
+    <AddIntegrationDialog
+      open={showAddDialog}
+      onOpenChange={setShowAddDialog}
+    />
+    </>
   );
 }

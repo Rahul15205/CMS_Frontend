@@ -160,7 +160,7 @@ function AdminDashboard() {
         navigate("/notices");
         break;
       case "Create Integration":
-        navigate("/configurations");
+        navigate("/integrations");
         break;
       case "Create Role":
         setIsRoleDialogOpen(true);
