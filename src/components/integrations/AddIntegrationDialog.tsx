@@ -34,6 +34,15 @@ import { useToast } from "@/hooks/use-toast";
 interface AddIntegrationDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onAdd?: (data: {
+    name: string;
+    type: string;
+    icon: string;
+    baseUrl: string;
+    authMethod: string;
+    syncFrequency: string;
+    description: string;
+  }) => void;
 }
 
 const integrationTypes = [
@@ -103,7 +112,7 @@ const authMethods = [
   { id: "webhook", label: "Webhook (No Auth)" },
 ];
 
-export function AddIntegrationDialog({ open, onOpenChange }: AddIntegrationDialogProps) {
+export function AddIntegrationDialog({ open, onOpenChange, onAdd }: AddIntegrationDialogProps) {
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [isConnecting, setIsConnecting] = useState(false);
@@ -152,6 +161,16 @@ export function AddIntegrationDialog({ open, onOpenChange }: AddIntegrationDialo
   };
 
   const handleFinish = () => {
+    // Pass the new integration data to the parent
+    onAdd?.({
+      name: formData.name,
+      type: selectedType?.name || formData.type,
+      icon: selectedType?.icon || "⚙️",
+      baseUrl: formData.baseUrl,
+      authMethod: formData.authMethod,
+      syncFrequency: formData.syncFrequency,
+      description: formData.description,
+    });
     toast({
       title: "Integration Added",
       description: `"${formData.name}" has been configured and is now connecting.`,
