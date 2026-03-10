@@ -1,4 +1,7 @@
 import { useState, useEffect } from "react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { consentService } from "@/services/consentService";
+import { useToast } from "@/hooks/use-toast";
 import { useDashboard } from "@/contexts/DashboardContext";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -28,26 +31,47 @@ import { ConsentUsageTraceability } from "@/components/consent/ConsentUsageTrace
 import { ConsentVersionHistory } from "@/components/consent/ConsentVersionHistory";
 import { CrossApplicationUsage } from "@/components/consent/CrossApplicationUsage";
 
-import { mockTemplates } from "@/components/consent/mockData";
+// Removed mockTemplates import - now handled by consentService fallback
 
-const TEMPLATES_STORAGE_KEY = "cms_consent_templates";
-
-const getStoredTemplates = (): ConsentTemplate[] => {
-  const stored = localStorage.getItem(TEMPLATES_STORAGE_KEY);
-  if (!stored) return mockTemplates;
-  try {
-    return JSON.parse(stored) as ConsentTemplate[];
-  } catch {
-    return mockTemplates;
-  }
-};
+// Legacy localStorage constants removed as we move to persistent backend storage
 
 export default function ConsentManagement() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [activeTab, setActiveTab] = useState("analytics");
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<ConsentTemplate | undefined>(undefined);
-  const [templates, setTemplates] = useState<ConsentTemplate[]>(() => getStoredTemplates());
+  
   const { setView } = useDashboard();
+
+  // Fetch templates data
+  const { data: templatesData, isLoading, refetch } = useQuery({
+    queryKey: ['consent-templates'],
+    queryFn: () => consentService.getTemplates(),
+  });
+
+  const templates = templatesData?.data || [];
+
+  // Mutation for saving (Create/Update)
+  const saveMutation = useMutation({
+    mutationFn: (template: Partial<ConsentTemplate>) => consentService.saveTemplate(template),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['consent-templates'] });
+      toast({
+        title: "Success",
+        description: editingTemplate ? "Template updated successfully" : "Template created successfully",
+      });
+      setIsWizardOpen(false);
+      setEditingTemplate(undefined);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save template",
+        variant: "destructive",
+      });
+    },
+  });
 
   useEffect(() => {
     if (activeTab === "analytics") {
@@ -56,10 +80,6 @@ export default function ConsentManagement() {
       setView("main");
     }
   }, [activeTab, setView]);
-
-  useEffect(() => {
-    localStorage.setItem(TEMPLATES_STORAGE_KEY, JSON.stringify(templates));
-  }, [templates]);
 
   const handleCreateNew = () => {
     setEditingTemplate(undefined);
@@ -72,22 +92,7 @@ export default function ConsentManagement() {
   };
 
   const handleSave = (template: Partial<ConsentTemplate>) => {
-    if (template.id && templates.some(t => t.id === template.id)) {
-      // Update existing
-      setTemplates(templates.map(t => t.id === template.id ? { ...t, ...template } as ConsentTemplate : t));
-    } else {
-      // Create new
-      const newTemplate = {
-        ...template,
-        id: `tpl-${Date.now()}`, // Simple ID generation
-        createdAt: new Date().toISOString().split('T')[0],
-        updatedAt: new Date().toISOString().split('T')[0],
-      } as ConsentTemplate;
-      setTemplates([...templates, newTemplate]);
-    }
-
-    setIsWizardOpen(false);
-    setEditingTemplate(undefined);
+    saveMutation.mutate(template);
   };
 
   const handleCancel = () => {
@@ -187,9 +192,11 @@ export default function ConsentManagement() {
           ) : (
             <ConsentTemplateList
               templates={templates}
+              isLoading={isLoading}
               onCreateNew={handleCreateNew}
               onEdit={handleEdit}
               onView={handleEdit}
+              onRefresh={refetch}
             />
           )}
         </TabsContent>

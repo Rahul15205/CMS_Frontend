@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -33,22 +33,14 @@ import {
   Clock,
   Server,
   Cloud,
+  Loader2,
+  Save,
+  History as HistoryIcon
 } from "lucide-react";
 import { EncryptionConfig as EncryptionConfigType, KeyManagementType } from "./types";
 import { useToast } from "@/hooks/use-toast";
-
-const mockConfig: EncryptionConfigType = {
-  id: "1",
-  encryptionAtRest: true,
-  encryptionInTransit: true,
-  keyManagementType: "system-managed",
-  keyRotationFrequency: 90,
-  keyRotationUnit: "days",
-  algorithm: "AES-256-GCM",
-  lastRotated: new Date(Date.now() - 45 * 24 * 60 * 60 * 1000),
-  nextRotation: new Date(Date.now() + 45 * 24 * 60 * 60 * 1000),
-  complianceStatus: "compliant",
-};
+import { encryptionConfigService } from "@/services/configurationsService";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const algorithms = [
   { value: "AES-256-GCM", label: "AES-256-GCM (Recommended)" },
@@ -57,53 +49,120 @@ const algorithms = [
 ];
 
 export function EncryptionConfig() {
-  const [config, setConfig] = useState<EncryptionConfigType>(mockConfig);
+  const [config, setConfig] = useState<EncryptionConfigType | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
 
-  const daysUntilRotation = config.nextRotation 
-    ? Math.ceil((config.nextRotation.getTime() - Date.now()) / (1000 * 60 * 60 * 24))
+  const fetchConfig = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await encryptionConfigService.get();
+      setConfig(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load encryption configuration.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchConfig();
+  }, [fetchConfig]);
+
+  const daysUntilRotation = config?.nextRotation 
+    ? Math.ceil((new Date(config.nextRotation).getTime() - Date.now()) / (1000 * 60 * 60 * 24))
     : 0;
 
   const handleChange = (field: keyof EncryptionConfigType, value: any) => {
-    setConfig(prev => ({ ...prev, [field]: value }));
+    if (!config) return;
+    setConfig({ ...config, [field]: value });
     setHasUnsavedChanges(true);
   };
+
+  const handleSave = async () => {
+    if (!config) return;
+    setSaving(true);
+    try {
+      const updated = await encryptionConfigService.update(config);
+      setConfig(updated);
+      setHasUnsavedChanges(false);
+      toast({
+        title: "Configuration Saved",
+        description: "Encryption settings updated successfully."
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save configuration.",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-20 w-full" />
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+            <Skeleton className="h-24 w-full" />
+        </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Skeleton className="h-[300px] w-full" />
+            <Skeleton className="h-[300px] w-full" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!config) return null;
 
   return (
     <div className="space-y-6">
       {/* Compliance Status Banner */}
-      <Card className={config.complianceStatus === "compliant" 
-        ? "border-success/50 bg-success/5" 
+      <Card className={`border-0 shadow-sm overflow-hidden ${config.complianceStatus === "compliant" 
+        ? "bg-success/10" 
         : config.complianceStatus === "warning" 
-          ? "border-warning/50 bg-warning/5"
-          : "border-destructive/50 bg-destructive/5"
-      }>
+          ? "bg-warning/10"
+          : "bg-destructive/10"
+      }`}>
         <CardContent className="p-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              {config.complianceStatus === "compliant" ? (
-                <CheckCircle2 className="h-6 w-6 text-success" />
-              ) : config.complianceStatus === "warning" ? (
-                <AlertTriangle className="h-6 w-6 text-warning" />
-              ) : (
-                <AlertTriangle className="h-6 w-6 text-destructive" />
-              )}
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className={`p-2 rounded-full ${config.complianceStatus === "compliant" ? "bg-success/20" : "bg-warning/20"}`}>
+                {config.complianceStatus === "compliant" ? (
+                  <CheckCircle2 className="h-6 w-6 text-success" />
+                ) : config.complianceStatus === "warning" ? (
+                  <AlertTriangle className="h-6 w-6 text-warning" />
+                ) : (
+                  <AlertTriangle className="h-6 w-6 text-destructive" />
+                )}
+              </div>
               <div>
-                <p className="font-semibold">
+                <p className="font-bold text-foreground">
                   {config.complianceStatus === "compliant" 
                     ? "Encryption Configuration Compliant" 
                     : "Encryption Review Required"}
                 </p>
                 <p className="text-sm text-muted-foreground">
-                  Meets GDPR, DPDP, and industry security standards
+                  Meets GDPR, DPDP, and industry security standards (SOC 2, ISO 27001)
                 </p>
               </div>
             </div>
             <div className="flex gap-2">
-              <Badge className="bg-success/10 text-success border-success/20">GDPR</Badge>
-              <Badge className="bg-success/10 text-success border-success/20">DPDP</Badge>
-              <Badge className="bg-success/10 text-success border-success/20">SOC 2</Badge>
+              <Badge variant="outline" className="bg-background/50 border-success/20 text-success">GDPR</Badge>
+              <Badge variant="outline" className="bg-background/50 border-success/20 text-success">DPDP</Badge>
+              <Badge variant="outline" className="bg-background/50 border-success/20 text-success">SOC 2</Badge>
             </div>
           </div>
         </CardContent>
@@ -111,88 +170,45 @@ export function EncryptionConfig() {
 
       {/* Unsaved Changes Warning */}
       {hasUnsavedChanges && (
-        <Alert>
-          <AlertTriangle className="h-4 w-4" />
-          <AlertTitle>Unsaved Changes</AlertTitle>
-          <AlertDescription>
-            You have unsaved encryption configuration changes. Save to apply them.
+        <Alert className="border-warning/50 bg-warning/5 animate-pulse">
+          <AlertTriangle className="h-4 w-4 text-warning" />
+          <AlertTitle className="text-warning font-semibold">Unsaved Changes</AlertTitle>
+          <AlertDescription className="text-warning/80">
+            You have modified encryption settings. Please save to apply these changes to the system.
           </AlertDescription>
         </Alert>
       )}
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Server className="h-4 w-4" />
-              Encryption at Rest
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              {config.encryptionAtRest ? (
-                <CheckCircle2 className="h-5 w-5 text-success" />
-              ) : (
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-              )}
-              <span className="font-semibold">{config.encryptionAtRest ? "Enabled" : "Disabled"}</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Cloud className="h-4 w-4" />
-              Encryption in Transit
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              {config.encryptionInTransit ? (
-                <CheckCircle2 className="h-5 w-5 text-success" />
-              ) : (
-                <AlertTriangle className="h-5 w-5 text-destructive" />
-              )}
-              <span className="font-semibold">{config.encryptionInTransit ? "Enabled" : "Disabled"}</span>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Key className="h-4 w-4" />
-              Key Management
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <span className="font-semibold capitalize">
-              {config.keyManagementType.replace("-", " ")}
-            </span>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground flex items-center gap-2">
-              <Clock className="h-4 w-4" />
-              Next Rotation
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <RefreshCw className={`h-4 w-4 ${daysUntilRotation <= 7 ? "text-warning" : "text-muted-foreground"}`} />
-              <span className="font-semibold">{daysUntilRotation} days</span>
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+          { title: "Encryption at Rest", value: config.encryptionAtRest ? "Enabled" : "Disabled", icon: Server, color: config.encryptionAtRest ? "text-success" : "text-destructive" },
+          { title: "Encryption in Transit", value: config.encryptionInTransit ? "Enabled" : "Disabled", icon: Cloud, color: config.encryptionInTransit ? "text-success" : "text-destructive" },
+          { title: "Key Management", value: (config.keyManagementType || (config as any).provider || "system-managed").replace("-", " "), icon: Key, color: "text-primary", capitalize: true },
+          { title: "Next Rotation", value: `${daysUntilRotation} days`, icon: Clock, color: daysUntilRotation <= 7 ? "text-warning" : "text-primary" }
+        ].map((stat, i) => (
+          <Card key={i} className="border-0 shadow-sm bg-card/60 backdrop-blur-sm overflow-hidden group hover:shadow-md transition-all duration-300">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                <stat.icon className="h-3.5 w-3.5" />
+                {stat.title}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className={`text-xl font-bold ${stat.color} ${stat.capitalize ? "capitalize" : ""}`}>
+                {stat.value}
+              </div>
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Encryption Settings */}
-        <Card>
+        <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Lock className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Lock className="h-5 w-5 text-primary" />
               Encryption Settings
             </CardTitle>
             <CardDescription>
@@ -201,30 +217,34 @@ export function EncryptionConfig() {
           </CardHeader>
           <CardContent className="space-y-6">
             {/* Encryption at Rest */}
-            <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/30">
-              <div className="flex items-center gap-3">
-                <Server className="h-5 w-5 text-muted-foreground" />
+            <div className="flex items-center justify-between p-4 border border-success/30 rounded-xl bg-success/5">
+              <div className="flex items-center gap-4">
+                <div className="p-2 rounded-lg bg-success/10 text-success">
+                  <Server className="h-5 w-5" />
+                </div>
                 <div>
-                  <p className="font-medium">Encryption at Rest</p>
+                  <p className="font-semibold text-success-foreground">Encryption at Rest</p>
                   <p className="text-sm text-muted-foreground">
-                    All stored data is encrypted using {config.algorithm}
+                    All stored data encrypted with {config.algorithm}
                   </p>
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <Badge variant="outline" className="text-xs">Enforced</Badge>
+                <Badge className="bg-success text-success-foreground border-0">Enforced</Badge>
                 <Lock className="h-4 w-4 text-muted-foreground" />
               </div>
             </div>
 
             {/* Encryption in Transit */}
-            <div className="flex items-center justify-between p-4 border rounded-lg">
-              <div className="flex items-center gap-3">
-                <Cloud className="h-5 w-5 text-muted-foreground" />
+            <div className="flex items-center justify-between p-4 border border-border/50 rounded-xl hover:bg-muted/30 transition-all duration-200">
+              <div className="flex items-center gap-4">
+                <div className="p-2 rounded-lg bg-muted text-muted-foreground">
+                  <Cloud className="h-5 w-5" />
+                </div>
                 <div>
-                  <p className="font-medium">Encryption in Transit</p>
+                  <p className="font-semibold">Encryption in Transit</p>
                   <p className="text-sm text-muted-foreground">
-                    TLS 1.3 for all API communications
+                    TLS 1.3 for all secure communications
                   </p>
                 </div>
               </div>
@@ -235,13 +255,13 @@ export function EncryptionConfig() {
             </div>
 
             {/* Algorithm */}
-            <div className="space-y-2">
-              <Label>Encryption Algorithm</Label>
+            <div className="space-y-2 pt-2">
+              <Label className="text-sm font-semibold">Encryption Algorithm</Label>
               <Select 
                 value={config.algorithm}
                 onValueChange={(value) => handleChange("algorithm", value)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-background/50 border-border/50">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
@@ -252,18 +272,21 @@ export function EncryptionConfig() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="text-xs text-muted-foreground">
-                AES-256-GCM is recommended for optimal security and performance
-              </p>
+              <div className="flex items-center gap-2 px-1">
+                  <Info className="h-3.5 w-3.5 text-primary" />
+                  <p className="text-[11px] text-muted-foreground">
+                    AES-256-GCM is the industry standard for performance and security.
+                  </p>
+              </div>
             </div>
           </CardContent>
         </Card>
 
         {/* Key Management */}
-        <Card>
+        <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Key className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <Key className="h-5 w-5 text-primary" />
               Key Management
             </CardTitle>
             <CardDescription>
@@ -273,24 +296,24 @@ export function EncryptionConfig() {
           <CardContent className="space-y-6">
             {/* Key Management Type */}
             <div className="space-y-2">
-              <Label>Key Management Type</Label>
+              <Label className="text-sm font-semibold">Key Management Type</Label>
               <Select 
-                value={config.keyManagementType}
+                value={config.keyManagementType || (config as any).provider || "system-managed"}
                 onValueChange={(value) => handleChange("keyManagementType", value as KeyManagementType)}
               >
-                <SelectTrigger>
+                <SelectTrigger className="bg-background/50 border-border/50">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="system-managed">
                     <div className="flex items-center gap-2">
-                      <Shield className="h-4 w-4" />
-                      System Managed
+                      <Shield className="h-4 w-4 text-primary" />
+                      System Managed (Highly Available)
                     </div>
                   </SelectItem>
                   <SelectItem value="customer-managed">
                     <div className="flex items-center gap-2">
-                      <Key className="h-4 w-4" />
+                      <Key className="h-4 w-4 text-primary" />
                       Customer Managed (BYOK)
                     </div>
                   </SelectItem>
@@ -299,39 +322,37 @@ export function EncryptionConfig() {
             </div>
 
             {config.keyManagementType === "customer-managed" && (
-              <Alert className="border-warning/50 bg-warning/5">
+              <Alert className="border-warning/30 bg-warning/5 border-dashed">
                 <AlertTriangle className="h-4 w-4 text-warning" />
-                <AlertTitle>BYOK Configuration Required</AlertTitle>
-                <AlertDescription>
-                  Customer-managed keys require additional setup. Contact your security administrator.
+                <AlertTitle className="text-sm font-semibold text-warning">BYOK Configuration Required</AlertTitle>
+                <AlertDescription className="text-xs text-warning/80">
+                  Customer-managed keys require additional setup in the Cloud KMS module.
                 </AlertDescription>
               </Alert>
             )}
 
             {/* Key Rotation */}
             <div className="space-y-2">
-              <Label>Key Rotation Frequency</Label>
+              <Label className="text-sm font-semibold">Key Rotation Frequency</Label>
               <div className="flex gap-2">
                 <Select 
-                  value={config.keyRotationFrequency.toString()}
+                  value={(config.keyRotationFrequency || 90).toString()}
                   onValueChange={(value) => handleChange("keyRotationFrequency", parseInt(value))}
                 >
-                  <SelectTrigger className="w-24">
+                  <SelectTrigger className="w-24 bg-background/50 border-border/50">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="30">30</SelectItem>
-                    <SelectItem value="60">60</SelectItem>
-                    <SelectItem value="90">90</SelectItem>
-                    <SelectItem value="180">180</SelectItem>
-                    <SelectItem value="365">365</SelectItem>
+                    {[30, 60, 90, 180, 365].map(v => (
+                        <SelectItem key={v} value={v.toString()}>{v}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
                 <Select 
-                  value={config.keyRotationUnit}
+                  value={config.keyRotationUnit || "days"}
                   onValueChange={(value) => handleChange("keyRotationUnit", value as "days" | "months")}
                 >
-                  <SelectTrigger className="flex-1">
+                  <SelectTrigger className="flex-1 bg-background/50 border-border/50">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -343,22 +364,30 @@ export function EncryptionConfig() {
             </div>
 
             {/* Rotation Timeline */}
-            <div className="p-4 border rounded-lg space-y-3">
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Last Rotation</span>
-                <span className="font-medium">
-                  {config.lastRotated?.toLocaleDateString()}
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">Next Rotation</span>
-                <span className={`font-medium ${daysUntilRotation <= 7 ? "text-warning" : ""}`}>
-                  {config.nextRotation?.toLocaleDateString()} ({daysUntilRotation} days)
-                </span>
+            <div className="p-4 border border-border/50 rounded-xl bg-muted/20 space-y-4">
+              <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-2">
+                        <HistoryIcon className="h-3.5 w-3.5" />
+                        Last Rotation
+                    </span>
+                    <span className="font-semibold">
+                      {config.lastRotated ? new Date(config.lastRotated).toLocaleDateString() : 'Never'}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground flex items-center gap-2">
+                        <Clock className="h-3.5 w-3.5" />
+                        Next Rotation
+                    </span>
+                    <span className={`font-semibold ${daysUntilRotation <= 7 ? "text-warning" : "text-primary"}`}>
+                      {config.nextRotation ? new Date(config.nextRotation).toLocaleDateString() : 'Not Scheduled'} ({daysUntilRotation} days)
+                    </span>
+                  </div>
               </div>
               <Button
                 variant="outline"
-                className="w-full"
+                className="w-full border-primary/20 hover:bg-primary/5 hover:text-primary transition-colors"
                 size="sm"
                 onClick={() => toast({ title: "Key Rotation", description: "Manual key rotation initiated." })}
               >
@@ -371,34 +400,34 @@ export function EncryptionConfig() {
       </div>
 
       {/* Info Banner */}
-      <Alert>
-        <Info className="h-4 w-4" />
-        <AlertTitle>Encryption Best Practices</AlertTitle>
-        <AlertDescription>
-          Regular key rotation and strong encryption algorithms are essential for maintaining compliance 
-          with GDPR, DPDP, and other privacy regulations. Changes to encryption settings are logged 
-          for audit purposes.
+      <Alert className="border-primary/20 bg-primary/5">
+        <Info className="h-4 w-4 text-primary" />
+        <AlertTitle className="text-primary font-semibold">Encryption Best Practices</AlertTitle>
+        <AlertDescription className="text-sm text-primary/80">
+          Regular key rotation and strong algorithms like AES-256-GCM are essential for maintaining compliance. 
+          All modifications to encryption settings are cryptographically logged for audit.
         </AlertDescription>
       </Alert>
 
       {/* Save Button */}
       {hasUnsavedChanges && (
-        <div className="flex justify-end gap-2">
+        <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
           <Button
-            variant="outline"
+            variant="ghost"
             onClick={() => {
               setHasUnsavedChanges(false);
+              fetchConfig(); // Revert
               toast({ title: "Changes Discarded", description: "Encryption changes reverted." });
             }}
           >
             Cancel
           </Button>
           <Button
-            onClick={() => {
-              setHasUnsavedChanges(false);
-              toast({ title: "Configuration Saved", description: "Encryption settings updated successfully." });
-            }}
+            onClick={handleSave}
+            disabled={saving}
+            className="shadow-md"
           >
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
             Save Configuration
           </Button>
         </div>

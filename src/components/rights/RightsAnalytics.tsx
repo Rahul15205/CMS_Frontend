@@ -1,3 +1,4 @@
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -28,68 +29,60 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { REGULATION_INFO } from "./types";
-
-// Analytics data
-const regulationMetrics = [
-  { regulation: "GDPR", total: 523, fulfilled: 498, rejected: 15, pending: 10, avgDays: 4.2, slaCompliance: 96 },
-  { regulation: "DPDP", total: 412, fulfilled: 389, rejected: 12, pending: 11, avgDays: 3.8, slaCompliance: 97 },
-  { regulation: "CCPA", total: 189, fulfilled: 172, rejected: 8, pending: 9, avgDays: 5.1, slaCompliance: 93 },
-  { regulation: "LGPD", total: 78, fulfilled: 72, rejected: 3, pending: 3, avgDays: 2.9, slaCompliance: 98 },
-  { regulation: "PDPL", total: 45, fulfilled: 41, rejected: 2, pending: 2, avgDays: 4.5, slaCompliance: 95 },
-];
-
-const monthlyTrend = [
-  { name: "Aug", gdpr: 45, dpdp: 38, ccpa: 15, lgpd: 6 },
-  { name: "Sep", gdpr: 52, dpdp: 42, ccpa: 18, lgpd: 8 },
-  { name: "Oct", gdpr: 48, dpdp: 45, ccpa: 16, lgpd: 7 },
-  { name: "Nov", gdpr: 61, dpdp: 51, ccpa: 22, lgpd: 9 },
-  { name: "Dec", gdpr: 55, dpdp: 48, ccpa: 19, lgpd: 8 },
-  { name: "Jan", gdpr: 58, dpdp: 52, ccpa: 21, lgpd: 10 },
-];
-
-const applicationRisks = [
-  { name: "CRM System", requests: 234, slaBreaches: 3, riskScore: 12 },
-  { name: "HRMS", requests: 189, slaBreaches: 5, riskScore: 26 },
-  { name: "Marketing Platform", requests: 156, slaBreaches: 8, riskScore: 51 },
-  { name: "Mobile App", requests: 145, slaBreaches: 2, riskScore: 14 },
-  { name: "Website", requests: 312, slaBreaches: 4, riskScore: 13 },
-  { name: "ERP", requests: 78, slaBreaches: 1, riskScore: 13 },
-];
-
-const repeatRequesters = [
-  { id: "USR-12345", name: "John Smith", requests: 5, lastRequest: "2024-01-15", status: "Monitor" },
-  { id: "USR-23456", name: "Emily Davis", requests: 4, lastRequest: "2024-01-18", status: "Normal" },
-  { id: "USR-34567", name: "Michael Brown", requests: 8, lastRequest: "2024-01-20", status: "Flag" },
-  { id: "USR-45678", name: "Sarah Wilson", requests: 3, lastRequest: "2024-01-12", status: "Normal" },
-];
-
-const fulfilmentByType = [
-  { name: "Access", value: 96, color: "hsl(217, 91%, 50%)" },
-  { name: "Correction", value: 98, color: "hsl(142, 76%, 36%)" },
-  { name: "Erasure", value: 94, color: "hsl(0, 72%, 51%)" },
-  { name: "Portability", value: 97, color: "hsl(262, 83%, 58%)" },
-  { name: "Objection", value: 95, color: "hsl(38, 92%, 50%)" },
-];
-
-const abuseIndicators = [
-  { indicator: "Excessive requests (>5/month)", count: 12, trend: "up" },
-  { indicator: "Same IP, different identities", count: 3, trend: "down" },
-  { indicator: "Failed verifications", count: 8, trend: "neutral" },
-  { indicator: "Suspicious patterns", count: 2, trend: "down" },
-  { indicator: "Rapid sequential requests", count: 5, trend: "up" },
-];
-
-const typeDistribution = [
-  { name: "Access", value: 456, color: "hsl(217, 91%, 50%)" },
-  { name: "Correction", value: 234, color: "hsl(142, 76%, 36%)" },
-  { name: "Erasure", value: 189, color: "hsl(0, 72%, 51%)" },
-  { name: "Portability", value: 123, color: "hsl(262, 83%, 58%)" },
-  { name: "Other", value: 245, color: "hsl(38, 92%, 50%)" },
-];
+import { useState, useEffect } from "react";
+import { rightsService } from "@/services/rightsService";
+import { handleApiError } from "@/lib/errorHandler";
 
 export function RightsAnalytics() {
+  const [analyticsData, setAnalyticsData] = useState<any>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  const fetchAnalytics = async () => {
+    try {
+      setIsLoading(true);
+      const data = await rightsService.getAnalytics();
+      setAnalyticsData(data);
+    } catch (error) {
+      handleApiError(error, 'Rights Analytics');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAnalytics();
+  }, []);
+
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchAnalytics();
+  };
+
+  if (isLoading && !analyticsData) {
+    return <div className="h-64 flex items-center justify-center">Loading analytics...</div>;
+  }
+
+  const {
+    summary = {},
+    regulationMetrics = [],
+    monthlyTrend = [],
+    applicationRisks = [],
+    repeatRequesters = [],
+    fulfilmentByType = [],
+    abuseIndicators = [],
+    typeDistribution = [],
+  } = analyticsData || {};
+
   return (
     <div className="space-y-6 animate-fade-in">
+      <div className="flex justify-end mb-4">
+        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isRefreshing || isLoading}>
+          <RefreshCw className={`h-4 w-4 mr-2 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Refresh Analytics
+        </Button>
+      </div>
       {/* Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <Card>
@@ -97,7 +90,7 @@ export function RightsAnalytics() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Overall Fulfilment Rate</p>
-                <p className="text-3xl font-bold text-success">96.2%</p>
+                <p className="text-3xl font-bold text-success">{summary.fulfilmentRate || 0}%</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-success/10 flex items-center justify-center">
                 <CheckCircle className="h-6 w-6 text-success" />
@@ -114,7 +107,7 @@ export function RightsAnalytics() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Avg Resolution Time</p>
-                <p className="text-3xl font-bold text-primary">4.2 days</p>
+                <p className="text-3xl font-bold text-primary">{summary.avgResolutionDays || 0} days</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-primary/10 flex items-center justify-center">
                 <Clock className="h-6 w-6 text-primary" />
@@ -131,7 +124,7 @@ export function RightsAnalytics() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Total SLA Breaches</p>
-                <p className="text-3xl font-bold text-destructive">23</p>
+                <p className="text-3xl font-bold text-destructive">{summary.totalSlaBreaches || 0}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-destructive/10 flex items-center justify-center">
                 <AlertTriangle className="h-6 w-6 text-destructive" />
@@ -148,7 +141,7 @@ export function RightsAnalytics() {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm text-muted-foreground">Repeat Requests</p>
-                <p className="text-3xl font-bold text-warning">47</p>
+                <p className="text-3xl font-bold text-warning">{summary.repeatRequests || 0}</p>
               </div>
               <div className="h-12 w-12 rounded-full bg-warning/10 flex items-center justify-center">
                 <RefreshCw className="h-6 w-6 text-warning" />

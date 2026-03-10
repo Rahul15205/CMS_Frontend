@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -49,24 +49,17 @@ import {
   RotateCcw,
 } from "lucide-react";
 import { RightsRequest, RIGHTS_TYPE_INFO, REGULATION_INFO, STATUS_INFO, DEFAULT_WORKFLOW_STEPS, WorkflowStep, CaseNote, AuditEntry } from "./types";
+import { rightsService } from "@/services/rightsService";
+import { handleApiError } from "@/lib/errorHandler";
+
+
 
 interface RightsCaseViewProps {
   request: RightsRequest;
   onBack: () => void;
 }
 
-// Mock workflow steps
-const mockWorkflowSteps: WorkflowStep[] = [
-  { id: "1", name: "Request Received", order: 1, status: "completed", completedAt: "2024-01-18T10:30:00Z", completedBy: "System" },
-  { id: "2", name: "Identity Verified", order: 2, status: "completed", completedAt: "2024-01-18T14:00:00Z", completedBy: "Jane Doe" },
-  { id: "3", name: "Acknowledged", order: 3, status: "completed", completedAt: "2024-01-19T09:00:00Z", completedBy: "Jane Doe" },
-  { id: "4", name: "In Review", order: 4, status: "in_progress", assignedRole: "Data Analyst" },
-  { id: "5", name: "Action Taken", order: 5, status: "pending" },
-  { id: "6", name: "Response Sent", order: 6, status: "pending" },
-  { id: "7", name: "Closed", order: 7, status: "pending" },
-];
-
-const mockNotes: CaseNote[] = [
+const notes: CaseNote[] = [
   {
     id: "1",
     caseId: "1",
@@ -93,7 +86,7 @@ const mockNotes: CaseNote[] = [
   },
 ];
 
-const mockAuditLog: AuditEntry[] = [
+const auditLog: AuditEntry[] = [
   { id: "1", caseId: "1", action: "Request Created", performedBy: "System", performedAt: "2024-01-18T10:30:00Z", details: "Request submitted via web form", systemApplication: "Website" },
   { id: "2", caseId: "1", action: "Identity Verification Started", performedBy: "Jane Doe", performedAt: "2024-01-18T11:00:00Z", details: "Initiated email verification", ipAddress: "192.168.1.100" },
   { id: "3", caseId: "1", action: "Identity Verified", performedBy: "Jane Doe", performedAt: "2024-01-18T14:00:00Z", details: "Email verified successfully", ipAddress: "192.168.1.100" },
@@ -115,6 +108,60 @@ const getStepStatusColor = (status: string) => {
 
 export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
   const [newNote, setNewNote] = useState("");
+
+  const [assignee, setAssignee] = useState(request.assignedTo || "");
+
+  // Data states
+  const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([]);
+  const [notes, setNotes] = useState<CaseNote[]>([]);
+  const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
+  const [isLoadingData, setIsLoadingData] = useState(true);
+  const [isAddingNote, setIsAddingNote] = useState(false);
+
+  useEffect(() => {
+    const fetchCaseData = async () => {
+      try {
+        setIsLoadingData(true);
+        const [wf, nt, al] = await Promise.all([
+          rightsService.getWorkflow(request.id),
+          rightsService.getNotes(request.id),
+          rightsService.getAuditTrail(request.id)
+        ]);
+        setWorkflowSteps(wf);
+        setNotes(nt);
+        setAuditLog(al);
+      } catch (error) {
+        handleApiError(error, 'Rights Case Details');
+      } finally {
+        setIsLoadingData(false);
+      }
+    };
+    fetchCaseData();
+  }, [request.id]);
+
+  const handleAddNote = async () => {
+    if (!newNote.trim()) return;
+    try {
+      setIsAddingNote(true);
+      const res = await rightsService.addNote(request.id, { type: noteType, content: newNote });
+      setNotes(prev => [...prev, res]);
+      setNewNote("");
+    } catch (error) {
+      handleApiError(error, 'Adding Note');
+    } finally {
+      setIsAddingNote(false);
+    }
+  };
+
+  const handleAssign = async (userId: string) => {
+    try {
+      await rightsService.assign(request.id, { assignedTo: userId });
+      setAssignee(userId);
+      setShowAssignDialog(false);
+    } catch (error) {
+      handleApiError(error, 'Assigning Request');
+    }
+  };
   const [noteType, setNoteType] = useState<"internal" | "external">("internal");
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showEscalateDialog, setShowEscalateDialog] = useState(false);
@@ -129,8 +176,8 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
     });
   };
 
-  const currentStepIndex = mockWorkflowSteps.findIndex((s) => s.status === "in_progress");
-  const progressPercentage = ((currentStepIndex + 1) / mockWorkflowSteps.length) * 100;
+  const currentStepIndex = workflowSteps.findIndex((s) => s.status === "in_progress");
+  const progressPercentage = workflowSteps.length > 0 ? ((currentStepIndex > -1 ? currentStepIndex + 1 : workflowSteps.length) / workflowSteps.length) * 100 : 0;
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -404,7 +451,10 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockWorkflowSteps.map((step, index) => (
+                    {isLoadingData ? (
+                  <div className="text-center py-8 text-muted-foreground">Loading workflow...</div>
+                ) : (
+                  workflowSteps.map((step, index) => (
                       <div key={step.id} className="flex items-start gap-4">
                         <div className="flex flex-col items-center">
                           <div className={`h-10 w-10 rounded-full flex items-center justify-center text-sm font-medium ${getStepStatusColor(step.status)}`}>
@@ -414,7 +464,7 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
                               index + 1
                             )}
                           </div>
-                          {index < mockWorkflowSteps.length - 1 && (
+                          {index < workflowSteps.length - 1 && (
                             <div className={`w-0.5 h-12 ${step.status === "completed" ? "bg-success" : "bg-muted"}`} />
                           )}
                         </div>
@@ -433,7 +483,7 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
                           )}
                         </div>
                       </div>
-                    ))}
+                    )))}
                   </div>
                 </CardContent>
               </Card>
@@ -481,7 +531,7 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
               </Card>
 
               <div className="space-y-4">
-                {mockNotes.slice().reverse().map((note) => (
+                {notes.slice().reverse().map((note) => (
                   <Card key={note.id}>
                     <CardContent className="pt-4">
                       <div className="flex items-start justify-between mb-2">
@@ -524,7 +574,7 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-4">
-                    {mockAuditLog.slice().reverse().map((entry) => (
+                    {auditLog.slice().reverse().map((entry) => (
                       <div key={entry.id} className="flex items-start gap-4 pb-4 border-b last:border-0">
                         <div className="h-2 w-2 rounded-full bg-primary mt-2" />
                         <div className="flex-1">

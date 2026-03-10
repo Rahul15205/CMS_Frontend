@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/layout/DashboardLayout";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/select";
 
 // Import Components
-import { GrievancesDashboard, initialGrievances } from "@/components/grievances/GrievancesDashboard";
+import { GrievancesDashboard } from "@/components/grievances/GrievancesDashboard";
 import { CommentDialog } from "@/components/grievances/CommentDialog";
 import { RightsRequestInbox } from "@/components/rights/RightsRequestInbox";
 import { RightsCaseView } from "@/components/rights/RightsCaseView";
@@ -34,6 +34,8 @@ import { RightsAnalytics } from "@/components/rights/RightsAnalytics";
 import { NewRightsRequestDialog } from "@/components/rights/NewRightsRequestDialog";
 
 import { useToast } from "@/hooks/use-toast";
+import { grievancesService } from "@/services/grievancesService";
+import { handleApiError } from "@/lib/errorHandler";
 
 export default function Grievances() {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -41,14 +43,31 @@ export default function Grievances() {
   const [selectedCase, setSelectedCase] = useState<any>(null);
   const { toast } = useToast();
 
-  // State for Grievances List (Lifted from Dashboard)
-  const [grievancesList, setGrievancesList] = useState(initialGrievances);
+  // State for Grievances List
+  const [grievancesList, setGrievancesList] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
   // State for Comment Dialog
   const [commentDialogOpen, setCommentDialogOpen] = useState(false);
   const [targetCaseId, setTargetCaseId] = useState<string>("");
 
+  const fetchGrievances = async () => {
+    try {
+      setIsLoading(true);
+      const data = await grievancesService.getAll();
+      setGrievancesList(data || []);
+    } catch (error) {
+      handleApiError(error, 'Grievances');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchGrievances();
+  }, []);
+
   const handleViewCase = (caseId: any) => {
-    // Find the case in our state to pass to view
     const foundCase = grievancesList.find(g => g.id === caseId);
     if (foundCase) {
       setSelectedCase(foundCase);
@@ -63,31 +82,31 @@ export default function Grievances() {
     setCommentDialogOpen(true);
   };
 
-  const handleSubmitComment = (comment: string) => {
-    toast({
-      title: "Comment Added",
-      description: `Comment added to case ${targetCaseId}: "${comment}"`,
-    });
-    // Here we could update the 'lastUpdate' field of the grievance to show activity
-    setGrievancesList(prev => prev.map(g =>
-      g.id === targetCaseId ? { ...g, lastUpdate: "Just now" } : g
-    ));
+  const handleSubmitComment = async (comment: string) => {
+    try {
+      await grievancesService.addComment(targetCaseId, { content: comment });
+      toast({
+        title: "Comment Added",
+        description: `Comment added to case ${targetCaseId}`,
+      });
+      fetchGrievances();
+    } catch (error) {
+      handleApiError(error, 'Add Comment');
+    }
   };
 
-  const handleEscalate = (id: string) => {
-    const grievance = grievancesList.find(g => g.id === id);
-    if (!grievance) return;
-
-    // Optimistic UI update
-    setGrievancesList(prev => prev.map(g =>
-      g.id === id ? { ...g, priority: "high", status: "open", lastUpdate: "Just now" } : g
-    ));
-
-    toast({
-      title: "Case Escalated",
-      description: `Case ${id} has been marked as High Priority.`,
-      variant: "destructive",
-    });
+  const handleEscalate = async (id: string) => {
+    try {
+      await grievancesService.escalate(id);
+      toast({
+        title: "Case Escalated",
+        description: `Case ${id} has been escalated.`,
+        variant: "destructive",
+      });
+      fetchGrievances();
+    } catch (error) {
+      handleApiError(error, 'Escalate Case');
+    }
   };
 
   return (

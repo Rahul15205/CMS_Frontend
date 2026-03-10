@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { rightsService } from "@/services/rightsService";
+import { handleApiError } from "@/lib/errorHandler";
 import {
   Dialog,
   DialogContent,
@@ -60,6 +62,7 @@ const APPLICATIONS = [
 ];
 
 export function NewRightsRequestDialog({ open, onOpenChange, onSubmit }: NewRightsRequestDialogProps) {
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentTab, setCurrentTab] = useState("requester");
   const [formData, setFormData] = useState({
     requesterName: "",
@@ -78,27 +81,35 @@ export function NewRightsRequestDialog({ open, onOpenChange, onSubmit }: NewRigh
     priority: "normal",
   });
 
-  const handleSubmit = () => {
-    onSubmit?.(formData);
-    onOpenChange(false);
-    // Reset form
-    setFormData({
-      requesterName: "",
-      requesterEmail: "",
-      requesterPhone: "",
-      requesterId: "",
-      isAuthorizedRep: false,
-      repName: "",
-      repRelationship: "",
-      rightsType: "",
-      regulation: "",
-      submissionChannel: "web",
-      description: "",
-      dataCategories: [],
-      applications: [],
-      priority: "normal",
-    });
-    setCurrentTab("requester");
+  const handleSubmit = async () => {
+    try {
+      setIsSubmitting(true);
+      const res = await rightsService.create(formData);
+      onSubmit?.(res);
+      onOpenChange(false);
+      // Reset form
+      setFormData({
+        requesterName: "",
+        requesterEmail: "",
+        requesterPhone: "",
+        requesterId: "",
+        isAuthorizedRep: false,
+        repName: "",
+        repRelationship: "",
+        rightsType: "",
+        regulation: "",
+        submissionChannel: "web",
+        description: "",
+        dataCategories: [],
+        applications: [],
+        priority: "normal",
+      });
+      setCurrentTab("requester");
+    } catch (error) {
+      handleApiError(error, "Creating Request");
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const toggleCategory = (categoryId: string) => {

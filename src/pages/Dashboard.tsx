@@ -10,6 +10,7 @@ import { ConsentDonutChart } from "@/components/charts/ConsentDonutChart";
 import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import { Button } from "@/components/ui/button";
 import { useDashboard, UserRole } from "@/contexts/DashboardContext";
+import { useDashboardData } from "@/hooks/useDashboardData";
 import {
   FileCheck,
   Clock,
@@ -132,6 +133,7 @@ function AdminDashboard() {
   const { config, addRole, setRole, roleLabels, availableRoles } = useDashboard();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { kpis, isLoadingKpis, alerts, recentActivity: liveActivity, consentChart, refetchAll } = useDashboardData();
 
   const getWidget = (id: string) => config.widgets.find(w => w.id === id);
   const isEnabled = (id: string) => getWidget(id)?.enabled ?? false;
@@ -194,13 +196,30 @@ function AdminDashboard() {
   return (
     <>
       {/* Alert Banner */}
-      <AlertBanner
-        variant="warning"
-        title="12 consents expiring within 7 days"
-        message="Review and send renewal notifications to data principals"
-        action={{ label: "Review Now", onClick: handleAlertAction }}
-        className="mb-6"
-      />
+      {alerts?.slaBreachedRequests?.length > 0 ? (
+        <AlertBanner
+          variant="warning"
+          title={`${alerts.slaBreachedRequests.length} rights requests breaching SLA`}
+          message="Review and process immediately to avoid compliance issues"
+          action={{ label: "Review Now", onClick: () => navigate("/rights") }}
+          className="mb-6"
+        />
+      ) : alerts?.staleSessions > 0 ? (
+        <AlertBanner
+          variant="info"
+          title={`${alerts.staleSessions} stale user sessions detected`}
+          message="Review security dashboard to clear idle sessions."
+          action={{ label: "Review Now", onClick: () => navigate("/security") }}
+          className="mb-6"
+        />
+      ) : (
+        <AlertBanner
+          variant="success"
+          title="All systems optimal"
+          message="No active critical alerts or SLA breaches."
+          className="mb-6 bg-success/10 border-success/20 text-success"
+        />
+      )}
 
       {/* Global Time Range Selector */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -222,7 +241,7 @@ function AdminDashboard() {
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => toast({ title: "Refreshed", description: "Dashboard data refreshed successfully." })}>
+          <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => { refetchAll(); toast({ title: "Refreshed", description: "Dashboard data refreshed successfully." }); }}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -236,91 +255,100 @@ function AdminDashboard() {
             <KPIWidget
               id="kpi-consents"
               title="Total Active Consents"
-              value="12,450"
+              value={kpis?.totalActiveConsents?.toLocaleString() || "0"}
               icon={<FileCheck className="h-5 w-5" />}
               trend={{ value: 12.5, direction: "up", isPositive: true }}
               variant="success"
+              isLoading={isLoadingKpis}
             />
           )}
           {isEnabled("kpi-expired") && (
             <KPIWidget
               id="kpi-expired"
               title="Expired & Withdrawn"
-              value="3,230"
+              value={kpis?.expiredWithdrawnConsents?.toLocaleString() || "0"}
               icon={<Clock className="h-5 w-5" />}
               trend={{ value: 3.2, direction: "down", isPositive: true }}
               variant="warning"
+              isLoading={isLoadingKpis}
             />
           )}
           {isEnabled("kpi-rights") && (
             <KPIWidget
               id="kpi-rights"
               title="Pending Rights Requests"
-              value="47"
+              value={kpis?.pendingRights?.toLocaleString() || "0"}
               icon={<Scale className="h-5 w-5" />}
               trend={{ value: 8, direction: "up", isPositive: false }}
               variant="info"
-              subtitle="5 approaching SLA breach"
+              subtitle={alerts?.slaBreachedRequests?.length ? `${alerts.slaBreachedRequests.length} SLA breaches` : "On track"}
+              isLoading={isLoadingKpis}
             />
           )}
           <KPIWidget
             id="kpi-rejected"
             title="Rejected Consents"
-            value="320"
+            value="0" // Should come from API eventually
             icon={<Ban className="h-5 w-5" />}
             trend={{ value: 5.4, direction: "up", isPositive: false }}
             variant="destructive"
             className="border-l-4 border-l-[#8b5cf6]" // Purple accent
+            isLoading={isLoadingKpis}
           />
           {isEnabled("kpi-grievances") && (
             <KPIWidget
               id="kpi-grievances"
               title="Open Grievances"
-              value="8"
+              value={kpis?.openGrievances?.toLocaleString() || "0"}
               icon={<MessageSquareWarning className="h-5 w-5" />}
               trend={{ value: 15, direction: "down", isPositive: true }}
               variant="destructive"
+              isLoading={isLoadingKpis}
             />
           )}
           {isEnabled("kpi-sla") && (
             <KPIWidget
               id="kpi-sla"
               title="SLA Breaches"
-              value="2"
+              value={kpis?.slaBreaches?.toLocaleString() || "0"}
               icon={<AlertTriangle className="h-5 w-5" />}
               trend={{ value: 50, direction: "down", isPositive: true }}
               variant="destructive"
               subtitle="This month"
+              isLoading={isLoadingKpis}
             />
           )}
           {isEnabled("kpi-risk") && (
             <KPIWidget
               id="kpi-risk"
               title="Risk Exposure"
-              value="Low"
+              value={alerts?.slaBreachedRequests?.length > 0 || kpis?.slaBreaches > 0 ? "High" : "Low"}
               icon={<Shield className="h-5 w-5" />}
-              variant="success"
-              subtitle="All critical items addressed"
+              variant={alerts?.slaBreachedRequests?.length > 0 || kpis?.slaBreaches > 0 ? "destructive" : "success"}
+              subtitle={alerts?.slaBreachedRequests?.length > 0 || kpis?.slaBreaches > 0 ? "Critical items require attention" : "All critical items addressed"}
+              isLoading={isLoadingKpis}
             />
           )}
           {isEnabled("kpi-users") && (
             <KPIWidget
               id="kpi-users"
               title="Total Users"
-              value="1,240"
+              value={kpis?.totalUsers?.toLocaleString() || "0"}
               icon={<Users className="h-5 w-5" />}
               trend={{ value: 12, direction: "up", isPositive: true }}
               variant="default"
+              isLoading={isLoadingKpis}
             />
           )}
           {isEnabled("kpi-roles") && (
             <KPIWidget
               id="kpi-roles"
               title="User Roles"
-              value="3"
+              value={kpis?.totalRoles?.toLocaleString() || "0"}
               icon={<UserCog className="h-5 w-5" />}
               variant="info"
-              subtitle="Admin, DPO, Data Principal"
+              subtitle="System Roles"
+              isLoading={isLoadingKpis}
             />
           )}
         </KPIGrid>
@@ -331,7 +359,11 @@ function AdminDashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {isEnabled("chart-donut") && (
             <ConsentDonutChart
-              data={consentStatusData}
+              data={consentChart && consentChart.length > 0 ? consentChart.map((c: any) => ({
+                name: c.label === "GRANTED" ? "Active" : c.label === "REVOKED" ? "Withdrawn/Expired" : c.label,
+                value: c.count,
+                color: c.label === "GRANTED" ? "hsl(142, 76%, 36%)" : "hsl(0, 72%, 51%)"
+              })) : consentStatusData}
               title="Consent Status Distribution"
             />
           )}
@@ -430,16 +462,21 @@ function AdminDashboard() {
               </Button>
             </div>
             <div className="space-y-1">
-              {recentActivities.map((activity, index) => (
+              {liveActivity && liveActivity.length > 0 ? liveActivity.map((activity: any, index: number) => {
+                const isWarning = activity.action.includes('failed') || activity.action.includes('deleted');
+                const isSuccess = activity.action.includes('created') || activity.action.includes('granted');
+                return (
                 <ActivityItem
-                  key={index}
-                  icon={activity.icon}
-                  title={activity.title}
-                  description={activity.description}
-                  time={activity.time}
-                  variant={activity.variant}
+                  key={activity.id || index}
+                  icon={isWarning ? <AlertTriangle className="h-4 w-4" /> : isSuccess ? <CheckCircle className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                  title={activity.action}
+                  description={activity.details || `User: ${activity.user?.name || activity.userId}`}
+                  time={new Date(activity.createdAt).toLocaleDateString()}
+                  variant={isWarning ? "error" : isSuccess ? "success" : "default"}
                 />
-              ))}
+              )}) : (
+                <p className="text-sm text-muted-foreground p-4 text-center">No recent activity found.</p>
+              )}
             </div>
           </div>
         )}
@@ -499,6 +536,7 @@ function DPODashboard() {
   const { config } = useDashboard();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { kpis, isLoadingKpis, alerts, consentChart, refetchAll } = useDashboardData();
 
   const getWidget = (id: string) => config.widgets.find(w => w.id === id);
   const isEnabled = (id: string) => getWidget(id)?.enabled ?? false;
@@ -514,13 +552,22 @@ function DPODashboard() {
   return (
     <>
       {/* DPO-specific Alert */}
-      <AlertBanner
-        variant="info"
-        title="5 rights requests approaching SLA deadline"
-        message="Please review and process before compliance breach"
-        action={{ label: "Review Requests", onClick: () => handlePriorityAction("rights") }}
-        className="mb-6"
-      />
+      {alerts?.slaBreachedRequests?.length > 0 ? (
+        <AlertBanner
+          variant="warning"
+          title={`${alerts.slaBreachedRequests.length} rights requests approaching SLA deadline`}
+          message="Please review and process before compliance breach"
+          action={{ label: "Review Requests", onClick: () => handlePriorityAction("rights") }}
+          className="mb-6"
+        />
+      ) : (
+        <AlertBanner
+          variant="success"
+          title="All SLA targets met"
+          message="No rights requests are currently approaching deadline"
+          className="mb-6 bg-success/10 border-success/20 text-success"
+        />
+      )}
 
       {/* Time Range */}
       <div className="flex items-center justify-between mb-6">
@@ -531,7 +578,7 @@ function DPODashboard() {
             <TabsTrigger value="90d">90 Days</TabsTrigger>
           </TabsList>
         </Tabs>
-        <Button variant="outline" size="sm" onClick={() => toast({ title: "Refreshed", description: "DPO dashboard metrics refreshed." })}>
+        <Button variant="outline" size="sm" onClick={() => { refetchAll(); toast({ title: "Refreshed", description: "DPO dashboard metrics refreshed." }); }}>
           <RefreshCw className="h-4 w-4 mr-2" />
           Refresh
         </Button>
@@ -544,41 +591,45 @@ function DPODashboard() {
             <KPIWidget
               id="kpi-consents"
               title="Active Consents"
-              value="12,450"
+              value={kpis?.totalActiveConsents?.toLocaleString() || "0"}
               icon={<FileCheck className="h-5 w-5" />}
               trend={{ value: 12.5, direction: "up", isPositive: true }}
               variant="success"
+              isLoading={isLoadingKpis}
             />
           )}
           {isEnabled("kpi-rights") && (
             <KPIWidget
               id="kpi-rights"
               title="Pending Rights Requests"
-              value="47"
+              value={kpis?.pendingRights?.toLocaleString() || "0"}
               icon={<Scale className="h-5 w-5" />}
               trend={{ value: 8, direction: "up", isPositive: false }}
               variant="info"
-              subtitle="5 approaching SLA"
+              subtitle={alerts?.slaBreachedRequests?.length ? `${alerts.slaBreachedRequests.length} SLA breaches` : "On track"}
+              isLoading={isLoadingKpis}
             />
           )}
           {isEnabled("kpi-grievances") && (
             <KPIWidget
               id="kpi-grievances"
               title="Open Grievances"
-              value="8"
+              value={kpis?.openGrievances?.toLocaleString() || "0"}
               icon={<MessageSquareWarning className="h-5 w-5" />}
               trend={{ value: 15, direction: "down", isPositive: true }}
               variant="warning"
+              isLoading={isLoadingKpis}
             />
           )}
           {isEnabled("kpi-compliance") && (
             <KPIWidget
               id="kpi-compliance"
               title="Compliance Score"
-              value="87%"
+              value="87%" // Should come from a compliance score API
               icon={<Shield className="h-5 w-5" />}
               trend={{ value: 3, direction: "up", isPositive: true }}
               variant="success"
+              isLoading={isLoadingKpis}
             />
           )}
         </KPIGrid>
@@ -589,7 +640,11 @@ function DPODashboard() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {isEnabled("chart-donut") && (
             <ConsentDonutChart
-              data={consentStatusData}
+              data={consentChart && consentChart.length > 0 ? consentChart.map((c: any) => ({
+                name: c.label === "GRANTED" ? "Active" : c.label === "REVOKED" ? "Withdrawn/Expired" : c.label,
+                value: c.count,
+                color: c.label === "GRANTED" ? "hsl(142, 76%, 36%)" : "hsl(0, 72%, 51%)"
+              })) : consentStatusData}
               title="Consent Status"
             />
           )}
@@ -692,6 +747,7 @@ function DataPrincipalDashboard() {
   const { config } = useDashboard();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const { kpis, isLoadingKpis } = useDashboardData();
 
   const getWidget = (id: string) => config.widgets.find(w => w.id === id);
   const isEnabled = (id: string) => getWidget(id)?.enabled ?? false;
@@ -740,30 +796,33 @@ function DataPrincipalDashboard() {
             <KPIWidget
               id="kpi-my-consents"
               title="My Active Consents"
-              value="6"
+              value={kpis?.totalActiveConsents?.toLocaleString() || "0"}
               icon={<FileCheck className="h-5 w-5" />}
               variant="success"
-              subtitle="Across 3 purposes"
+              subtitle="Current session"
+              isLoading={isLoadingKpis}
             />
           )}
           {isEnabled("kpi-my-requests") && (
             <KPIWidget
               id="kpi-my-requests"
               title="My Pending Requests"
-              value="1"
+              value={kpis?.pendingRights?.toLocaleString() || "0"}
               icon={<Scale className="h-5 w-5" />}
               variant="info"
-              subtitle="Data access request"
+              subtitle="Data access requests"
+              isLoading={isLoadingKpis}
             />
           )}
           {isEnabled("kpi-my-grievances") && (
             <KPIWidget
               id="kpi-my-grievances"
               title="My Grievances"
-              value="0"
+              value={kpis?.openGrievances?.toLocaleString() || "0"}
               icon={<MessageSquareWarning className="h-5 w-5" />}
               variant="success"
-              subtitle="No open cases"
+              subtitle="Open cases"
+              isLoading={isLoadingKpis}
             />
           )}
         </KPIGrid>

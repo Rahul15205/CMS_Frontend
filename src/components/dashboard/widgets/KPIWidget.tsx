@@ -8,6 +8,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface KPIWidgetProps {
   id: string;
@@ -24,6 +25,7 @@ interface KPIWidgetProps {
   subtitle?: string;
   onClick?: () => void;
   className?: string;
+  isLoading?: boolean;
 }
 
 const variantStyles = {
@@ -52,6 +54,7 @@ export function KPIWidget({
   subtitle,
   onClick,
   className,
+  isLoading,
 }: KPIWidgetProps) {
   const getTrendColor = () => {
     if (!trend) return "";
@@ -78,7 +81,11 @@ export function KPIWidget({
           <p className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider truncate">
             {title}
           </p>
-          <p className="text-xl sm:text-2xl font-bold text-foreground">{value}</p>
+          {isLoading ? (
+            <Skeleton className="h-8 w-16 mt-1" />
+          ) : (
+            <p className="text-xl sm:text-2xl font-bold text-foreground">{value}</p>
+          )}
           {subtitle && (
             <p className="text-[10px] sm:text-xs text-muted-foreground line-clamp-2">{subtitle}</p>
           )}

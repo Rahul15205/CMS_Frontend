@@ -66,6 +66,24 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
+import { useEffect, useCallback } from "react";
+import { 
+  cookieCategoriesService, 
+  cookieInventoryService, 
+  cookieWebsitesService, 
+  cookieBannersService, 
+  cookieConsentLogsService, 
+  cookieComplianceService 
+} from "@/services/cookiesService";
+import { Skeleton } from "@/components/ui/skeleton";
+
+// Map string icons to components
+const IconMap: Record<string, any> = {
+  Shield,
+  BarChart3,
+  Settings,
+  Target
+};
 
 const cookieStats = [
   { name: "Necessary", value: 100, color: "hsl(142, 76%, 36%)" },
@@ -144,20 +162,15 @@ const mockConsentLogs = [
 
 export default function CookiesManagement() {
   const [activeTab, setActiveTab] = useState("overview");
-  const [cookies, setCookies] = useState(cookieCategories);
-  const [inventory, setInventory] = useState(mockInventory);
-  const [websites, setWebsites] = useState(mockWebsites);
-  const [consentLogs, setConsentLogs] = useState(mockConsentLogs);
+  const [categories, setCategories] = useState<any[]>([]);
+  const [inventory, setInventory] = useState<any[]>([]);
+  const [websites, setWebsites] = useState<any[]>([]);
+  const [consentLogs, setConsentLogs] = useState<any[]>([]);
+  const [banners, setBanners] = useState<any[]>([]);
+  const [metrics, setMetrics] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Banner State
-  const [banners, setBanners] = useState([
-    { id: 1, name: "Default GDPR Banner", lastModified: "2 days ago", status: "Active", theme: "bg-primary" },
-    { id: 2, name: "Dark Mode Variant", lastModified: "1 week ago", status: "Draft", theme: "bg-zinc-900" },
-    { id: 3, name: "Marketing Campaign", lastModified: "3 weeks ago", status: "Inactive", theme: "bg-blue-600" },
-  ]);
   const [isCreateBannerOpen, setIsCreateBannerOpen] = useState(false);
-
-  // Scanning State
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [lastScanDate, setLastScanDate] = useState("2 hrs ago");
@@ -174,29 +187,77 @@ export default function CookiesManagement() {
 
   const { toast } = useToast();
 
-  const toggleCookie = (id: string) => {
-    setCookies(cookies.map(cookie =>
-      cookie.id === id && !cookie.locked
-        ? { ...cookie, enabled: !cookie.enabled }
-        : cookie
-    ));
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [cats, inv, sites, logs, bans, met] = await Promise.all([
+        cookieCategoriesService.getAll(),
+        cookieInventoryService.getAll(),
+        cookieWebsitesService.getAll(),
+        cookieConsentLogsService.getAll(),
+        cookieBannersService.getAll(),
+        cookieComplianceService.getMetrics()
+      ]);
+
+      setCategories(cats || []);
+      setInventory(inv || []);
+      setWebsites(sites || []);
+      setConsentLogs(logs || []);
+      setBanners(bans || []);
+      setMetrics(met);
+    } catch (error) {
+      console.error("Failed to fetch cookies data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load cookie management data.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  const toggleCategory = async (id: string) => {
+    const category = categories.find(c => c.id === id);
+    if (!category || category.locked) return;
+
+    try {
+      const updated = await cookieCategoriesService.update(id, { enabled: !category.enabled });
+      if (updated) {
+        setCategories(categories.map(c => c.id === id ? { ...c, enabled: !c.enabled } : c));
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to update category.", variant: "destructive" });
+    }
   };
 
   // Consent Withdrawal Handler
 
-  const handleWithdrawConsent = (id: number) => {
+  const handleWithdrawConsent = async (id: string) => {
     if (confirm("Are you sure you want to withdraw consent for this user? This action cannot be undone.")) {
-      setConsentLogs(consentLogs.map(log =>
-        log.id === id ? { ...log, status: "Withdrawn" } : log
-      ));
-      toast({
-        title: "Consent Withdrawn",
-        description: "User consent has been successfully withdrawn.",
-      });
+      try {
+        // In a real scenario, we'd have a specific withdrawal endpoint
+        const updated = await cookieConsentLogsService.record({ id, userId: id, status: "Withdrawn" });
+        if (updated) {
+          setConsentLogs(consentLogs.map(log =>
+            log.id === id ? { ...log, status: "Withdrawn" } : log
+          ));
+          toast({
+            title: "Consent Withdrawn",
+            description: "User consent has been successfully withdrawn.",
+          });
+        }
+      } catch (error) {
+        toast({ title: "Error", description: "Failed to withdraw consent.", variant: "destructive" });
+      }
     }
   };
 
-  const handleScanNow = () => {
+  const handleScanNow = async () => {
     setScanning(true);
     setScanProgress(0);
 
@@ -205,39 +266,71 @@ export default function CookiesManagement() {
       description: "Scanning all active websites for cookies...",
     });
 
-    // Simulate Scan Progress
-    const interval = setInterval(() => {
-      setScanProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 300);
+    try {
+      // Start scan for all websites if needed, or a specific one
+      // For now, simulate progress as before but call service for each site
+      for (const site of websites) {
+        await cookieWebsitesService.startScan(site.id);
+      }
 
-    setTimeout(() => {
-      clearInterval(interval);
+      // Simulate Scan Progress
+      const interval = setInterval(() => {
+        setScanProgress(prev => {
+          if (prev >= 100) {
+            clearInterval(interval);
+            return 100;
+          }
+          return prev + 10;
+        });
+      }, 300);
+
+      setTimeout(async () => {
+        clearInterval(interval);
+        setScanning(false);
+        setScanProgress(0);
+        setLastScanDate("Just now");
+        
+        // Refresh inventory and websites after scan
+        const [inv, sites] = await Promise.all([
+          cookieInventoryService.getAll(),
+          cookieWebsitesService.getAll()
+        ]);
+        setInventory(inv || []);
+        setWebsites(sites || []);
+
+        toast({
+          title: "Scan Completed",
+          description: "Cookie inventory has been updated successfully.",
+        });
+      }, 3500);
+    } catch (error) {
       setScanning(false);
-      setScanProgress(0);
-      setLastScanDate("Just now");
-      toast({
-        title: "Scan Completed",
-        description: "Cookie inventory has been updated successfully.",
-        variant: "default", // or success if available
-      });
-    }, 3500);
+      toast({ title: "Error", description: "Failed to perform scan.", variant: "destructive" });
+    }
   };
 
   // Website Handlers
 
-  const handleSaveWebsite = (websiteData: any) => {
-    if (editingWebsite) {
-      setWebsites(websites.map(w => w.id === websiteData.id ? { ...websiteData, status: w.status, lastScan: w.lastScan } : w));
-    } else {
-      setWebsites([...websites, { id: Date.now(), ...websiteData, status: "Active", lastScan: "Pending" }]);
+  const handleSaveWebsite = async (websiteData: any) => {
+    try {
+      if (editingWebsite) {
+        const updated = await cookieWebsitesService.update(editingWebsite.id, websiteData);
+        if (updated) {
+          setWebsites(websites.map(w => w.id === editingWebsite.id ? { ...updated, status: w.status, lastScan: w.lastScan } : w));
+          toast({ title: "Website Updated", description: "Website configuration saved successfully." });
+        }
+      } else {
+        const created = await cookieWebsitesService.create(websiteData);
+        if (created) {
+          setWebsites([created, ...websites]);
+          toast({ title: "Website Added", description: "New website added for monitoring." });
+        }
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to save website.", variant: "destructive" });
+    } finally {
+      setEditingWebsite(null);
     }
-    setEditingWebsite(null);
   };
 
   const openEditWebsiteDialog = (website: any) => {
@@ -306,7 +399,7 @@ export default function CookiesManagement() {
             cookie.id,
             cookie.name,
             cookie.domain,
-            cookieCategories.find(c => c.id === cookie.category)?.name || cookie.category,
+            categories.find(c => c.id === cookie.category)?.name || cookie.category,
             cookie.expiration,
             cookie.description
           ]),
@@ -317,13 +410,26 @@ export default function CookiesManagement() {
     });
   };
 
-  const handleSaveCookie = (cookieData: any) => {
-    if (editingCookie) {
-      setInventory(inventory.map(c => c.id === cookieData.id ? cookieData : c));
-    } else {
-      setInventory([...inventory, { id: Date.now(), ...cookieData }]);
+  const handleSaveCookie = async (cookieData: any) => {
+    try {
+      if (editingCookie) {
+        const updated = await cookieInventoryService.update(editingCookie.id, cookieData);
+        if (updated) {
+          setInventory(inventory.map(c => c.id === editingCookie.id ? updated : c));
+          toast({ title: "Cookie Updated", description: "Cookie definition updated successfully." });
+        }
+      } else {
+        const created = await cookieInventoryService.create(cookieData);
+        if (created) {
+          setInventory([created, ...inventory]);
+          toast({ title: "Cookie Added", description: "New cookie added to inventory." });
+        }
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to save cookie.", variant: "destructive" });
+    } finally {
+      setEditingCookie(null);
     }
-    setEditingCookie(null);
   };
 
   const openEditDialog = (cookie: any) => {
@@ -336,17 +442,19 @@ export default function CookiesManagement() {
     setIsAddCookieOpen(true);
   };
 
-  const handleSaveBanner = (bannerData: any) => {
-    const newBanner = {
-      id: Date.now(),
-      ...bannerData
-    };
-    setBanners([newBanner, ...banners]);
-
-    toast({
-      title: "Banner Created",
-      description: `"${bannerData.name}" has been created successfully.`
-    });
+  const handleSaveBanner = async (bannerData: any) => {
+    try {
+      const created = await cookieBannersService.create(bannerData);
+      if (created) {
+        setBanners([created, ...banners]);
+        toast({
+          title: "Banner Created",
+          description: `"${bannerData.name}" has been created successfully.`
+        });
+      }
+    } catch (error) {
+      toast({ title: "Error", description: "Failed to create banner.", variant: "destructive" });
+    }
   };
 
   // ... existing handlers
@@ -445,78 +553,110 @@ export default function CookiesManagement() {
         {/* OVERVIEW TAB */}
         <TabsContent value="overview" className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            <KPICard
-              title="Total Cookies"
-              value={inventory.length}
-              icon={<Cookie className="h-4 w-4" />}
-              trend={{ value: 5, direction: "up", label: "this week" }}
-            />
-            <KPICard
-              title="Categories"
-              value={cookieCategories.length}
-              icon={<Layout className="h-4 w-4" />}
-            />
-            <KPICard
-              title="Active Consents"
-              value="1,234"
-              icon={<CheckCircle className="h-4 w-4" />}
-              trend={{ value: 12, direction: "up" }}
-            />
-            <KPICard
-              title="Opt-out Rate"
-              value="4.2%"
-              icon={<XCircle className="h-4 w-4" />}
-              trend={{ value: 0.5, direction: "down" }}
-            />
+            {loading ? (
+              Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)
+            ) : (
+              <>
+                <KPICard
+                  title="Total Cookies"
+                  value={metrics?.totalCookies || inventory.length}
+                  icon={<Cookie className="h-4 w-4" />}
+                  trend={{ value: 5, direction: "up", label: "this week" }}
+                />
+                <KPICard
+                  title="Categories"
+                  value={metrics?.categories || categories.length}
+                  icon={<Layout className="h-4 w-4" />}
+                />
+                <KPICard
+                  title="Active Consents"
+                  value={metrics?.activeConsents || "0"}
+                  icon={<CheckCircle className="h-4 w-4" />}
+                  trend={{ value: 12, direction: "up" }}
+                />
+                <KPICard
+                  title="Opt-out Rate"
+                  value={`${metrics?.optOutRate || 0}%`}
+                  icon={<XCircle className="h-4 w-4" />}
+                  trend={{ value: 0.5, direction: "down" }}
+                />
+              </>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <ConsentDonutChart
-              data={cookieStats}
-              title="Cookie Distribution"
-              className="lg:col-span-1"
-            />
+            {loading ? (
+              <>
+                <Skeleton className="h-[400px] lg:col-span-1 rounded-xl" />
+                <Skeleton className="h-[400px] lg:col-span-2 rounded-xl" />
+              </>
+            ) : (
+              <>
+                <ConsentDonutChart
+                  data={metrics?.distribution || []}
+                  title="Cookie Distribution"
+                  className="lg:col-span-1"
+                />
 
-            <Card className="lg:col-span-2">
-              <CardHeader>
-                <CardTitle>Recent Consent Activity</CardTitle>
-                <CardDescription>Latest user preferences and updates</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>User ID</TableHead>
-                      <TableHead>Region</TableHead>
-                      <TableHead>Categories</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Date</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {consentLogs.map((log) => (
-                      <TableRow key={log.id}>
-                        <TableCell className="font-medium">{log.userId}</TableCell>
-                        <TableCell>{log.region}</TableCell>
-                        <TableCell>
-                          <div className="flex gap-1 flex-wrap">
-                            {log.categories.map(cat => (
-                              <Badge key={cat} variant="secondary" className="text-[10px]">{cat}</Badge>
-                            ))}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={log.status === "Active" ? "default" : "secondary"}>
-                            {log.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-muted-foreground text-xs">{log.date}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                <Card className="lg:col-span-2">
+                  <CardHeader>
+                    <CardTitle>Recent Consent Activity</CardTitle>
+                    <CardDescription>Latest user preferences and updates</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>User ID</TableHead>
+                          <TableHead>Region</TableHead>
+                          <TableHead>Categories</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {consentLogs.length > 0 ? (
+                          consentLogs.map((log) => (
+                            <TableRow key={log.id}>
+                              <TableCell className="font-medium text-xs">{log.userId}</TableCell>
+                              <TableCell className="text-xs">{log.region}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-1 flex-wrap">
+                                  {log.categories.map((cat: string) => (
+                                    <Badge key={cat} variant="secondary" className="text-[10px]">{cat}</Badge>
+                                  ))}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant={log.status === "Active" ? "default" : "secondary"} className="text-[10px]">
+                                  {log.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                {log.status === "Active" && (
+                                  <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="text-destructive hover:text-destructive text-xs h-7"
+                                    onClick={() => handleWithdrawConsent(log.id)}
+                                  >
+                                    Withdraw
+                                  </Button>
+                                )}
+                              </TableCell>
+                            </TableRow>
+                          ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">No recent activity</TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </CardContent>
+                </Card>
+              </>
+            )}
           </div>
         </TabsContent>
 
@@ -559,26 +699,38 @@ export default function CookiesManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {inventory.map((cookie) => (
-                      <TableRow key={cookie.id}>
-                        <TableCell className="font-medium">{cookie.name}</TableCell>
-                        <TableCell className="text-muted-foreground">{cookie.domain}</TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="capitalize">
-                            {cookie.category}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>{cookie.expiration}</TableCell>
-                        <TableCell className="max-w-[300px] truncate text-muted-foreground" title={cookie.description}>
-                          {cookie.description}
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button variant="ghost" size="icon" onClick={() => openEditDialog(cookie)}>
-                            <Settings className="h-4 w-4" />
-                          </Button>
-                        </TableCell>
+                    {loading ? (
+                      Array(5).fill(0).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
+                        </TableRow>
+                      ))
+                    ) : inventory.length > 0 ? (
+                      inventory.map((cookie) => (
+                        <TableRow key={cookie.id}>
+                          <TableCell className="font-medium">{cookie.name}</TableCell>
+                          <TableCell className="text-muted-foreground">{cookie.domain}</TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="capitalize">
+                              {categories.find(c => c.id === cookie.category)?.name || cookie.category}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>{cookie.expiration}</TableCell>
+                          <TableCell className="max-w-[300px] truncate text-muted-foreground" title={cookie.description}>
+                            {cookie.description}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button variant="ghost" size="icon" onClick={() => openEditDialog(cookie)}>
+                              <Settings className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">No cookies found</TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </div>
@@ -590,6 +742,7 @@ export default function CookiesManagement() {
             onOpenChange={setIsAddCookieOpen}
             onSave={handleSaveCookie}
             initialData={editingCookie}
+            categories={categories}
           />
         </TabsContent>
 
@@ -606,24 +759,30 @@ export default function CookiesManagement() {
                 </Button>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {banners.map((banner) => (
-                  <div key={banner.id} className="border rounded-lg p-4 hover:border-primary cursor-pointer transition-colors relative group">
-                    <div className="flex items-start justify-between mb-2">
-                      <div className="flex items-center gap-2">
-                        <div className={`h-3 w-3 rounded-full ${banner.theme}`} />
-                        <span className="font-medium text-sm">{banner.name}</span>
+                {loading ? (
+                  Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)
+                ) : banners.length > 0 ? (
+                  banners.map((banner) => (
+                    <div key={banner.id} className="border rounded-lg p-4 hover:border-primary cursor-pointer transition-colors relative group">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className={`h-3 w-3 rounded-full ${banner.theme}`} />
+                          <span className="font-medium text-sm">{banner.name}</span>
+                        </div>
+                        <Badge variant={banner.status === 'Active' ? 'default' : 'secondary'} className="text-xs">
+                          {banner.status}
+                        </Badge>
                       </div>
-                      <Badge variant={banner.status === 'Active' ? 'default' : 'secondary'} className="text-xs">
-                        {banner.status}
-                      </Badge>
+                      <p className="text-xs text-muted-foreground">Last modified: {banner.lastModified}</p>
+  
+                      <div className="absolute inset-0 bg-background/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-lg backdrop-blur-[2px]">
+                        <Button size="sm" variant="secondary" className="shadow-sm">Load Configuration</Button>
+                      </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">Last modified: {banner.lastModified}</p>
-
-                    <div className="absolute inset-0 bg-background/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-lg backdrop-blur-[2px]">
-                      <Button size="sm" variant="secondary" className="shadow-sm">Load Configuration</Button>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <div className="col-span-3 text-center py-4 text-muted-foreground">No banners created yet</div>
+                )}
               </div>
             </div>
           </PageSection>
@@ -776,48 +935,60 @@ export default function CookiesManagement() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {websites.map((site) => (
-                      <TableRow key={site.id}>
-                        <TableCell className="font-medium">{site.name}</TableCell>
-                        <TableCell className="text-blue-500 hover:underline cursor-pointer">
-                          <a href={site.url} target="_blank" rel="noopener noreferrer">{site.url}</a>
-                        </TableCell>
-                        <TableCell className="capitalize">{site.frequency}</TableCell>
-                        <TableCell>{site.lastScan}</TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={site.status === 'Active' ? 'outline' : 'destructive'}
-                            className={
-                              site.status === 'Active'
-                                ? 'bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20 shadow-none'
-                                : (site.status === 'Withdrawn' ? 'bg-destructive/10 text-destructive border-destructive/20 shadow-none' : 'shadow-none')
-                            }
-                          >
-                            {site.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={() => handleGenerateReport(site)}>
-                                  <FileText className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Generate Report</TooltipContent>
-                            </Tooltip>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <Button variant="ghost" size="icon" onClick={() => openEditWebsiteDialog(site)}>
-                                  <Settings className="h-4 w-4" />
-                                </Button>
-                              </TooltipTrigger>
-                              <TooltipContent>Settings</TooltipContent>
-                            </Tooltip>
-                          </div>
-                        </TableCell>
+                    {loading ? (
+                      Array(3).fill(0).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
+                        </TableRow>
+                      ))
+                    ) : websites.length > 0 ? (
+                      websites.map((site) => (
+                        <TableRow key={site.id}>
+                          <TableCell className="font-medium">{site.name}</TableCell>
+                          <TableCell className="text-blue-500 hover:underline cursor-pointer">
+                            <a href={site.url} target="_blank" rel="noopener noreferrer">{site.url}</a>
+                          </TableCell>
+                          <TableCell className="capitalize">{site.frequency}</TableCell>
+                          <TableCell>{site.lastScan}</TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={site.status === 'Active' ? 'outline' : 'destructive'}
+                              className={
+                                site.status === 'Active'
+                                  ? 'bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20 shadow-none'
+                                  : (site.status === 'Withdrawn' ? 'bg-destructive/10 text-destructive border-destructive/20 shadow-none' : 'shadow-none')
+                              }
+                            >
+                              {site.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <div className="flex items-center justify-end gap-2">
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon" onClick={() => handleGenerateReport(site)}>
+                                    <FileText className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Generate Report</TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button variant="ghost" size="icon" onClick={() => openEditWebsiteDialog(site)}>
+                                    <Settings className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Settings</TooltipContent>
+                              </Tooltip>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">No websites configured</TableCell>
                       </TableRow>
-                    ))}
+                    )}
                   </TableBody>
                 </Table>
               </div>

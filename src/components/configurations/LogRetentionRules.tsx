@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -48,85 +48,14 @@ import {
   Clock,
   Database,
   Lock,
+  Loader2,
+  Vault,
+  HardDrive
 } from "lucide-react";
-import { LogRetentionRule, LogType, Regulation, LifecycleStatus } from "./types";
+import { LogRetentionRule, LogType, LifecycleStatus } from "./types";
 import { useToast } from "@/hooks/use-toast";
-
-const mockRetentionRules: LogRetentionRule[] = [
-  {
-    id: "1",
-    logType: "audit",
-    retentionPeriod: 7,
-    retentionUnit: "years",
-    regulation: "GDPR",
-    autoArchive: true,
-    autoDelete: false,
-    legalHoldOverride: false,
-    maskingEnabled: true,
-    maskingFields: ["email", "ip_address"],
-    status: "active",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "2",
-    logType: "consent",
-    retentionPeriod: 5,
-    retentionUnit: "years",
-    regulation: "DPDP",
-    autoArchive: true,
-    autoDelete: false,
-    legalHoldOverride: true,
-    maskingEnabled: false,
-    maskingFields: [],
-    status: "active",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "3",
-    logType: "rights",
-    retentionPeriod: 3,
-    retentionUnit: "years",
-    regulation: "GDPR",
-    autoArchive: true,
-    autoDelete: true,
-    legalHoldOverride: false,
-    maskingEnabled: true,
-    maskingFields: ["name", "email", "phone"],
-    status: "active",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "4",
-    logType: "security",
-    retentionPeriod: 2,
-    retentionUnit: "years",
-    autoArchive: false,
-    autoDelete: true,
-    legalHoldOverride: false,
-    maskingEnabled: true,
-    maskingFields: ["ip_address"],
-    status: "active",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "5",
-    logType: "system",
-    retentionPeriod: 90,
-    retentionUnit: "days",
-    autoArchive: false,
-    autoDelete: true,
-    legalHoldOverride: false,
-    maskingEnabled: false,
-    maskingFields: [],
-    status: "active",
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
+import { logRetentionService } from "@/services/configurationsService";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const logTypes: { value: LogType; label: string; icon: React.ReactNode }[] = [
   { value: "audit", label: "Audit Logs", icon: <Shield className="h-4 w-4" /> },
@@ -140,11 +69,11 @@ const logTypes: { value: LogType; label: string; icon: React.ReactNode }[] = [
 const getStatusBadge = (status: LifecycleStatus) => {
   switch (status) {
     case "active":
-      return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
+      return <Badge className="bg-success/10 text-success border-success/20 font-bold px-2 py-0.5 text-[10px] uppercase">Active</Badge>;
     case "draft":
-      return <Badge variant="secondary">Draft</Badge>;
+      return <Badge variant="secondary" className="font-bold px-2 py-0.5 text-[10px] uppercase">Draft</Badge>;
     default:
-      return <Badge variant="outline">{status}</Badge>;
+      return <Badge variant="outline" className="font-bold px-2 py-0.5 text-[10px] uppercase">{status}</Badge>;
   }
 };
 
@@ -164,9 +93,59 @@ const storageData = [
 const totalStorage = storageData.reduce((acc, item) => acc + item.size, 0);
 
 export function LogRetentionRules() {
-  const [rules, setRules] = useState<LogRetentionRule[]>(mockRetentionRules);
+  const [rules, setRules] = useState<LogRetentionRule[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   const { toast } = useToast();
+
+  const fetchRules = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await logRetentionService.getAll();
+      setRules(Array.isArray(data) ? data : []);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load retention rules.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchRules();
+  }, [fetchRules]);
+
+  const handleCreate = async () => {
+    setCreating(true);
+    try {
+      const newRule: Partial<LogRetentionRule> = {
+        logType: "audit",
+        retentionPeriod: 7,
+        retentionUnit: "years",
+        regulation: "GDPR",
+        autoArchive: true,
+        autoDelete: false,
+        legalHoldOverride: false,
+        maskingEnabled: true,
+        maskingFields: ["email", "ip_address"],
+        status: "active",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const created = await logRetentionService.create(newRule as LogRetentionRule);
+      setRules(prev => [created, ...prev]);
+      setIsCreateOpen(false);
+      toast({ title: "Retention Policy Published", description: "Vault lifecycle rule established." });
+    } catch (error) {
+        toast({ title: "Error", description: "Storage rule failed.", variant: "destructive" });
+    } finally {
+        setCreating(false);
+    }
+  };
 
   const complianceIssues = rules.filter(r => 
     r.regulation && r.retentionPeriod < 3 && r.retentionUnit === "years"
@@ -175,112 +154,97 @@ export function LogRetentionRules() {
   return (
     <div className="space-y-6">
       {/* Header Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Retention Rules</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{rules.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Log Storage</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalStorage.toFixed(1)} GB</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Legal Holds</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-warning">
-              {rules.filter(r => r.legalHoldOverride).length}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Compliance Status</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              {complianceIssues === 0 ? (
-                <>
-                  <CheckCircle2 className="h-5 w-5 text-success" />
-                  <span className="font-semibold text-success">Compliant</span>
-                </>
-              ) : (
-                <>
-                  <AlertTriangle className="h-5 w-5 text-warning" />
-                  <span className="font-semibold text-warning">{complianceIssues} Issues</span>
-                </>
-              )}
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+            { title: "Lifecycle Rules", value: loading ? "..." : rules.length, icon: Vault, color: "text-foreground" },
+            { title: "Storage Index", value: `${totalStorage.toFixed(1)}GB`, icon: HardDrive, color: "text-primary" },
+            { title: "Legal Hold", value: loading ? "..." : rules.filter(r => r.legalHoldOverride).length, icon: Lock, color: "text-warning" },
+            { title: "System Health", value: complianceIssues === 0 ? "Normal" : "Warning", icon: Shield, color: complianceIssues === 0 ? "text-success" : "text-destructive" }
+        ].map((stat, i) => (
+            <Card key={i} className="border-0 shadow-sm bg-card/60 backdrop-blur-sm group hover:shadow-md transition-all duration-300">
+                <CardHeader className="pb-1.5 pt-4 px-4">
+                    <CardTitle className="text-[10px] font-black text-muted-foreground uppercase tracking-[0.12em] flex items-center gap-2">
+                        <stat.icon className="h-3 w-3" />
+                        {stat.title}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="px-4 pb-4">
+                    <div className={`text-2xl font-black ${stat.color}`}>{stat.value}</div>
+                </CardContent>
+            </Card>
+        ))}
       </div>
 
       {/* Storage Visualization */}
-      <Card>
+      <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Database className="h-4 w-4" />
-            Log Storage Distribution
+          <CardTitle className="text-base font-bold flex items-center gap-2">
+            <Database className="h-5 w-5 text-primary" />
+            Archive Volume Distribution
           </CardTitle>
-          <CardDescription>Current storage usage by log type</CardDescription>
+          <CardDescription>Cold vs Warm storage utilization by data class</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {storageData.map(item => (
-              <div key={item.type} className="space-y-1">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{item.type}</span>
-                  <span className="text-muted-foreground">{item.size} GB ({((item.size / totalStorage) * 100).toFixed(1)}%)</span>
+          <div className="space-y-6">
+            <div className="flex items-center gap-1.5 h-3 w-full rounded-full overflow-hidden bg-muted/40">
+                {storageData.map((item, i) => (
+                    <div 
+                        key={i} 
+                        className={`${item.color} h-full transition-all hover:brightness-110`} 
+                        style={{ width: `${(item.size / totalStorage) * 100}%` }}
+                        title={`${item.type}: ${item.size}GB`}
+                    />
+                ))}
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+                {storageData.map(item => (
+                <div key={item.type} className="p-3 border border-border/40 rounded-xl bg-background/30">
+                    <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                        <div className={`w-2 h-2 rounded-full ${item.color}`} />
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase">{item.type}</span>
+                    </div>
+                    </div>
+                    <div className="text-lg font-black">{item.size}GB</div>
+                    <Progress 
+                    value={(item.size / totalStorage) * 100} 
+                    className={`h-1 mt-2 bg-muted/30 [&>div]:${item.color}`}
+                    />
                 </div>
-                <div className="relative h-2 bg-muted rounded-full overflow-hidden">
-                  <div 
-                    className={`absolute left-0 top-0 h-full ${item.color} rounded-full`}
-                    style={{ width: `${(item.size / totalStorage) * 100}%` }}
-                  />
-                </div>
-              </div>
-            ))}
+                ))}
+            </div>
           </div>
         </CardContent>
       </Card>
 
       {/* Actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold">Log Retention Rules</h3>
+          <h3 className="text-xl font-black text-foreground">Storage Matrix</h3>
           <p className="text-sm text-muted-foreground">
-            Control retention periods for audit, consent, rights, and security logs
+            Manage data purging cycles, legal holds, and regulatory masking.
           </p>
         </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="shadow-lg shadow-primary/20 font-black">
               <Plus className="h-4 w-4 mr-2" />
-              Create Rule
+              New Policy
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl bg-card">
             <DialogHeader>
-              <DialogTitle>Create Log Retention Rule</DialogTitle>
+              <DialogTitle className="text-2xl font-black">Retention Policy Configuration</DialogTitle>
               <DialogDescription>
-                Define retention periods and archival policies for log types
+                Define data persistence durations and autonomous purging triggers.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-6 py-4">
               <div className="grid gap-2">
-                <Label>Log Type</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select log type" />
+                <Label className="text-[10px] font-bold uppercase tracking-widest">Log Class</Label>
+                <Select defaultValue="audit">
+                  <SelectTrigger className="bg-background/50 border-border/50">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     {logTypes.map(type => (
@@ -294,194 +258,191 @@ export function LogRetentionRules() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label>Retention Period</Label>
-                  <Input type="number" placeholder="7" />
+                  <Label className="text-[10px] font-bold uppercase tracking-widest">Persistence Horizon</Label>
+                  <Input type="number" placeholder="7" className="bg-background/50 border-border/50" />
                 </div>
                 <div className="grid gap-2">
-                  <Label>Unit</Label>
-                  <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Years" />
+                  <Label className="text-[10px] font-bold uppercase tracking-widest">Temporal Unit</Label>
+                  <Select defaultValue="years">
+                    <SelectTrigger className="bg-background/50 border-border/50">
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="days">Days</SelectItem>
-                      <SelectItem value="months">Months</SelectItem>
-                      <SelectItem value="years">Years</SelectItem>
+                      <SelectItem value="days">Earth Days</SelectItem>
+                      <SelectItem value="months">Lunar Months</SelectItem>
+                      <SelectItem value="years">Fiscal Years</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label>Regulation Mapping (optional)</Label>
-                <Select>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select regulation" />
+                <Label className="text-[10px] font-bold uppercase tracking-widest">Regulatory Framework</Label>
+                <Select defaultValue="GDPR">
+                  <SelectTrigger className="bg-background/50 border-border/50">
+                    <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="GDPR">GDPR (EU)</SelectItem>
-                    <SelectItem value="DPDP">DPDP (India)</SelectItem>
-                    <SelectItem value="CCPA">CCPA (California)</SelectItem>
+                    <SelectItem value="GDPR">GDPR (European Union)</SelectItem>
+                    <SelectItem value="DPDP">DPDP (Republic of India)</SelectItem>
+                    <SelectItem value="CCPA">CCPA (State of California)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="flex items-center justify-between p-4 border border-border/40 rounded-2xl bg-muted/20">
                   <div>
-                    <p className="font-medium">Auto-Archive</p>
-                    <p className="text-sm text-muted-foreground">Move to cold storage after retention period</p>
+                    <p className="text-xs font-bold text-foreground">Auto-Archive</p>
+                    <p className="text-[9px] text-muted-foreground">Move to cold vault.</p>
                   </div>
-                  <Switch />
+                  <Switch defaultChecked />
                 </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center justify-between p-4 border border-border/40 rounded-2xl bg-destructive/5">
                   <div>
-                    <p className="font-medium">Auto-Delete</p>
-                    <p className="text-sm text-muted-foreground">Permanently delete after retention period</p>
-                  </div>
-                  <Switch />
-                </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div>
-                    <p className="font-medium">Enable Data Masking</p>
-                    <p className="text-sm text-muted-foreground">Mask PII fields in archived logs</p>
+                    <p className="text-xs font-bold text-destructive">Auto-Purge</p>
+                    <p className="text-[9px] text-muted-foreground font-medium">Permanent deletion.</p>
                   </div>
                   <Switch />
                 </div>
               </div>
+              <div className="flex items-center justify-between p-4 border border-border/40 rounded-2xl bg-primary/5">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                    <Shield className="h-4 w-4" />
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-foreground">Enable PII Masking</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">Scrub sensitive fields in archived indexes.</p>
+                  </div>
+                </div>
+                <Switch defaultChecked />
+              </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+            <DialogFooter className="gap-2">
+              <Button variant="ghost" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
               <Button
-                onClick={() => {
-                  const newRule: LogRetentionRule = {
-                    id: `ret-${Date.now()}`,
-                    logType: "audit",
-                    retentionPeriod: 5,
-                    retentionUnit: "years",
-                    regulation: "GDPR",
-                    autoArchive: true,
-                    autoDelete: false,
-                    legalHoldOverride: false,
-                    maskingEnabled: true,
-                    maskingFields: ["email"],
-                    status: "active",
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                  };
-                  setRules((prev) => [newRule, ...prev]);
-                  setIsCreateOpen(false);
-                  toast({
-                    title: "Retention Rule Created",
-                    description: "New log retention policy added.",
-                  });
-                }}
+                onClick={handleCreate}
+                disabled={creating}
+                className="min-w-[140px]"
               >
-                Create Rule
+                {creating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Archive className="h-4 w-4 mr-2" />}
+                Init Policy
               </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
 
-      {/* Retention Rules Table */}
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Log Type</TableHead>
-              <TableHead>Retention</TableHead>
-              <TableHead>Regulation</TableHead>
-              <TableHead>Archive</TableHead>
-              <TableHead>Delete</TableHead>
-              <TableHead>Masking</TableHead>
-              <TableHead>Legal Hold</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rules.map(rule => {
-              const logType = logTypes.find(t => t.value === rule.logType);
-              return (
-                <TableRow key={rule.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {logType?.icon}
-                      <span className="font-medium">{logType?.label}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      {getRetentionDisplay(rule.retentionPeriod, rule.retentionUnit)}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {rule.regulation ? (
-                      <Badge variant="outline">{rule.regulation}</Badge>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {rule.autoArchive ? (
-                      <Archive className="h-4 w-4 text-success" />
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {rule.autoDelete ? (
-                      <Trash2 className="h-4 w-4 text-destructive" />
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {rule.maskingEnabled ? (
-                      <Badge variant="secondary" className="text-xs">
-                        {rule.maskingFields.length} fields
-                      </Badge>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {rule.legalHoldOverride ? (
-                      <Badge className="bg-warning/10 text-warning border-warning/20">Active</Badge>
-                    ) : (
-                      <span className="text-muted-foreground">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(rule.status)}</TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => toast({ title: "Rule Settings", description: `Opening retention settings for ${logType?.label}.` })}
-                  >
-                    <Settings2 className="h-4 w-4" />
-                  </Button>
-                </TableCell>
+      {/* Retention Grid */}
+      <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm overflow-hidden">
+        <div className="overflow-x-auto">
+            <Table>
+            <TableHeader className="bg-muted/30">
+                <TableRow className="border-border/40">
+                <TableHead className="text-[10px] font-black uppercase tracking-widest py-4">Data Source</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-widest">Horizon</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-widest">Framework</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Lifecycle</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">PII Mask</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-widest text-center">Hold</TableHead>
+                <TableHead className="text-[10px] font-black uppercase tracking-widest">Status</TableHead>
+                <TableHead className="text-right text-[10px] font-black uppercase tracking-widest">Actions</TableHead>
                 </TableRow>
-              );
-            })}
-          </TableBody>
-        </Table>
+            </TableHeader>
+            <TableBody>
+                {loading ? (
+                    Array(5).fill(0).map((_, i) => (
+                        <TableRow key={i}>
+                            <TableCell colSpan={8} className="p-0">
+                                <Skeleton className="h-16 w-full rounded-none" />
+                            </TableCell>
+                        </TableRow>
+                    ))
+                ) : (
+                    rules.map(rule => {
+                    const logType = logTypes.find(t => t.value === rule.logType);
+                    return (
+                        <TableRow key={rule.id} className="group hover:bg-muted/10 transition-colors border-border/40">
+                        <TableCell className="py-4">
+                            <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-background border border-border/50 text-muted-foreground group-hover:text-primary transition-colors">
+                                {logType?.icon}
+                            </div>
+                            <span className="font-bold text-foreground">{logType?.label}</span>
+                            </div>
+                        </TableCell>
+                        <TableCell>
+                            <div className="flex items-center gap-2">
+                            <Clock className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-xs font-bold">{getRetentionDisplay(rule.retentionPeriod, rule.retentionUnit)}</span>
+                            </div>
+                        </TableCell>
+                        <TableCell>
+                            {rule.regulation ? (
+                            <Badge variant="outline" className="text-[9px] font-black bg-background/50 border-border/50">
+                                {rule.regulation}
+                            </Badge>
+                            ) : (
+                            <span className="text-muted-foreground opacity-30 text-xs font-black">—</span>
+                            )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                            <div className="flex items-center justify-center gap-3">
+                                <Archive className={`h-4 w-4 ${rule.autoArchive ? "text-success opacity-100" : "text-muted-foreground opacity-20"}`} />
+                                <Trash2 className={`h-4 w-4 ${rule.autoDelete ? "text-destructive opacity-100" : "text-muted-foreground opacity-20"}`} />
+                            </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                            {rule.maskingEnabled ? (
+                                <Badge variant="secondary" className="text-[9px] font-bold px-1.5 h-4">
+                                {rule.maskingFields.length}f
+                                </Badge>
+                            ) : (
+                                <span className="text-muted-foreground opacity-30 text-xs font-black">—</span>
+                            )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                            {rule.legalHoldOverride ? (
+                                <div className="flex justify-center">
+                                    <Lock className="h-3.5 w-3.5 text-warning" />
+                                </div>
+                            ) : (
+                                <span className="text-muted-foreground opacity-30 text-xs font-black">—</span>
+                            )}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(rule.status)}</TableCell>
+                        <TableCell className="text-right">
+                        <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100 transition-opacity"
+                        >
+                            <Settings2 className="h-4 w-4" />
+                        </Button>
+                        </TableCell>
+                        </TableRow>
+                    );
+                    })
+                )}
+            </TableBody>
+            </Table>
+        </div>
       </Card>
 
-      {/* Compliance Note */}
-      <Card className="border-primary/50 bg-primary/5">
-        <CardContent className="p-4">
-          <div className="flex items-start gap-3">
-            <Shield className="h-5 w-5 text-primary mt-0.5" />
+      {/* Compliance Warning */}
+      <Card className="border-0 shadow-lg shadow-primary/5 bg-gradient-to-r from-primary/10 via-background to-background backdrop-blur-md">
+        <CardContent className="p-6">
+          <div className="flex items-start gap-4">
+            <div className="p-3 rounded-2xl bg-primary/20 text-primary">
+                <Shield className="h-6 w-6" />
+            </div>
             <div>
-              <p className="font-medium">Regulatory Compliance</p>
-              <p className="text-sm text-muted-foreground">
-                GDPR requires retention of consent records for the duration of consent validity plus potential dispute period. 
-                DPDP requires retention of personal data only for the purpose it was collected. Review your retention 
-                policies regularly to ensure compliance.
+              <h4 className="font-black text-foreground mb-1">Global Audit Compliance Advisory</h4>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Vault policies are strictly enforced at the data plane. **GDPR Section 17 (Right to Erasure)** and **Article 30 (Records of Processing Activities)** 
+                require precise audit trails of data pruning. Automated archival ensures data sovereignty while reducing the attack surface.
+                Legal holds automatically override any scheduled purging to ensure forensic integrity during active investigations.
               </p>
             </div>
           </div>

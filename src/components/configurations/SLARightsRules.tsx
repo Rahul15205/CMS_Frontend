@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -46,92 +46,13 @@ import {
   Shield,
   Calendar,
   Timer,
+  Loader2,
+  ChevronRight
 } from "lucide-react";
 import { SLARule, Regulation, RightType, LifecycleStatus } from "./types";
 import { useToast } from "@/hooks/use-toast";
-
-const mockSLARules: SLARule[] = [
-  {
-    id: "1",
-    name: "GDPR Access Request",
-    regulation: "GDPR",
-    rightType: "access",
-    duration: 30,
-    durationUnit: "days",
-    dayType: "calendar",
-    pauseConditions: ["awaiting_identity_verification", "awaiting_additional_info"],
-    autoCloseEnabled: true,
-    breachActions: ["notify_dpo", "escalate_l2"],
-    status: "active",
-    version: 2,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "2",
-    name: "GDPR Erasure Request",
-    regulation: "GDPR",
-    rightType: "erasure",
-    duration: 30,
-    durationUnit: "days",
-    dayType: "calendar",
-    pauseConditions: ["awaiting_identity_verification"],
-    autoCloseEnabled: true,
-    breachActions: ["notify_dpo", "notify_legal"],
-    status: "active",
-    version: 1,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "3",
-    name: "DPDP Access Request",
-    regulation: "DPDP",
-    rightType: "access",
-    duration: 15,
-    durationUnit: "days",
-    dayType: "working",
-    pauseConditions: ["awaiting_identity_verification"],
-    autoCloseEnabled: false,
-    breachActions: ["notify_dpo"],
-    status: "active",
-    version: 1,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "4",
-    name: "CCPA Opt-Out",
-    regulation: "CCPA",
-    rightType: "opt-out",
-    duration: 15,
-    durationUnit: "days",
-    dayType: "working",
-    pauseConditions: [],
-    autoCloseEnabled: true,
-    breachActions: ["notify_admin"],
-    status: "active",
-    version: 1,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "5",
-    name: "LGPD Portability",
-    regulation: "LGPD",
-    rightType: "portability",
-    duration: 15,
-    durationUnit: "days",
-    dayType: "calendar",
-    pauseConditions: ["awaiting_identity_verification"],
-    autoCloseEnabled: false,
-    breachActions: ["notify_dpo"],
-    status: "draft",
-    version: 1,
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
+import { slaRulesService } from "@/services/configurationsService";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const regulations: { value: Regulation; label: string; flag: string }[] = [
   { value: "GDPR", label: "GDPR (EU)", flag: "🇪🇺" },
@@ -167,17 +88,69 @@ const getStatusBadge = (status: LifecycleStatus) => {
 const getRegulationBadge = (regulation: Regulation) => {
   const reg = regulations.find(r => r.value === regulation);
   return (
-    <Badge variant="outline" className="font-medium">
-      {reg?.flag} {reg?.label || regulation}
+    <Badge variant="outline" className="font-semibold bg-background/50 border-border/50 px-2 py-0.5 text-[10px] uppercase">
+      {reg?.flag} {reg?.value || regulation}
     </Badge>
   );
 };
 
 export function SLARightsRules() {
-  const [rules, setRules] = useState<SLARule[]>(mockSLARules);
+  const [rules, setRules] = useState<SLARule[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
   const [wizardStep, setWizardStep] = useState(1);
+  const [creating, setCreating] = useState(false);
   const { toast } = useToast();
+
+  const fetchRules = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await slaRulesService.getAll();
+      setRules(Array.isArray(data) ? data : []);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load Rights SLA rules.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchRules();
+  }, [fetchRules]);
+
+  const handleCreate = async () => {
+    setCreating(true);
+    try {
+      const newRule: Partial<SLARule> = {
+        name: `SLA Protocol ${rules.length + 1}`,
+        regulation: "GDPR",
+        rightType: "access",
+        duration: 30,
+        durationUnit: "days",
+        dayType: "calendar",
+        pauseConditions: [],
+        autoCloseEnabled: false,
+        breachActions: ["notify_dpo"],
+        status: "active",
+        version: 1,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      };
+      const created = await slaRulesService.create(newRule as SLARule);
+      setRules(prev => [created, ...prev]);
+      setIsCreateOpen(false);
+      setWizardStep(1);
+      toast({ title: "SLA Rule Created", description: "Rights management SLA rule added successfully." });
+    } catch (error) {
+        toast({ title: "Error", description: "Failed to create rule.", variant: "destructive" });
+    } finally {
+        setCreating(false);
+    }
+  };
 
   const activeRules = rules.filter(r => r.status === "active").length;
   const slaCompliance = 94; // Mock percentage
@@ -185,128 +158,124 @@ export function SLARightsRules() {
   return (
     <div className="space-y-6">
       {/* Header Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total SLA Rules</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{rules.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Rules</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">{activeRules}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Regulations Covered</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{new Set(rules.map(r => r.regulation)).size}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">SLA Compliance</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-2">
-              <div className="text-2xl font-bold text-success">{slaCompliance}%</div>
-              <Progress value={slaCompliance} className="flex-1 h-2" />
-            </div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+            { title: "SLA Rules", value: loading ? "..." : rules.length, icon: Timer, color: "text-foreground" },
+            { title: "Active Protocols", value: loading ? "..." : activeRules, icon: CheckCircle2, color: "text-success" },
+            { title: "Regulations", value: loading ? "..." : new Set(rules.map(r => r.regulation)).size, icon: Shield, color: "text-primary" },
+            { title: "SLA Efficiency", value: `${slaCompliance}%`, icon: Clock, color: "text-primary", progress: slaCompliance }
+        ].map((stat, i) => (
+            <Card key={i} className="border-0 shadow-sm bg-card/60 backdrop-blur-sm overflow-hidden group hover:shadow-md transition-all duration-300">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        <stat.icon className="h-3.5 w-3.5" />
+                        {stat.title}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="flex items-center justify-between">
+                        <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+                        {stat.progress && <Progress value={stat.progress} className="w-16 h-1.5" />}
+                    </div>
+                </CardContent>
+            </Card>
+        ))}
       </div>
 
       {/* Compliance Alert */}
-      <Card className="border-warning/50 bg-warning/5">
+      <Card className="border-0 shadow-sm bg-warning/10 border-warning/20 overflow-hidden relative">
+        <div className="absolute top-0 left-0 w-1 h-full bg-warning"></div>
         <CardContent className="p-4">
-          <div className="flex items-center gap-3">
-            <AlertTriangle className="h-5 w-5 text-warning" />
-            <div>
-              <p className="font-medium">Regulatory Reminder</p>
+          <div className="flex items-center gap-4">
+            <div className="p-2 rounded-full bg-warning/20 text-warning">
+              <AlertTriangle className="h-6 w-6" />
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-warning-foreground">Mandatory Slaughtering Timelines</p>
               <p className="text-sm text-muted-foreground">
-                Ensure SLA configurations align with regulatory requirements. GDPR requires response within 30 days, DPDP within 15 working days.
+                GDPR enforcement requires <span className="font-bold text-foreground">30 days</span>. 
+                DPDP Act (India) mandates <span className="font-bold text-foreground">15 working days</span>.
               </p>
             </div>
+            <Button variant="outline" size="sm" className="border-warning/30 hover:bg-warning/10">Regulatory Guide</Button>
           </div>
         </CardContent>
       </Card>
 
       {/* Actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold">SLA Rules - Rights Management</h3>
+          <h3 className="text-xl font-bold text-foreground">Rights Compliance SLAs</h3>
           <p className="text-sm text-muted-foreground">
-            Configure legally compliant SLA timelines per regulation and right type
+            Configure legally mandated processing timelines per territory.
           </p>
         </div>
         <Dialog open={isCreateOpen} onOpenChange={(open) => { setIsCreateOpen(open); setWizardStep(1); }}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="shadow-lg shadow-primary/20">
               <Plus className="h-4 w-4 mr-2" />
-              Create SLA Rule
+              Define SLA Rule
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl bg-card">
             <DialogHeader>
-              <DialogTitle>Create SLA Rule - Step {wizardStep} of 3</DialogTitle>
+              <DialogTitle className="text-2xl font-bold flex items-center gap-2">
+                  <Timer className="h-6 w-6 text-primary" />
+                  SLA Configuration Wizard
+              </DialogTitle>
               <DialogDescription>
-                {wizardStep === 1 && "Select regulation and right type"}
-                {wizardStep === 2 && "Configure SLA timeline and conditions"}
-                {wizardStep === 3 && "Set breach actions and finalize"}
+                Step {wizardStep} of 3: {
+                    wizardStep === 1 ? "Jurisdiction" : 
+                    wizardStep === 2 ? "Timeline" : "Enforcement"
+                }
               </DialogDescription>
             </DialogHeader>
             
             {/* Wizard Progress */}
-            <div className="flex items-center gap-2 py-2">
+            <div className="flex items-center justify-center gap-3 py-6">
               {[1, 2, 3].map(step => (
                 <div key={step} className="flex items-center">
-                  <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                    step <= wizardStep ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                  <div className={`h-10 w-10 rounded-xl flex items-center justify-center text-sm font-bold shadow-sm transition-all duration-300 ${
+                    step === wizardStep ? "bg-primary text-primary-foreground scale-110" : 
+                    step < wizardStep ? "bg-success/20 text-success" : "bg-muted text-muted-foreground"
                   }`}>
-                    {step}
+                    {step < wizardStep ? <CheckCircle2 className="h-5 w-5" /> : step}
                   </div>
                   {step < 3 && (
-                    <div className={`h-0.5 w-12 ${step < wizardStep ? "bg-primary" : "bg-muted"}`} />
+                    <div className={`h-0.5 w-12 mx-1 rounded-full ${step < wizardStep ? "bg-success/50" : "bg-muted"}`} />
                   )}
                 </div>
               ))}
             </div>
 
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-6 py-4">
               {wizardStep === 1 && (
-                <>
+                <div className="space-y-6">
                   <div className="grid gap-2">
-                    <Label htmlFor="name">Rule Name</Label>
-                    <Input id="name" placeholder="e.g., GDPR Access Request SLA" />
+                    <Label className="text-sm font-semibold">Rule Identifier</Label>
+                    <Input placeholder="e.g., GDPR Access Request Standard" className="bg-background/50 border-border/50" />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div className="grid gap-2">
-                      <Label>Regulation</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select regulation" />
+                      <Label className="text-sm font-semibold">Regulation</Label>
+                      <Select defaultValue="GDPR">
+                        <SelectTrigger className="bg-background/50 border-border/50 h-10">
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {regulations.map(reg => (
                             <SelectItem key={reg.value} value={reg.value}>
-                              {reg.flag} {reg.label}
+                              <span className="flex items-center gap-2">{reg.flag} {reg.label}</span>
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
                     <div className="grid gap-2">
-                      <Label>Right Type</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select right type" />
+                      <Label className="text-sm font-semibold">Right Exercise Type</Label>
+                      <Select defaultValue="access">
+                        <SelectTrigger className="bg-background/50 border-border/50 h-10">
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           {rightTypes.map(right => (
@@ -318,21 +287,21 @@ export function SLARightsRules() {
                       </Select>
                     </div>
                   </div>
-                </>
+                </div>
               )}
 
               {wizardStep === 2 && (
-                <>
-                  <div className="grid grid-cols-3 gap-4">
+                <div className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div className="grid gap-2">
-                      <Label>Duration</Label>
-                      <Input type="number" placeholder="30" />
+                      <Label className="text-sm font-semibold">Allowed Duration</Label>
+                      <Input type="number" defaultValue="30" className="bg-background/50 border-border/50" />
                     </div>
                     <div className="grid gap-2">
-                      <Label>Unit</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Days" />
+                      <Label className="text-sm font-semibold">Unit</Label>
+                      <Select defaultValue="days">
+                        <SelectTrigger className="bg-background/50 border-border/50">
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="hours">Hours</SelectItem>
@@ -341,109 +310,80 @@ export function SLARightsRules() {
                       </Select>
                     </div>
                     <div className="grid gap-2">
-                      <Label>Day Type</Label>
-                      <Select>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Calendar" />
+                      <Label className="text-sm font-semibold">Calculation Basis</Label>
+                      <Select defaultValue="calendar">
+                        <SelectTrigger className="bg-background/50 border-border/50">
+                          <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="calendar">Calendar Days</SelectItem>
-                          <SelectItem value="working">Working Days</SelectItem>
+                          <SelectItem value="working">Business Days</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   </div>
                   <div className="grid gap-2">
-                    <Label>Pause Conditions</Label>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Switch id="pause1" />
-                        <Label htmlFor="pause1" className="font-normal">Awaiting Identity Verification</Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch id="pause2" />
-                        <Label htmlFor="pause2" className="font-normal">Awaiting Additional Information</Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch id="pause3" />
-                        <Label htmlFor="pause3" className="font-normal">Third-Party Dependency</Label>
-                      </div>
+                    <Label className="text-sm font-semibold">Pause Provisions</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {["Awaiting Identity", "Additional Info Needeed", "Security Validation", "Third-Party Delay"].map(p => (
+                        <div key={p} className="flex items-center gap-3 p-3 border border-border/30 rounded-xl bg-muted/10">
+                          <Switch id={`pause-${p}`} />
+                          <Label htmlFor={`pause-${p}`} className="text-xs cursor-pointer">{p}</Label>
+                        </div>
+                      ))}
                     </div>
                   </div>
-                </>
+                </div>
               )}
 
               {wizardStep === 3 && (
-                <>
+                <div className="space-y-6">
                   <div className="grid gap-2">
-                    <Label>Breach Actions</Label>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2">
-                        <Switch id="action1" defaultChecked />
-                        <Label htmlFor="action1" className="font-normal">Notify DPO</Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch id="action2" />
-                        <Label htmlFor="action2" className="font-normal">Escalate to L2</Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch id="action3" />
-                        <Label htmlFor="action3" className="font-normal">Notify Legal Team</Label>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Switch id="action4" />
-                        <Label htmlFor="action4" className="font-normal">Create Incident Report</Label>
-                      </div>
+                    <Label className="text-sm font-semibold">Breach Escalation Protocols</Label>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      {[
+                        { title: "Notify DPO", icon: Shield },
+                        { title: "Escalate to Legal", icon: CheckCircle2 },
+                        { title: "Priority Bump", icon: AlertTriangle },
+                        { title: "Incident Log", icon: History }
+                      ].map(action => (
+                        <div key={action.title} className="flex items-center justify-between p-3 border border-border/30 rounded-xl bg-muted/10">
+                          <div className="flex items-center gap-2">
+                              <action.icon className="h-4 w-4 text-primary" />
+                              <span className="text-xs font-medium">{action.title}</span>
+                          </div>
+                          <Switch defaultChecked={action.title === "Notify DPO"} />
+                        </div>
+                      ))}
                     </div>
                   </div>
-                  <div className="flex items-center justify-between p-3 border rounded-lg">
+                  <div className="flex items-center justify-between p-4 border border-primary/20 rounded-xl bg-primary/5">
                     <div>
-                      <p className="font-medium">Auto-Close on Expiry</p>
-                      <p className="text-sm text-muted-foreground">Automatically close requests after SLA expiry</p>
+                      <p className="text-sm font-bold text-primary">Self-Healing Termination</p>
+                      <p className="text-xs text-muted-foreground mt-1">Automatically expire request if SLA is breached by {">"}10 days.</p>
                     </div>
                     <Switch />
                   </div>
-                </>
+                </div>
               )}
             </div>
             
-            <DialogFooter>
+            <DialogFooter className="gap-2">
               {wizardStep > 1 && (
-                <Button variant="outline" onClick={() => setWizardStep(wizardStep - 1)}>
-                  Previous
+                <Button variant="ghost" onClick={() => setWizardStep(wizardStep - 1)}>
+                  Back
                 </Button>
               )}
               {wizardStep < 3 ? (
-                <Button onClick={() => setWizardStep(wizardStep + 1)}>Next</Button>
+                <Button onClick={() => setWizardStep(wizardStep + 1)} className="min-w-[100px]">Next Progress</Button>
               ) : (
                 <Button
-                  onClick={() => {
-                    const newRule: SLARule = {
-                      id: `sla-rights-${Date.now()}`,
-                      name: `Rights SLA Rule ${rules.length + 1}`,
-                      regulation: "GDPR",
-                      rightType: "access",
-                      duration: 30,
-                      durationUnit: "days",
-                      dayType: "calendar",
-                      pauseConditions: [],
-                      autoCloseEnabled: false,
-                      breachActions: ["notify_dpo"],
-                      status: "active",
-                      version: 1,
-                      createdAt: new Date(),
-                      updatedAt: new Date(),
-                    };
-                    setRules((prev) => [newRule, ...prev]);
-                    setIsCreateOpen(false);
-                    setWizardStep(1);
-                    toast({
-                      title: "SLA Rule Created",
-                      description: `${newRule.name} added to Rights SLA table.`,
-                    });
-                  }}
+                  onClick={handleCreate}
+                  disabled={creating}
+                  className="min-w-[120px]"
                 >
-                  Create Rule
+                  {creating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Timer className="h-4 w-4 mr-2" />}
+                  Finalize Protocol
                 </Button>
               )}
             </DialogFooter>
@@ -452,84 +392,99 @@ export function SLARightsRules() {
       </div>
 
       {/* SLA Rules Table */}
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Rule Name</TableHead>
-              <TableHead>Regulation</TableHead>
-              <TableHead>Right Type</TableHead>
-              <TableHead>SLA Duration</TableHead>
-              <TableHead>Day Type</TableHead>
-              <TableHead>Version</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {rules.map(rule => (
-              <TableRow key={rule.id}>
-                <TableCell className="font-medium">{rule.name}</TableCell>
-                <TableCell>{getRegulationBadge(rule.regulation)}</TableCell>
-                <TableCell>
-                  {rightTypes.find(r => r.value === rule.rightType)?.label}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Timer className="h-4 w-4 text-muted-foreground" />
-                    {rule.duration} {rule.durationUnit}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">
-                    {rule.dayType === "calendar" ? "📅 Calendar" : "💼 Working"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <History className="h-3 w-3 text-muted-foreground" />
-                    v{rule.version}
-                  </div>
-                </TableCell>
-                <TableCell>{getStatusBadge(rule.status)}</TableCell>
-                <TableCell className="text-right">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    onClick={() => toast({ title: "Rule Settings", description: `Opening settings for ${rule.name}.` })}
-                  >
-                    <Settings2 className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm overflow-hidden">
+        <div className="overflow-x-auto">
+            <Table>
+            <TableHeader className="bg-muted/30 text-[11px] uppercase tracking-wider">
+                <TableRow>
+                <TableHead className="font-bold">Rule Identity</TableHead>
+                <TableHead className="font-bold">Jurisdiction</TableHead>
+                <TableHead className="font-bold">Right Category</TableHead>
+                <TableHead className="font-bold">Execution SLA</TableHead>
+                <TableHead className="font-bold">Basis</TableHead>
+                <TableHead className="font-bold">Version</TableHead>
+                <TableHead className="font-bold">Status</TableHead>
+                <TableHead className="text-right font-bold">Actions</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {loading ? (
+                    Array(5).fill(0).map((_, i) => (
+                        <TableRow key={i}>
+                            <TableCell colSpan={8} className="p-0">
+                                <Skeleton className="h-16 w-full rounded-none" />
+                            </TableCell>
+                        </TableRow>
+                    ))
+                ) : (
+                    rules.map(rule => (
+                    <TableRow key={rule.id} className="group hover:bg-muted/20 transition-all border-border/40">
+                        <TableCell className="font-bold text-foreground">{rule.name}</TableCell>
+                        <TableCell>{getRegulationBadge(rule.regulation)}</TableCell>
+                        <TableCell>
+                          <Badge variant="secondary" className="text-[9px] font-bold bg-muted/50 border-border/50">
+                            {rightTypes.find(r => r.value === rule.rightType)?.label || rule.rightType}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <Timer className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-xs font-mono font-bold">{rule.duration} {rule.durationUnit}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="text-[10px] font-semibold text-muted-foreground uppercase">
+                            {rule.dayType}
+                          </span>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-1.5 text-xs">
+                            <History className="h-3 w-3 text-muted-foreground" />
+                            v{rule.version}
+                          </div>
+                        </TableCell>
+                        <TableCell>{getStatusBadge(rule.status)}</TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity hover:text-primary"
+                            onClick={() => toast({ title: "Visual Editor", description: `Opening timeline editor for ${rule.name}.` })}
+                          >
+                            <Settings2 className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                )}
+            </TableBody>
+            </Table>
+        </div>
       </Card>
 
       {/* Timeline Visualization */}
-      <Card>
+      <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="text-base">SLA Timeline Overview</CardTitle>
-          <CardDescription>Visual comparison of SLA durations across regulations</CardDescription>
+          <CardTitle className="text-base font-bold flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              Comparative Timeline Metrics
+          </CardTitle>
+          <CardDescription>Legal durations benchmarked against longest allow-cycle (30 days)</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {rules.filter(r => r.status === "active").map(rule => (
-              <div key={rule.id} className="space-y-1">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="font-medium">{rule.name}</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 py-2">
+            {!loading && rules.filter(r => r.status === "active").slice(0, 4).map(rule => (
+              <div key={rule.id} className="space-y-3 group cursor-default">
+                <div className="flex items-center justify-between text-xs font-bold uppercase tracking-tight">
+                  <span className="group-hover:text-primary transition-colors">{rule.name}</span>
                   <span className="text-muted-foreground">{rule.duration} {rule.durationUnit}</span>
                 </div>
-                <div className="relative h-6 bg-muted rounded-full overflow-hidden">
+                <div className="relative h-2.5 bg-muted rounded-full overflow-hidden shadow-inner">
                   <div 
-                    className="absolute left-0 top-0 h-full bg-primary/20 rounded-full"
+                    className="absolute left-0 top-0 h-full bg-primary shadow-[0_0_10px_rgba(var(--primary),0.3)] rounded-full transition-all duration-1000 ease-out"
                     style={{ width: `${Math.min((rule.duration / 30) * 100, 100)}%` }}
                   />
-                  <div 
-                    className="absolute left-0 top-0 h-full bg-primary rounded-full transition-all"
-                    style={{ width: `${Math.min((rule.duration / 30) * 70, 70)}%` }}
-                  />
+                  <div className="absolute right-0 top-0 h-full w-px bg-destructive/30 border-r border-dashed border-destructive/20" title="Safety Margin" />
                 </div>
               </div>
             ))}

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -47,7 +47,8 @@ import {
   Globe,
 } from "lucide-react";
 import { RightsRequest, RIGHTS_TYPE_INFO, REGULATION_INFO, STATUS_INFO } from "./types";
-import { mockRightsRequests as mockRequests } from "@/data/mockRights";
+import { rightsService } from "@/services/rightsService";
+import { handleApiError } from "@/lib/errorHandler";
 
 const getStatusVariant = (status: string): "active" | "warning" | "error" | "info" | "pending" => {
   switch (status) {
@@ -83,6 +84,8 @@ const getPriorityBadge = (priority: string) => {
 };
 
 export function RightsRequestInbox({ onSelectRequest }: { onSelectRequest?: (request: RightsRequest) => void }) {
+  const [requests, setRequests] = useState<RightsRequest[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
@@ -90,11 +93,28 @@ export function RightsRequestInbox({ onSelectRequest }: { onSelectRequest?: (req
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const filteredRequests = mockRequests.filter((request) => {
+  useEffect(() => {
+    const fetchRequests = async () => {
+      try {
+        setIsLoading(true);
+        const result = await rightsService.getAll();
+        // Handle both mock array and paginated object from real API
+        const data = Array.isArray(result) ? result : (result?.data || []);
+        setRequests(data);
+      } catch (error) {
+        handleApiError(error, 'Rights Requests');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchRequests();
+  }, []);
+
+  const filteredRequests = requests.filter((request) => {
     const matchesSearch =
-      request.caseNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.requesterName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      request.requesterEmail.toLowerCase().includes(searchQuery.toLowerCase());
+      (request.caseNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (request.requesterName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (request.requesterEmail || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || request.status === statusFilter;
     const matchesType = typeFilter === "all" || request.type === typeFilter;
     const matchesRegulation = regulationFilter === "all" || request.regulation === regulationFilter;
@@ -106,6 +126,10 @@ export function RightsRequestInbox({ onSelectRequest }: { onSelectRequest?: (req
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
+
+  if (isLoading && requests.length === 0) {
+    return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading requests...</div>;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -177,123 +201,131 @@ export function RightsRequestInbox({ onSelectRequest }: { onSelectRequest?: (req
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedRequests.map((request) => (
-              <TableRow
-                key={request.id}
-                className={`cursor-pointer hover:bg-muted/50 ${request.slaBreached ? "bg-destructive/5" : ""}`}
-                onClick={() => onSelectRequest?.(request)}
-              >
-                <TableCell className="font-medium">
-                  <div className="flex items-center gap-2">
-                    {request.fraudFlag && (
-                      <AlertTriangle className="h-4 w-4 text-destructive" />
-                    )}
-                    {request.caseNumber}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div>
-                    <p className="font-medium">{request.requesterName}</p>
-                    <p className="text-sm text-muted-foreground">{request.requesterEmail}</p>
-                    {request.isAuthorizedRep && (
-                      <Badge variant="outline" className="mt-1 text-xs">
-                        <UserCheck className="h-3 w-3 mr-1" />
-                        Rep
-                      </Badge>
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <Badge variant="outline">
-                    {RIGHTS_TYPE_INFO[request.type]?.label || request.type}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    style={{ backgroundColor: `${REGULATION_INFO[request.regulation]?.color}20`, color: REGULATION_INFO[request.regulation]?.color }}
-                  >
-                    <Globe className="h-3 w-3 mr-1" />
-                    {REGULATION_INFO[request.regulation]?.label}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <StatusBadge status={getStatusVariant(request.status)}>
-                    {STATUS_INFO[request.status]?.label}
-                  </StatusBadge>
-                </TableCell>
-                <TableCell>{getPriorityBadge(request.priority)}</TableCell>
-                <TableCell>
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-1">
-                      {request.slaBreached ? (
+            {paginatedRequests.length > 0 ? (
+              paginatedRequests.map((request) => (
+                <TableRow
+                  key={request.id}
+                  className={`cursor-pointer hover:bg-muted/50 ${request.slaBreached ? "bg-destructive/5" : ""}`}
+                  onClick={() => onSelectRequest?.(request)}
+                >
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      {request.fraudFlag && (
                         <AlertTriangle className="h-4 w-4 text-destructive" />
-                      ) : request.daysRemaining <= 3 ? (
-                        <Clock className="h-4 w-4 text-warning" />
-                      ) : (
-                        <CheckCircle className="h-4 w-4 text-success" />
                       )}
-                      <span className={`text-sm font-medium ${request.slaBreached ? "text-destructive" :
-                        request.daysRemaining <= 3 ? "text-warning" :
-                          "text-success"
-                        }`}>
-                        {request.slaBreached
-                          ? `${Math.abs(request.daysRemaining)}d overdue`
-                          : request.status === "closed"
-                            ? "Completed"
-                            : `${request.daysRemaining}d left`}
-                      </span>
+                      {request.caseNumber}
                     </div>
-                    {request.status !== "closed" && (
-                      <Progress
-                        value={request.slaBreached ? 100 : Math.max(0, 100 - (request.daysRemaining / 30) * 100)}
-                        className={`h-1.5 ${request.slaBreached ? "[&>div]:bg-destructive" :
-                          request.daysRemaining <= 3 ? "[&>div]:bg-warning" :
-                            "[&>div]:bg-success"
-                          }`}
-                      />
-                    )}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <span className="text-sm">{request.assignedTo || "Unassigned"}</span>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <UserCheck className="h-4 w-4 mr-2" />
-                        Assign
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <MessageSquare className="h-4 w-4 mr-2" />
-                        Add Note
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem>
-                        <ArrowUpRight className="h-4 w-4 mr-2" />
-                        Escalate
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  </TableCell>
+                  <TableCell>
+                    <div>
+                      <p className="font-medium">{request.requesterName}</p>
+                      <p className="text-sm text-muted-foreground">{request.requesterEmail}</p>
+                      {request.isAuthorizedRep && (
+                        <Badge variant="outline" className="mt-1 text-xs">
+                          <UserCheck className="h-3 w-3 mr-1" />
+                          Rep
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="outline">
+                      {RIGHTS_TYPE_INFO[request.type]?.label || request.type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      style={{ backgroundColor: `${REGULATION_INFO[request.regulation]?.color}20`, color: REGULATION_INFO[request.regulation]?.color }}
+                    >
+                      <Globe className="h-3 w-3 mr-1" />
+                      {REGULATION_INFO[request.regulation]?.label}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <StatusBadge status={getStatusVariant(request.status)}>
+                      {STATUS_INFO[request.status]?.label}
+                    </StatusBadge>
+                  </TableCell>
+                  <TableCell>{getPriorityBadge(request.priority)}</TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1">
+                        {request.slaBreached ? (
+                          <AlertTriangle className="h-4 w-4 text-destructive" />
+                        ) : request.daysRemaining <= 3 ? (
+                          <Clock className="h-4 w-4 text-warning" />
+                        ) : (
+                          <CheckCircle className="h-4 w-4 text-success" />
+                        )}
+                        <span className={`text-sm font-medium ${request.slaBreached ? "text-destructive" :
+                          request.daysRemaining <= 3 ? "text-warning" :
+                            "text-success"
+                          }`}>
+                          {request.slaBreached
+                            ? `${Math.abs(request.daysRemaining)}d overdue`
+                            : request.status === "closed"
+                              ? "Completed"
+                              : `${request.daysRemaining}d left`}
+                        </span>
+                      </div>
+                      {request.status !== "closed" && (
+                        <Progress
+                          value={request.slaBreached ? 100 : Math.max(0, 100 - (request.daysRemaining / 30) * 100)}
+                          className={`h-1.5 ${request.slaBreached ? "[&>div]:bg-destructive" :
+                            request.daysRemaining <= 3 ? "[&>div]:bg-warning" :
+                              "[&>div]:bg-success"
+                            }`}
+                        />
+                      )}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="text-sm">{request.assignedTo || "Unassigned"}</span>
+                  </TableCell>
+                  <TableCell>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                        <Button variant="ghost" size="icon">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <UserCheck className="h-4 w-4 mr-2" />
+                          Assign
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          Add Note
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem>
+                          <ArrowUpRight className="h-4 w-4 mr-2" />
+                          Escalate
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                  No requests found matching your filters.
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
 
         {/* Pagination */}
         <div className="flex items-center justify-between px-4 py-4 border-t">
           <p className="text-sm text-muted-foreground">
-            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredRequests.length)} of {filteredRequests.length} requests
+            Showing {filteredRequests.length > 0 ? ((currentPage - 1) * itemsPerPage) + 1 : 0} to {Math.min(currentPage * itemsPerPage, filteredRequests.length)} of {filteredRequests.length} requests
           </p>
           <div className="flex items-center gap-2">
             <Button

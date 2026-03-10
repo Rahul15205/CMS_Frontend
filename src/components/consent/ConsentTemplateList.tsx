@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { cn } from "@/lib/utils";
 import {
   FileText,
   Search,
@@ -17,8 +18,10 @@ import {
   User,
   Users,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  RefreshCw
 } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -79,12 +82,21 @@ const getStatusBadge = (status: TemplateStatus) => {
 
 interface ConsentTemplateListProps {
   templates: ConsentTemplate[];
+  isLoading?: boolean;
   onCreateNew: () => void;
   onEdit: (template: ConsentTemplate) => void;
   onView: (template: ConsentTemplate) => void;
+  onRefresh?: () => void;
 }
 
-export function ConsentTemplateList({ templates, onCreateNew, onEdit, onView }: ConsentTemplateListProps) {
+export function ConsentTemplateList({ 
+  templates, 
+  isLoading, 
+  onCreateNew, 
+  onEdit, 
+  onView,
+  onRefresh
+}: ConsentTemplateListProps) {
   const [searchQuery, setSearchQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [regulationFilter, setRegulationFilter] = useState<string>("all");
@@ -159,6 +171,11 @@ export function ConsentTemplateList({ templates, onCreateNew, onEdit, onView }: 
               <SelectItem value="archived">Archived</SelectItem>
             </SelectContent>
           </Select>
+          {onRefresh && (
+            <Button variant="outline" size="icon" onClick={onRefresh} disabled={isLoading}>
+              <RefreshCw className={cn("h-4 w-4", isLoading && "animate-spin")} />
+            </Button>
+          )}
         </div>
         <Button onClick={onCreateNew} className="shrink-0">
           <Plus className="h-4 w-4 mr-2" />
@@ -182,82 +199,109 @@ export function ConsentTemplateList({ templates, onCreateNew, onEdit, onView }: 
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedTemplates.map((template) => (
-              <TableRow key={template.id} className="hover:bg-muted/30">
-                <TableCell>
-                  <div className="flex items-start gap-3">
-                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                      <FileText className="h-4 w-4" />
+            {isLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><Skeleton className="h-10 w-full" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-12" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-6 w-24" /></TableCell>
+                  <TableCell><Skeleton className="h-8 w-16 float-right" /></TableCell>
+                </TableRow>
+              ))
+            ) : paginatedTemplates.length > 0 ? (
+              paginatedTemplates.map((template) => (
+                <TableRow key={template.id} className="hover:bg-muted/30">
+                  <TableCell>
+                    <div className="flex items-start gap-3">
+                      <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-foreground">{template.name}</p>
+                        <p className="text-xs text-muted-foreground line-clamp-1 max-w-[200px]">
+                          {template.description}
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="font-medium text-foreground">{template.name}</p>
-                      <p className="text-xs text-muted-foreground line-clamp-1 max-w-[200px]">
-                        {template.description}
-                      </p>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                       {getConsentTypeIcon(template.type)}
+                       <span className="text-sm">
+                         {CONSENT_TYPE_INFO[template.type as keyof typeof CONSENT_TYPE_INFO]?.label || template.type}
+                       </span>
+                     </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex flex-wrap gap-1">
+                      {template.regulations.map((reg) => (
+                        <Badge 
+                          key={reg} 
+                          variant="outline" 
+                          className={REGULATION_INFO[reg.toUpperCase() as keyof typeof REGULATION_INFO]?.color || ""}
+                        >
+                          {reg.toUpperCase()}
+                        </Badge>
+                      ))}
                     </div>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {getConsentTypeIcon(template.type)}
-                    <span className="text-sm">{CONSENT_TYPE_INFO[template.type].label}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex flex-wrap gap-1">
-                    {template.regulations.map((reg) => (
-                      <Badge key={reg} variant="outline" className={REGULATION_INFO[reg].color}>
-                        {reg}
-                      </Badge>
-                    ))}
-                  </div>
-                </TableCell>
-                <TableCell>{getStatusBadge(template.status)}</TableCell>
-                <TableCell>
-                  <span className="text-sm font-mono">v{template.version}</span>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <Clock className="h-3 w-3" />
-                    {template.updatedAt}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                    <User className="h-3 w-3" />
-                    {template.createdBy}
-                  </div>
-                </TableCell>
-                <TableCell className="text-right">
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        Actions
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end" className="w-48">
-                      <DropdownMenuItem onClick={() => onView(template)}>
-                        <Eye className="h-4 w-4 mr-2" />
-                        View Details
-                      </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => onEdit(template)}>
-                        <Edit className="h-4 w-4 mr-2" />
-                        Edit Template
-                      </DropdownMenuItem>
-                      <DropdownMenuItem>
-                        <Copy className="h-4 w-4 mr-2" />
-                        Clone Template
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-warning">
-                        <Archive className="h-4 w-4 mr-2" />
-                        Archive
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  </TableCell>
+                  <TableCell>{getStatusBadge(template.status)}</TableCell>
+                  <TableCell>
+                    <span className="text-sm font-mono">v{template.version}</span>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <Clock className="h-3 w-3" />
+                      {template.updatedAt}
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                      <User className="h-3 w-3" />
+                      {template.createdBy}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          Actions
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={() => onView(template)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onEdit(template)}>
+                          <Edit className="h-4 w-4 mr-2" />
+                          Edit Template
+                        </DropdownMenuItem>
+                        <DropdownMenuItem>
+                          <Copy className="h-4 w-4 mr-2" />
+                          Clone Template
+                        </DropdownMenuItem>
+                        <DropdownMenuSeparator />
+                        <DropdownMenuItem className="text-warning">
+                          <Archive className="h-4 w-4 mr-2" />
+                          Archive
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={8} className="h-24 text-center">
+                  No templates found.
                 </TableCell>
               </TableRow>
-            ))}
+            )}
           </TableBody>
         </Table>
       </div>

@@ -3,7 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Lock, Shield } from "lucide-react";
+import { Lock, Shield, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -14,18 +14,13 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 
-
-// HARDCODED CREDENTIALS
-const USERNAME = "admin";
-const PASSWORD = "Consent@2024";
-
 interface SimpleAuthProps {
     children: React.ReactNode;
 }
 
 const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
-    const { isAuthenticated, login, roles } = useAuth();
-    const [loading, setLoading] = useState(true);
+    const { isAuthenticated, isLoading: authLoading, login, roles } = useAuth();
+    const [submitting, setSubmitting] = useState(false);
     const [inputUsername, setInputUsername] = useState("");
     const [inputPassword, setInputPassword] = useState("");
     const [selectedRoleId, setSelectedRoleId] = useState(roles.length > 0 ? roles[0].id : "");
@@ -35,23 +30,28 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
         if (!selectedRoleId && roles.length > 0) {
             setSelectedRoleId(roles[0].id);
         }
-        setLoading(false);
-    }, [roles]);
+    }, [roles, selectedRoleId]);
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
-        // In a real app, role would be returned from backend after auth
-        // Here we simulate picking a role to login as
-        if (inputUsername === USERNAME && inputPassword === PASSWORD) {
-            login(inputUsername, selectedRoleId);
+        setSubmitting(true);
+        try {
+            await login(inputUsername, inputPassword, selectedRoleId);
             toast.success("Authentication successful");
-        } else {
-            toast.error("Invalid credentials");
+        } catch {
+            // Error toast is handled by the auth service / context
+        } finally {
+            setSubmitting(false);
         }
     };
 
-    if (loading) {
-        return <div className="min-h-screen flex items-center justify-center bg-gray-50">Loading...</div>;
+    // Show loading while auth state is being restored
+    if (authLoading) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-gray-50">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+        );
     }
 
     if (isAuthenticated) {
@@ -71,13 +71,14 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                 <CardContent>
                     <form onSubmit={handleLogin} className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="username">Username</Label>
+                            <Label htmlFor="username">Username / Email</Label>
                             <Input
                                 id="username"
                                 type="text"
-                                placeholder="Enter username"
+                                placeholder="Enter username or email"
                                 value={inputUsername}
                                 onChange={(e) => setInputUsername(e.target.value)}
+                                disabled={submitting}
                                 required
                             />
                         </div>
@@ -89,13 +90,14 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                                 placeholder="Enter password"
                                 value={inputPassword}
                                 onChange={(e) => setInputPassword(e.target.value)}
+                                disabled={submitting}
                                 required
                             />
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="role">Login As (Role Simulation)</Label>
-                            <Select value={selectedRoleId} onValueChange={setSelectedRoleId}>
+                            <Label htmlFor="role">Login As (Role)</Label>
+                            <Select value={selectedRoleId} onValueChange={setSelectedRoleId} disabled={submitting}>
                                 <SelectTrigger>
                                     <Shield className="w-4 h-4 mr-2 text-muted-foreground" />
                                     <SelectValue placeholder="Select a role" />
@@ -111,8 +113,15 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                             <p className="text-xs text-muted-foreground">Select a role to visualize different access levels.</p>
                         </div>
 
-                        <Button type="submit" className="w-full">
-                            Access System
+                        <Button type="submit" className="w-full" disabled={submitting}>
+                            {submitting ? (
+                                <>
+                                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                                    Authenticating...
+                                </>
+                            ) : (
+                                'Access System'
+                            )}
                         </Button>
                     </form>
                 </CardContent>

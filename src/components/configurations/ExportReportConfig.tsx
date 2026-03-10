@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -49,76 +49,14 @@ import {
   Play,
   Pause,
   Eye,
+  Loader2,
+  BarChart3,
+  ChevronRight
 } from "lucide-react";
 import { ExportConfig, ExportFormat, ScheduleFrequency, LifecycleStatus } from "./types";
 import { useToast } from "@/hooks/use-toast";
-
-const mockExportConfigs: ExportConfig[] = [
-  {
-    id: "1",
-    name: "Weekly Consent Summary",
-    reportType: "consent-summary",
-    format: "pdf",
-    scheduleFrequency: "weekly",
-    scheduledTime: "Monday 09:00",
-    recipients: ["dpo@company.com", "compliance@company.com"],
-    dataMaskingEnabled: true,
-    brandingEnabled: true,
-    status: "active",
-    lastExecuted: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-    nextExecution: new Date(Date.now() + 1 * 24 * 60 * 60 * 1000),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "2",
-    name: "Monthly Rights Report",
-    reportType: "rights-analytics",
-    format: "xlsx",
-    scheduleFrequency: "monthly",
-    scheduledTime: "1st of month 08:00",
-    recipients: ["legal@company.com"],
-    dataMaskingEnabled: true,
-    brandingEnabled: true,
-    status: "active",
-    lastExecuted: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-    nextExecution: new Date(Date.now() + 2 * 24 * 60 * 60 * 1000),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "3",
-    name: "Daily Audit Log Export",
-    reportType: "audit-log",
-    format: "json",
-    scheduleFrequency: "daily",
-    scheduledTime: "02:00",
-    recipients: ["security@company.com"],
-    dataMaskingEnabled: false,
-    brandingEnabled: false,
-    status: "active",
-    lastExecuted: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    nextExecution: new Date(Date.now() + 12 * 60 * 60 * 1000),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-  {
-    id: "4",
-    name: "Quarterly Compliance Report",
-    reportType: "compliance-summary",
-    format: "pdf",
-    scheduleFrequency: "quarterly",
-    scheduledTime: "First Monday of quarter",
-    recipients: ["board@company.com", "ciso@company.com"],
-    dataMaskingEnabled: true,
-    brandingEnabled: true,
-    status: "active",
-    lastExecuted: new Date(Date.now() - 60 * 24 * 60 * 60 * 1000),
-    nextExecution: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-    createdAt: new Date(),
-    updatedAt: new Date(),
-  },
-];
+import { exportConfigsService } from "@/services/configurationsService";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const reportTypes = [
   { value: "consent-summary", label: "Consent Summary" },
@@ -165,75 +103,135 @@ const getFrequencyBadge = (frequency: ScheduleFrequency) => {
     "quarterly": "bg-destructive/10 text-destructive border-destructive/20",
     "on-demand": "bg-muted text-muted-foreground",
   };
-  return <Badge className={colors[frequency]}>{frequency}</Badge>;
+  return <Badge className={`${colors[frequency]} capitalize`}>{frequency}</Badge>;
 };
 
 export function ExportReportConfig() {
-  const [configs, setConfigs] = useState<ExportConfig[]>(mockExportConfigs);
+  const [configs, setConfigs] = useState<ExportConfig[]>([]);
+  const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [creating, setCreating] = useState(false);
   const { toast } = useToast();
+
+  const fetchConfigs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await exportConfigsService.getAll();
+      setConfigs(Array.isArray(data) ? data : []);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load export configurations.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchConfigs();
+  }, [fetchConfigs]);
+
+  const handleToggleStatus = async (id: string) => {
+    try {
+      const config = configs.find(c => c.id === id);
+      if (!config) return;
+      const newStatus: LifecycleStatus = config.status === "active" ? "disabled" : "active";
+      const updated = await exportConfigsService.update(id, { ...config, status: newStatus });
+      setConfigs(prev => prev.map(c => c.id === id ? updated : c));
+      toast({
+        title: `Configuration ${newStatus === "active" ? "Resumed" : "Paused"}`,
+        description: `${config.name} has been updated.`
+      });
+    } catch (error) {
+      toast({ title: "Error", description: "Operation failed.", variant: "destructive" });
+    }
+  };
+
+  const handleCreate = async () => {
+    setCreating(true);
+    try {
+      const newConfig: Partial<ExportConfig> = {
+        name: `Export Schedule ${configs.length + 1}`,
+        reportType: "consent-summary",
+        format: "pdf",
+        scheduleFrequency: "weekly",
+        scheduledTime: "09:00",
+        recipients: ["compliance@company.com"],
+        dataMaskingEnabled: true,
+        brandingEnabled: true,
+        status: "active",
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        nextExecution: new Date(Date.now() + 24 * 60 * 60 * 1000),
+      };
+      const created = await exportConfigsService.create(newConfig as ExportConfig);
+      setConfigs(prev => [created, ...prev]);
+      setIsCreateOpen(false);
+      toast({ title: "Configuration Created", description: "Report schedule added successfully." });
+    } catch (error) {
+        toast({ title: "Error", description: "Failed to create configuration.", variant: "destructive" });
+    } finally {
+        setCreating(false);
+    }
+  };
 
   const activeConfigs = configs.filter(c => c.status === "active").length;
   const scheduledToday = configs.filter(c => {
     if (!c.nextExecution) return false;
     const today = new Date();
-    return c.nextExecution.toDateString() === today.toDateString();
+    return new Date(c.nextExecution).toDateString() === today.toDateString();
   }).length;
 
   return (
     <div className="space-y-6">
       {/* Header Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Total Configurations</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{configs.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Active Schedules</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-success">{activeConfigs}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Scheduled Today</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-primary">{scheduledToday}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">Report Types</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{reportTypes.length}</div>
-          </CardContent>
-        </Card>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {[
+            { title: "Configurations", value: loading ? "..." : configs.length, icon: FileText, color: "text-foreground" },
+            { title: "Active Schedules", value: loading ? "..." : activeConfigs, icon: CheckCircle2, color: "text-success" },
+            { title: "Scheduled Today", value: loading ? "..." : scheduledToday, icon: Clock, color: "text-primary" },
+            { title: "Report Templates", value: reportTypes.length, icon: BarChart3, color: "text-warning" }
+        ].map((stat, i) => (
+            <Card key={i} className="border-0 shadow-sm bg-card/60 backdrop-blur-sm overflow-hidden group hover:shadow-md transition-all duration-300">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        <stat.icon className="h-3.5 w-3.5" />
+                        {stat.title}
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+                </CardContent>
+            </Card>
+        ))}
       </div>
 
       {/* Report Templates Gallery */}
-      <Card>
+      <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="text-base">Report Templates</CardTitle>
-          <CardDescription>Quick access to common report configurations</CardDescription>
+          <CardTitle className="text-base font-bold flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-primary" />
+              Reporting Templates
+          </CardTitle>
+          <CardDescription>Industry-standard templates for compliance reporting</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {reportTypes.slice(0, 4).map(report => (
               <div 
                 key={report.value}
-                className="p-4 border rounded-lg hover:border-primary hover:bg-primary/5 transition-colors cursor-pointer"
+                className="group p-4 border border-border/50 rounded-xl bg-background/40 hover:border-primary/50 hover:bg-primary/5 transition-all duration-300 cursor-pointer relative overflow-hidden"
               >
-                <FileText className="h-8 w-8 text-primary mb-2" />
-                <p className="font-medium text-sm">{report.label}</p>
-                <p className="text-xs text-muted-foreground mt-1">Click to configure</p>
+                <div className="absolute top-0 right-0 p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <ChevronRight className="h-4 w-4 text-primary" />
+                </div>
+                <div className="p-2 rounded-lg bg-primary/10 text-primary w-fit mb-3">
+                    <FileText className="h-5 w-5" />
+                </div>
+                <p className="font-bold text-sm text-foreground">{report.label}</p>
+                <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-tight">Standard Compliance</p>
               </div>
             ))}
           </div>
@@ -241,38 +239,38 @@ export function ExportReportConfig() {
       </Card>
 
       {/* Actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h3 className="text-lg font-semibold">Export & Reporting Configurations</h3>
+          <h3 className="text-xl font-bold text-foreground">Export Schedules</h3>
           <p className="text-sm text-muted-foreground">
-            Define how reports and exports are generated and delivered
+            Automate data delivery to DPOs and Compliance Officers.
           </p>
         </div>
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="shadow-lg shadow-primary/20">
               <Plus className="h-4 w-4 mr-2" />
-              Create Configuration
+              Configure New Export
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
+          <DialogContent className="max-w-2xl bg-card">
             <DialogHeader>
-              <DialogTitle>Create Export Configuration</DialogTitle>
+              <DialogTitle className="text-2xl font-bold">New Export Protocol</DialogTitle>
               <DialogDescription>
-                Set up automated report generation and delivery
+                Define report parameters, output format, and delivery schedule.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
+            <div className="grid gap-6 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="name">Configuration Name</Label>
-                <Input id="name" placeholder="e.g., Weekly Consent Summary" />
+                <Label htmlFor="name" className="text-sm font-semibold">Configuration Name</Label>
+                <Input id="name" placeholder="e.g., Weekly Consent Summary" className="bg-background/50 border-border/50" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label>Report Type</Label>
+                  <Label className="text-sm font-semibold">Report Type</Label>
                   <Select>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select report type" />
+                    <SelectTrigger className="bg-background/50 border-border/50">
+                      <SelectValue placeholder="Select type" />
                     </SelectTrigger>
                     <SelectContent>
                       {reportTypes.map(report => (
@@ -284,90 +282,70 @@ export function ExportReportConfig() {
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Export Format</Label>
-                  <Select>
-                    <SelectTrigger>
+                  <Label className="text-sm font-semibold">Output Format</Label>
+                  <Select defaultValue="pdf">
+                    <SelectTrigger className="bg-background/50 border-border/50">
                       <SelectValue placeholder="Select format" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="pdf">PDF</SelectItem>
-                      <SelectItem value="xlsx">Excel (XLSX)</SelectItem>
-                      <SelectItem value="csv">CSV</SelectItem>
-                      <SelectItem value="json">JSON</SelectItem>
+                      <SelectItem value="pdf">Professional PDF</SelectItem>
+                      <SelectItem value="xlsx">Excel Spreadsheet (XLSX)</SelectItem>
+                      <SelectItem value="csv">Standard CSV</SelectItem>
+                      <SelectItem value="json">Raw JSON</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="grid gap-2">
-                  <Label>Schedule Frequency</Label>
-                  <Select>
-                    <SelectTrigger>
+                  <Label className="text-sm font-semibold">Frequency</Label>
+                  <Select defaultValue="weekly">
+                    <SelectTrigger className="bg-background/50 border-border/50">
                       <SelectValue placeholder="Select frequency" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="daily">Daily</SelectItem>
-                      <SelectItem value="weekly">Weekly</SelectItem>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="quarterly">Quarterly</SelectItem>
-                      <SelectItem value="on-demand">On-Demand Only</SelectItem>
+                      <SelectItem value="daily">Daily Execution</SelectItem>
+                      <SelectItem value="weekly">Weekly Compilation</SelectItem>
+                      <SelectItem value="monthly">Monthly Audit</SelectItem>
+                      <SelectItem value="quarterly">Quarterly Review</SelectItem>
+                      <SelectItem value="on-demand">Manual Run Only</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="grid gap-2">
-                  <Label>Scheduled Time</Label>
-                  <Input type="time" />
+                  <Label className="text-sm font-semibold">Execution Time (UTC)</Label>
+                  <Input type="time" className="bg-background/50 border-border/50" />
                 </div>
               </div>
               <div className="grid gap-2">
-                <Label>Recipients (comma-separated emails)</Label>
-                <Input placeholder="e.g., dpo@company.com, compliance@company.com" />
+                <Label className="text-sm font-semibold">Recipient Emails</Label>
+                <Input placeholder="dpo@company.com, legal@company.com" className="bg-background/50 border-border/50" />
               </div>
-              <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 border border-border/50 rounded-xl bg-muted/20">
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Enable Data Masking</p>
-                    <p className="text-sm text-muted-foreground">Mask PII in exported reports</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-primary">Data Masking</p>
+                    <p className="text-[10px] text-muted-foreground mt-1 text-wrap pr-4">Anonymize PII for non-DPO recipients.</p>
                   </div>
                   <Switch defaultChecked />
                 </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
+                <div className="flex items-center justify-between">
                   <div>
-                    <p className="font-medium">Apply Branding</p>
-                    <p className="text-sm text-muted-foreground">Use white-label settings in reports</p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-primary">Branding</p>
+                    <p className="text-[10px] text-muted-foreground mt-1 text-wrap pr-4">Apply corporate header/footer logo.</p>
                   </div>
                   <Switch defaultChecked />
                 </div>
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
+            <DialogFooter className="gap-2">
+              <Button variant="ghost" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
               <Button
-                onClick={() => {
-                  const newConfig: ExportConfig = {
-                    id: `exp-${Date.now()}`,
-                    name: `Export Config ${configs.length + 1}`,
-                    reportType: "consent-summary",
-                    format: "pdf",
-                    scheduleFrequency: "weekly",
-                    scheduledTime: "09:00",
-                    recipients: ["dpo@company.com"],
-                    dataMaskingEnabled: true,
-                    brandingEnabled: true,
-                    status: "active",
-                    createdAt: new Date(),
-                    updatedAt: new Date(),
-                    nextExecution: new Date(Date.now() + 24 * 60 * 60 * 1000),
-                  };
-                  setConfigs((prev) => [newConfig, ...prev]);
-                  setIsCreateOpen(false);
-                  toast({
-                    title: "Export Configuration Created",
-                    description: `${newConfig.name} scheduled successfully.`,
-                  });
-                }}
+                onClick={handleCreate}
+                disabled={creating}
               >
-                Create Configuration
+                {creating ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Settings2 className="h-4 w-4 mr-2" />}
+                Save & Schedule
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -375,116 +353,137 @@ export function ExportReportConfig() {
       </div>
 
       {/* Configurations Table */}
-      <Card>
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Configuration Name</TableHead>
-              <TableHead>Report Type</TableHead>
-              <TableHead>Format</TableHead>
-              <TableHead>Schedule</TableHead>
-              <TableHead>Recipients</TableHead>
-              <TableHead>Next Execution</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="text-right">Actions</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {configs.map(config => (
-              <TableRow key={config.id}>
-                <TableCell className="font-medium">{config.name}</TableCell>
-                <TableCell>
-                  <Badge variant="outline">
-                    {reportTypes.find(r => r.value === config.reportType)?.label}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    {getFormatIcon(config.format)}
-                    <span className="uppercase text-xs">{config.format}</span>
-                  </div>
-                </TableCell>
-                <TableCell>{getFrequencyBadge(config.scheduleFrequency)}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-1">
-                    <Mail className="h-3 w-3 text-muted-foreground" />
-                    <span className="text-sm">{config.recipients.length}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {config.nextExecution && (
-                    <div className="flex items-center gap-1 text-sm">
-                      <Clock className="h-3 w-3 text-muted-foreground" />
-                      {config.nextExecution.toLocaleDateString()}
-                    </div>
-                  )}
-                </TableCell>
-                <TableCell>{getStatusBadge(config.status)}</TableCell>
-                <TableCell className="text-right">
-                  <div className="flex items-center justify-end gap-1">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Preview"
-                      onClick={() => toast({ title: "Preview", description: `Preview opened for ${config.name}.` })}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Run Now"
-                      onClick={() => toast({ title: "Execution Started", description: `Manual run started for ${config.name}.` })}
-                    >
-                      <Play className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      title="Configure"
-                      onClick={() => toast({ title: "Configure", description: `Opening ${config.name} settings.` })}
-                    >
-                      <Settings2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+      <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm overflow-hidden">
+        <div className="overflow-x-auto">
+            <Table>
+            <TableHeader className="bg-muted/30">
+                <TableRow>
+                <TableHead className="font-bold">Protocol Name</TableHead>
+                <TableHead className="font-bold">Report Category</TableHead>
+                <TableHead className="font-bold">Format</TableHead>
+                <TableHead className="font-bold">Schedule</TableHead>
+                <TableHead className="font-bold">Recipients</TableHead>
+                <TableHead className="font-bold">Next Run</TableHead>
+                <TableHead className="font-bold">Status</TableHead>
+                <TableHead className="text-right font-bold">Actions</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {loading ? (
+                    Array(3).fill(0).map((_, i) => (
+                        <TableRow key={i}>
+                            <TableCell colSpan={8} className="p-0">
+                                <Skeleton className="h-16 w-full rounded-none" />
+                            </TableCell>
+                        </TableRow>
+                    ))
+                ) : (
+                    configs.map(config => (
+                    <TableRow key={config.id} className="group hover:bg-muted/20 transition-colors">
+                        <TableCell className="font-bold text-foreground">{config.name}</TableCell>
+                        <TableCell>
+                        <Badge variant="outline" className="text-[10px] uppercase font-bold bg-background/50 border-border/50">
+                            {reportTypes.find(r => r.value === config.reportType)?.label}
+                        </Badge>
+                        </TableCell>
+                        <TableCell>
+                        <div className="flex items-center gap-2">
+                            {getFormatIcon(config.format)}
+                            <span className="uppercase text-[10px] font-bold tracking-widest">{config.format}</span>
+                        </div>
+                        </TableCell>
+                        <TableCell>{getFrequencyBadge(config.scheduleFrequency)}</TableCell>
+                        <TableCell>
+                        <div className="flex items-center gap-1.5">
+                            <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-xs font-semibold">{config.recipients.length}</span>
+                        </div>
+                        </TableCell>
+                        <TableCell>
+                        {config.nextExecution && (
+                            <div className="flex items-center gap-1.5 text-xs font-medium">
+                            <Clock className="h-3.5 w-3.5 text-primary" />
+                            {new Date(config.nextExecution).toLocaleDateString()}
+                            </div>
+                        )}
+                        </TableCell>
+                        <TableCell>{getStatusBadge(config.status)}</TableCell>
+                        <TableCell className="text-right">
+                        <div className="flex items-center justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:text-primary"
+                            onClick={() => toast({ title: "Protocol Preview", description: "Generating immediate report preview..." })}
+                            >
+                            <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 hover:text-success"
+                            onClick={() => toast({ title: "Manual Execution", description: `Report generation for '${config.name}' queued.` })}
+                            >
+                            <Play className="h-4 w-4" />
+                            </Button>
+                            <Button
+                            variant="ghost"
+                            size="icon"
+                            className={`h-8 w-8 ${config.status === 'active' ? 'hover:text-warning' : 'hover:text-success'}`}
+                            onClick={() => handleToggleStatus(config.id)}
+                            >
+                            {config.status === "active" ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                            </Button>
+                        </div>
+                        </TableCell>
+                    </TableRow>
+                    ))
+                )}
+            </TableBody>
+            </Table>
+        </div>
       </Card>
 
-      {/* Execution Status */}
-      <Card>
+      {/* Execution Tracker */}
+      <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm">
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Calendar className="h-4 w-4" />
-            Recent Executions
+          <CardTitle className="text-base font-bold flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-primary" />
+            Execution Ledger
           </CardTitle>
+          <CardDescription>Recent automated and manual report generations</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {configs.slice(0, 3).map(config => (
-              <div key={config.id} className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  {getFormatIcon(config.format)}
+            {!loading && configs.filter(c => c.lastExecuted).slice(0, 3).map(config => (
+              <div key={config.id} className="flex items-center justify-between p-4 border border-border/50 rounded-xl bg-background/40 hover:bg-muted/30 transition-all duration-200 group">
+                <div className="flex items-center gap-4">
+                  <div className="p-2 rounded-lg bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-colors">
+                    {getFormatIcon(config.format)}
+                  </div>
                   <div>
-                    <p className="font-medium text-sm">{config.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Last run: {config.lastExecuted?.toLocaleDateString()} at {config.lastExecuted?.toLocaleTimeString()}
+                    <p className="font-bold text-sm">{config.name}</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5">
+                      Last generated: {new Date(config.lastExecuted!).toLocaleDateString()} at {new Date(config.lastExecuted!).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <CheckCircle2 className="h-4 w-4 text-success" />
-                  <span className="text-sm text-success">Completed</span>
+                <div className="flex items-center gap-4">
+                  <div className="flex flex-col items-end">
+                      <div className="flex items-center gap-1 text-[10px] font-bold text-success uppercase tracking-widest">
+                        <CheckCircle2 className="h-3 w-3" />
+                        Success
+                      </div>
+                      <p className="text-[9px] text-muted-foreground mr-4">ID: RX-{config.id.slice(-4).toUpperCase()}</p>
+                  </div>
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    onClick={() => toast({ title: "Download Ready", description: `Downloaded latest output for ${config.name}.` })}
+                    className="h-8 border-primary/20 hover:bg-primary/5 hover:text-primary transition-all"
+                    onClick={() => toast({ title: "Accessing Archive", description: `Downloading encrypted report package...` })}
                   >
-                    <Download className="h-4 w-4 mr-1" />
-                    Download
+                    <Download className="h-3.5 w-3.5 mr-2" />
+                    Archive
                   </Button>
                 </div>
               </div>

@@ -16,6 +16,10 @@ import {
   FileText,
   RefreshCw,
 } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { consentService } from "@/services/consentService";
+import type { ConsentUsageRecord, SystemConfig } from "./types";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -37,76 +41,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 
-interface ConsentUsageRecord {
-  id: string;
-  userIdentifier: string; // Pseudonymized
-  templateName: string;
-  version: string;
-  purposeMapped: string;
-  systemApp: string;
-  consentDateTime: string;
-  consentStatus: "active" | "withdrawn" | "expired";
-  lastValidation: string;
-}
-
-// Mock data for usage records
-const mockUsageRecords: ConsentUsageRecord[] = [
-  {
-    id: "u-001",
-    userIdentifier: "USR-****-7842",
-    templateName: "Marketing Communications Consent",
-    version: "2.1",
-    purposeMapped: "Marketing",
-    systemApp: "Email Platform",
-    consentDateTime: "2024-01-15T10:30:00Z",
-    consentStatus: "active",
-    lastValidation: "2024-01-20T08:00:00Z",
-  },
-  {
-    id: "u-002",
-    userIdentifier: "USR-****-3291",
-    templateName: "Marketing Communications Consent",
-    version: "2.0",
-    purposeMapped: "Marketing",
-    systemApp: "CRM System",
-    consentDateTime: "2024-01-10T14:20:00Z",
-    consentStatus: "withdrawn",
-    lastValidation: "2024-01-18T12:00:00Z",
-  },
-  {
-    id: "u-003",
-    userIdentifier: "USR-****-8456",
-    templateName: "Data Analytics Processing",
-    version: "1.0",
-    purposeMapped: "Analytics",
-    systemApp: "Analytics Dashboard",
-    consentDateTime: "2024-02-01T09:00:00Z",
-    consentStatus: "active",
-    lastValidation: "2024-02-05T10:00:00Z",
-  },
-  {
-    id: "u-004",
-    userIdentifier: "USR-****-1234",
-    templateName: "Essential Service Consent",
-    version: "3.0",
-    purposeMapped: "Service Delivery",
-    systemApp: "Core Application",
-    consentDateTime: "2024-01-01T00:00:00Z",
-    consentStatus: "active",
-    lastValidation: "2024-01-22T06:00:00Z",
-  },
-  {
-    id: "u-005",
-    userIdentifier: "USR-****-5678",
-    templateName: "Third-Party Data Sharing",
-    version: "0.5",
-    purposeMapped: "Partner Sharing",
-    systemApp: "Partner Portal",
-    consentDateTime: "2023-12-01T16:45:00Z",
-    consentStatus: "expired",
-    lastValidation: "2024-01-01T00:00:00Z",
-  },
-];
+// Mock content removed - using live data
 
 const systemsUsingConsent = [
   { name: "Email Platform", consentTemplates: 2, lastEvent: "2 hours ago" },
@@ -128,23 +63,18 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea"; // Assuming Textarea exists
 import { Settings } from "lucide-react";
 
-interface SystemConfig {
-  name: string;
-  type: string;
-  integrationMode: string;
-  authMethod: string;
-  endpoint: string;
-  description: string;
-}
+// Local SystemConfig interface removed - using the imported one from ./types
 
 function SystemConfigurationDialog({
   open,
   onOpenChange,
-  onSave
+  onSave,
+  isLoading
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSave: (config: SystemConfig) => void;
+  isLoading?: boolean;
 }) {
   const [config, setConfig] = useState<SystemConfig>({
     name: "",
@@ -251,7 +181,10 @@ function SystemConfigurationDialog({
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-          <Button onClick={handleSubmit} disabled={!config.name}>Register System</Button>
+          <Button onClick={handleSubmit} disabled={!config.name || isLoading}>
+            {isLoading ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : null}
+            Register System
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
@@ -270,30 +203,58 @@ const getStatusBadge = (status: ConsentUsageRecord["consentStatus"]) => {
 };
 
 export function ConsentUsageTraceability() {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [systemFilter, setSystemFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<string>("all");
   const [showConfigDialog, setShowConfigDialog] = useState(false);
-  const [consumingSystems, setConsumingSystems] = useState(systemsUsingConsent);
 
-  const systems = [...new Set(mockUsageRecords.map((r) => r.systemApp))];
-
-  const filteredRecords = mockUsageRecords.filter((record) => {
-    const matchesSearch =
-      record.userIdentifier.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.templateName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      record.purposeMapped.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || record.consentStatus === statusFilter;
-    const matchesSystem = systemFilter === "all" || record.systemApp === systemFilter;
-    return matchesSearch && matchesStatus && matchesSystem;
+  // Queries
+  const { data: usageData, isLoading: isLoadingUsage } = useQuery({
+    queryKey: ["consent-usage", searchQuery, statusFilter, systemFilter],
+    queryFn: () => consentService.getUsageRecords({
+      search: searchQuery,
+      status: statusFilter === "all" ? undefined : statusFilter,
+      // Note: Backend might not support system filter yet in records, but mapping it anyway
+    }),
   });
 
-  // Calculate metrics
-  const totalConsents = mockUsageRecords.length;
-  const activeConsents = mockUsageRecords.filter((r) => r.consentStatus === "active").length;
-  const withdrawnConsents = mockUsageRecords.filter((r) => r.consentStatus === "withdrawn").length;
-  const consentCoverage = Math.round((activeConsents / totalConsents) * 100);
+  const { data: systemsData } = useQuery({
+    queryKey: ["system-configs"],
+    queryFn: () => consentService.getSystemConfigs(),
+  });
+
+  // Mutation
+  const registerMutation = useMutation({
+    mutationFn: (config: SystemConfig) => consentService.createSystemConfig(config),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["system-configs"] });
+      toast({
+        title: "System Registered",
+        description: "The consuming system has been successfully registered.",
+      });
+      setShowConfigDialog(false);
+    },
+    onError: () => {
+      toast({
+        title: "Error",
+        description: "Failed to register the system. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const records = usageData?.data || [];
+  const totalRecordsCount = usageData?.total || 0;
+  
+  const systems = [...new Set(records.map((r) => r.systemApp))];
+
+  // Calculate metrics from live data
+  const activeConsents = records.filter((r) => r.consentStatus === "active").length;
+  const withdrawnConsents = records.filter((r) => r.consentStatus === "withdrawn").length;
+  const consentCoverage = totalRecordsCount > 0 ? Math.round((activeConsents / records.length) * 100) : 0;
 
   return (
     <div className="space-y-6">
@@ -306,7 +267,7 @@ export function ConsentUsageTraceability() {
                 <Database className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{totalConsents.toLocaleString()}</p>
+                <p className="text-2xl font-bold">{totalRecordsCount.toLocaleString()}</p>
                 <p className="text-xs text-muted-foreground">Total Consents</p>
               </div>
             </div>
@@ -358,7 +319,7 @@ export function ConsentUsageTraceability() {
                 <Server className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{systemsUsingConsent.length}</p>
+                <p className="text-2xl font-bold">{systemsData?.length || 0}</p>
                 <p className="text-xs text-muted-foreground">Systems Using</p>
               </div>
             </div>
@@ -382,9 +343,9 @@ export function ConsentUsageTraceability() {
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
-            {consumingSystems.map((system) => (
+            {systemsData?.map((system) => (
               <div
-                key={system.name}
+                key={system.id || system.name}
                 className="p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors"
               >
                 <div className="flex items-center gap-2 mb-2">
@@ -392,11 +353,16 @@ export function ConsentUsageTraceability() {
                   <span className="text-sm font-medium">{system.name}</span>
                 </div>
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <span>{system.consentTemplates} templates</span>
-                  <span>{system.lastEvent}</span>
+                  <span>{system.type}</span>
+                  <span>{system.createdAt ? new Date(system.createdAt).toLocaleDateString() : 'N/A'}</span>
                 </div>
               </div>
             ))}
+            {!systemsData?.length && (
+              <div className="col-span-full py-4 text-center text-sm text-muted-foreground">
+                No consuming systems registered yet.
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -404,13 +370,9 @@ export function ConsentUsageTraceability() {
       <SystemConfigurationDialog
         open={showConfigDialog}
         onOpenChange={setShowConfigDialog}
+        isLoading={registerMutation.isPending}
         onSave={(newSystem) => {
-          setConsumingSystems([...consumingSystems, {
-            name: newSystem.name,
-            consentTemplates: 0,
-            lastEvent: "Just now"
-          }]);
-          setShowConfigDialog(false);
+          registerMutation.mutate(newSystem);
         }}
       />
 
@@ -495,7 +457,14 @@ export function ConsentUsageTraceability() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredRecords.map((record) => (
+            {isLoadingUsage ? (
+              <TableRow>
+                <TableCell colSpan={9} className="h-24 text-center">
+                  <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
+                  Loading records...
+                </TableCell>
+              </TableRow>
+            ) : records.map((record) => (
               <TableRow key={record.id} className="hover:bg-muted/30">
                 <TableCell>
                   <div className="flex items-center gap-2">
@@ -547,7 +516,7 @@ export function ConsentUsageTraceability() {
 
       {/* Results summary */}
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <p>Showing {filteredRecords.length} of {mockUsageRecords.length} records</p>
+        <p>Showing {records.length} of {totalRecordsCount} records</p>
         <p className="text-xs">User identifiers are pseudonymized for privacy</p>
       </div>
     </div>

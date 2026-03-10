@@ -174,22 +174,113 @@ export interface ConsentTemplate {
 export interface ConsentVersion {
   id: string;
   templateId: string;
+  templateName?: string; // Optinal name of the parent template
   version: string;
+  status: "active" | "archived" | "locked" | "published";
   changeSummary: string;
-  reconsentRequired: boolean;
-  impactedUsersCount: number;
+  changedFields: string[];
+  changeReason: string;
+  approvedBy: string;
+  approvalTimestamp: string;
+  effectiveFrom: string;
+  effectiveTo: string | null;
+  usersImpacted: number;
+  reconsentTriggered: boolean;
   createdAt: string;
   createdBy: string;
-  status: "current" | "archived";
 }
 
-export interface ConsentUsage {
+export interface ConsentDeployment {
   id: string;
   templateId: string;
-  systemName: string;
-  lastEvent: string;
-  eventCount: number;
-  enforcementStatus: "active" | "pending" | "disabled";
+  templateName?: string;
+  versionId: string;
+  versionNumber?: string;
+  applicationId: string;
+  applicationName?: string;
+  deploymentMode: "manual" | "scheduled";
+  status: "deployed" | "pending" | "failed" | "rolled-back";
+  isActive: boolean;
+  activationDate: string;
+  region: string;
+  platform: string;
+  userSegment: string;
+  deployedBy: string;
+  deployedAt: string;
+  affectedUsers: number;
+  approvalRequired: boolean;
+  approvedBy: string | null;
+  rollbackAllowed: boolean;
+  lockAfterActivation: boolean;
+}
+
+export interface DeploymentLog {
+  id: string;
+  deploymentId: string;
+  action: string;
+  timestamp: string;
+  performedBy: string;
+  details: string;
+  status: "success" | "failure";
+}
+
+export interface ConsentUsageRecord {
+  id: string;
+  userIdentifier: string;
+  templateId: string;
+  templateName?: string;
+  version: string;
+  purposeMapped: string;
+  systemApp: string;
+  consentDateTime: string;
+  consentStatus: "active" | "withdrawn" | "expired";
+  lastValidation: string;
+}
+
+export interface ApplicationUsage {
+  id: string;
+  templateId?: string;
+  templateName: string;
+  templateVersion: string;
+  applicationName: string;
+  applicationType: string;
+  systemOwner: string;
+  purposeUsed: string;
+  lastValidation: string;
+  status: "active" | "inactive" | "expired" | "pending";
+  usersConsented: number;
+  violations: number;
+}
+
+export interface ConsentAnalyticsData {
+  templates: {
+    total: number;
+    byStatus: Record<string, number>;
+    byType: Record<string, number>;
+  };
+  records: {
+    total: number;
+    byStatus: Record<string, number>;
+  };
+  deployments: {
+    total: number;
+    byStatus: Record<string, number>;
+  };
+  crossAppUsage: {
+    byApplicationType: Record<string, number>;
+  };
+}
+
+export interface SystemConfig {
+  id?: string;
+  name: string;
+  type: string;
+  integrationMode: string;
+  authMethod: string;
+  endpoint: string;
+  description?: string;
+  tenantId?: string;
+  createdAt?: string;
 }
 
 // Wizard step configuration

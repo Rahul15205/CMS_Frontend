@@ -15,6 +15,9 @@ import {
   Activity,
 } from "lucide-react";
 import { useDashboard } from "@/contexts/DashboardContext";
+import { useQuery } from "@tanstack/react-query";
+import { consentService } from "@/services/consentService";
+import type { ConsentAnalyticsData } from "./types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -117,6 +120,11 @@ export function ConsentAnalytics() {
   const [dateRange, setDateRange] = useState("6months");
   const [templateFilter, setTemplateFilter] = useState("all");
   const { config } = useDashboard();
+  
+  const { data: analytics, isLoading } = useQuery({
+    queryKey: ["consent-analytics"],
+    queryFn: () => consentService.getAnalytics(),
+  });
 
   const getWidget = (id: string) => config.widgets.find(w => w.id === id);
   const isEnabled = (id: string) => getWidget(id)?.enabled ?? false;
@@ -201,13 +209,25 @@ export function ConsentAnalytics() {
     document.body.removeChild(link);
   };
 
-  // Calculate summary metrics
-  const totalActive = consentTrendData.reduce((acc, d) => acc + d.active, 0);
-  const totalRejected = consentTrendData.reduce((acc, d) => acc + d.rejected, 0);
-  const totalWithdrawn = consentTrendData.reduce((acc, d) => acc + d.withdrawn, 0);
-  const totalRequests = totalActive + totalRejected;
-  const acceptanceRate = Math.round((totalActive / totalRequests) * 100);
-  const withdrawalRate = Math.round((totalWithdrawn / totalActive) * 100);
+  // Calculate summary metrics from live analytics
+  const totalActive = analytics?.records.byStatus["ACTIVE"] || 0;
+  const totalRejected = analytics?.records.byStatus["REJECTED"] || 0;
+  const totalWithdrawn = analytics?.records.byStatus["WITHDRAWN"] || 0;
+  const totalRecords = analytics?.records.total || 0;
+  const acceptanceRate = totalRecords > 0 ? Math.round((totalActive / totalRecords) * 100) : 0;
+  const withdrawalRate = totalActive > 0 ? Math.round((totalWithdrawn / totalActive) * 100) : 0;
+
+  // Map backend types to pie chart format
+  const consentByTypeData = analytics ? Object.entries(analytics.templates.byType).map(([name, value], index) => ({
+    name: name.charAt(0) + name.slice(1).toLowerCase(),
+    value: Math.round((value / analytics.templates.total) * 100),
+    color: index === 0 ? "hsl(var(--primary))" : 
+           index === 1 ? "hsl(280, 65%, 60%)" :
+           index === 2 ? "hsl(var(--success))" :
+           index === 3 ? "hsl(var(--info))" :
+           index === 4 ? "hsl(var(--warning))" :
+           "hsl(340, 75%, 55%)"
+  })) : [];
 
   return (
     <div id="consent-dashboard" className="space-y-6">

@@ -24,6 +24,9 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
+import { useQuery } from "@tanstack/react-query";
+import { consentService } from "@/services/consentService";
+import type { ApplicationUsage } from "./types";
 import {
   AppWindow,
   Search,
@@ -39,100 +42,7 @@ import {
   Database,
 } from "lucide-react";
 
-interface ApplicationUsage {
-  id: string;
-  templateName: string;
-  templateVersion: string;
-  applicationName: string;
-  applicationType: "CRM" | "HRMS" | "Website" | "API" | "Mobile" | "ERP" | "Internal";
-  systemOwner: string;
-  purposeUsed: string;
-  lastValidation: string;
-  status: "active" | "inactive" | "expired" | "pending";
-  usersConsented: number;
-  violations: number;
-}
-
-const mockApplicationUsage: ApplicationUsage[] = [
-  {
-    id: "APP-001",
-    templateName: "Marketing Communications Consent",
-    templateVersion: "v2.4",
-    applicationName: "Salesforce CRM",
-    applicationType: "CRM",
-    systemOwner: "Marketing Team",
-    purposeUsed: "Email Marketing",
-    lastValidation: "2024-01-22 14:30",
-    status: "active",
-    usersConsented: 45230,
-    violations: 0,
-  },
-  {
-    id: "APP-002",
-    templateName: "Employee Data Processing",
-    templateVersion: "v1.8",
-    applicationName: "SAP SuccessFactors",
-    applicationType: "HRMS",
-    systemOwner: "HR Department",
-    purposeUsed: "HR Processing",
-    lastValidation: "2024-01-22 12:15",
-    status: "active",
-    usersConsented: 2340,
-    violations: 0,
-  },
-  {
-    id: "APP-003",
-    templateName: "Analytics Tracking Consent",
-    templateVersion: "v3.2",
-    applicationName: "Corporate Website",
-    applicationType: "Website",
-    systemOwner: "Digital Team",
-    purposeUsed: "Analytics",
-    lastValidation: "2024-01-22 10:00",
-    status: "active",
-    usersConsented: 128900,
-    violations: 3,
-  },
-  {
-    id: "APP-004",
-    templateName: "Customer Support Consent",
-    templateVersion: "v2.1",
-    applicationName: "Zendesk API",
-    applicationType: "API",
-    systemOwner: "Support Team",
-    purposeUsed: "Support Processing",
-    lastValidation: "2024-01-21 16:45",
-    status: "active",
-    usersConsented: 8920,
-    violations: 0,
-  },
-  {
-    id: "APP-005",
-    templateName: "Mobile App Consent",
-    templateVersion: "v1.5",
-    applicationName: "Customer Mobile App",
-    applicationType: "Mobile",
-    systemOwner: "Mobile Team",
-    purposeUsed: "App Personalization",
-    lastValidation: "2024-01-20 09:30",
-    status: "pending",
-    usersConsented: 67800,
-    violations: 1,
-  },
-  {
-    id: "APP-006",
-    templateName: "Data Analytics Consent",
-    templateVersion: "v2.0",
-    applicationName: "Oracle ERP",
-    applicationType: "ERP",
-    systemOwner: "Finance Team",
-    purposeUsed: "Business Analytics",
-    lastValidation: "2024-01-19 11:20",
-    status: "inactive",
-    usersConsented: 450,
-    violations: 0,
-  },
-];
+// Mock data removed - using live data
 
 const getAppTypeIcon = (type: string) => {
   switch (type) {
@@ -171,19 +81,28 @@ export function CrossApplicationUsage() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<string>("all");
 
-  const filteredData = mockApplicationUsage.filter((item) => {
+  const { data: usageData, isLoading } = useQuery({
+    queryKey: ["cross-app-usage", searchTerm, typeFilter, statusFilter],
+    queryFn: () => consentService.getCrossAppUsage({
+      status: statusFilter === "all" ? undefined : statusFilter,
+      // Note: Search and Type filters might need backend support, passing status for now
+    }),
+  });
+
+  const allData = usageData?.data || [];
+  const totalApps = usageData?.total || 0;
+
+  const filteredData = allData.filter((item) => {
     const matchesSearch =
       item.templateName.toLowerCase().includes(searchTerm.toLowerCase()) ||
       item.applicationName.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesType = typeFilter === "all" || item.applicationType === typeFilter;
-    const matchesStatus = statusFilter === "all" || item.status === statusFilter;
-    return matchesSearch && matchesType && matchesStatus;
+    return matchesSearch && matchesType;
   });
 
-  const totalApps = mockApplicationUsage.length;
-  const activeApps = mockApplicationUsage.filter((a) => a.status === "active").length;
-  const totalUsers = mockApplicationUsage.reduce((sum, a) => sum + a.usersConsented, 0);
-  const totalViolations = mockApplicationUsage.reduce((sum, a) => sum + a.violations, 0);
+  const activeApps = allData.filter((a) => a.status === "active").length;
+  const totalUsers = allData.reduce((sum, a) => sum + a.usersConsented, 0);
+  const totalViolations = allData.reduce((sum, a) => sum + a.violations, 0);
 
   return (
     <div className="space-y-6">
@@ -321,7 +240,14 @@ export function CrossApplicationUsage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredData.map((item) => (
+                {isLoading ? (
+                  <TableRow>
+                    <TableCell colSpan={9} className="h-24 text-center">
+                      <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
+                      Loading usage data...
+                    </TableCell>
+                  </TableRow>
+                ) : filteredData.map((item) => (
                   <TableRow key={item.id} className="hover:bg-muted/30">
                     <TableCell>
                       <div>

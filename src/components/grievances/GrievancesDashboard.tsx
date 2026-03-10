@@ -26,7 +26,9 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { mockGrievances } from "@/data/mockGrievances";
+import { useState, useEffect } from "react";
+import { grievancesService } from "@/services/grievancesService";
+import { handleApiError } from "@/lib/errorHandler";
 
 const trendData = [
     { name: "Aug", cases: 24 },
@@ -44,25 +46,40 @@ const resolutionTimeData = [
     { name: "> 7 days", value: 8, color: "hsl(0, 72%, 51%)" },
 ];
 
-const initialGrievances = mockGrievances;
-
-export { initialGrievances };
-
 interface GrievancesDashboardProps {
-    grievances: typeof initialGrievances;
+    grievances: any[];
     onView: (id: string) => void;
     onComment: (id: string) => void;
     onEscalate: (id: string) => void;
 }
 
 export function GrievancesDashboard({ grievances, onView, onComment, onEscalate }: GrievancesDashboardProps) {
+    const [metrics, setMetrics] = useState<any>(null);
+    const [isLoadingMetrics, setIsLoadingMetrics] = useState(true);
 
+    const fetchMetrics = async () => {
+        try {
+            setIsLoadingMetrics(true);
+            const data = await grievancesService.getMetrics();
+            setMetrics(data);
+        } catch (error) {
+            handleApiError(error, 'Grievance Metrics');
+        } finally {
+            setIsLoadingMetrics(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchMetrics();
+    }, []);
 
     const getStatusStyle = (status: string) => {
-        switch (status) {
+        const s = status?.toLowerCase();
+        switch (s) {
             case "resolved":
                 return "active";
             case "in_progress":
+            case "in-progress":
                 return "info";
             case "open":
                 return "warning";
@@ -74,14 +91,19 @@ export function GrievancesDashboard({ grievances, onView, onComment, onEscalate 
     };
 
     const getPriorityBadge = (priority: string) => {
-        switch (priority) {
+        const p = priority?.toLowerCase();
+        switch (p) {
             case "low":
+            case "grv_low":
                 return <StatusBadge status="info" dot={false}>Low</StatusBadge>;
             case "medium":
+            case "grv_medium":
                 return <StatusBadge status="warning" dot={false}>Medium</StatusBadge>;
             case "high":
+            case "grv_high":
                 return <StatusBadge status="warning" dot={false}>High</StatusBadge>;
             case "critical":
+            case "grv_critical":
                 return <StatusBadge status="error" dot={false}>Critical</StatusBadge>;
             default:
                 return <StatusBadge status="info" dot={false}>{priority}</StatusBadge>;
@@ -96,26 +118,26 @@ export function GrievancesDashboard({ grievances, onView, onComment, onEscalate 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                     <KPICard
                         title="Open Grievances"
-                        value="8"
+                        value={isLoadingMetrics ? "..." : metrics?.open?.toString() || "0"}
                         icon={<MessageSquareWarning className="h-6 w-6" />}
                         variant="warning"
                     />
                     <KPICard
                         title="In Progress"
-                        value="12"
+                        value={isLoadingMetrics ? "..." : metrics?.inProgress?.toString() || "0"}
                         icon={<Clock className="h-6 w-6" />}
                         variant="info"
                     />
                     <KPICard
                         title="Resolved (This Month)"
-                        value="45"
+                        value={isLoadingMetrics ? "..." : metrics?.resolved?.toString() || "0"}
                         icon={<CheckCircle className="h-6 w-6" />}
                         trend={{ value: 23, direction: "up" }}
                         variant="success"
                     />
                     <KPICard
                         title="Escalated"
-                        value="3"
+                        value={isLoadingMetrics ? "..." : metrics?.escalated?.toString() || "0"}
                         icon={<AlertTriangle className="h-6 w-6" />}
                         variant="destructive"
                     />
@@ -158,87 +180,93 @@ export function GrievancesDashboard({ grievances, onView, onComment, onEscalate 
                     </div>
 
                     <div className="space-y-4">
-                        {grievances.map((grievance) => (
-                            <Card key={grievance.id} className="hover:shadow-card-hover transition-shadow">
-                                <CardHeader className="pb-3">
-                                    <div className="flex items-start justify-between">
-                                        <div className="space-y-1">
-                                            <div className="flex items-center gap-2">
-                                                <CardTitle className="text-base font-semibold">
-                                                    {grievance.id}
-                                                </CardTitle>
-                                                {getPriorityBadge(grievance.priority)}
+                        {Array.isArray(grievances) && grievances.length > 0 ? (
+                            grievances.map((grievance) => (
+                                <Card key={grievance.id} className="hover:shadow-card-hover transition-shadow">
+                                    <CardHeader className="pb-3">
+                                        <div className="flex items-start justify-between">
+                                            <div className="space-y-1">
+                                                <div className="flex items-center gap-2">
+                                                    <CardTitle className="text-base font-semibold">
+                                                        {grievance.caseNumber || grievance.id}
+                                                    </CardTitle>
+                                                    {getPriorityBadge(grievance.priority)}
+                                                </div>
+                                                <p className="text-sm font-medium text-foreground">
+                                                    {grievance.subject}
+                                                </p>
                                             </div>
-                                            <p className="text-sm font-medium text-foreground">
-                                                {grievance.subject}
-                                            </p>
+                                            <StatusBadge status={getStatusStyle(grievance.status) as any}>
+                                                {grievance.status?.toLowerCase() === "in_progress" || grievance.status?.toLowerCase() === "in-progress" ? "In Progress" :
+                                                    grievance.status?.charAt(0).toUpperCase() + grievance.status?.slice(1).toLowerCase()}
+                                            </StatusBadge>
                                         </div>
-                                        <StatusBadge status={getStatusStyle(grievance.status) as any}>
-                                            {grievance.status === "in_progress" ? "In Progress" :
-                                                grievance.status.charAt(0).toUpperCase() + grievance.status.slice(1)}
-                                        </StatusBadge>
-                                    </div>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground mb-4">
-                                        <span className="flex items-center gap-1">
-                                            <User className="h-4 w-4" />
-                                            {grievance.userId}
-                                        </span>
-                                        <span>Category: {grievance.category}</span>
-                                        <span>Created: {grievance.createdDate}</span>
-                                        <span>Updated: {grievance.lastUpdate}</span>
-                                        <span>Assigned: {grievance.assignedTo}</span>
-                                    </div>
-                                    <div className="flex items-center flex-wrap gap-2">
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="flex-1 group"
-                                                    onClick={() => onView(grievance.id)}
-                                                >
-                                                    <Eye className="h-4 w-4 sm:mr-1" />
-                                                    <span className="hidden sm:inline">View Details</span>
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>View Details</TooltipContent>
-                                        </Tooltip>
-                                        <Tooltip>
-                                            <TooltipTrigger asChild>
-                                                <Button
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="flex-1 group"
-                                                    onClick={() => onComment(grievance.id)}
-                                                >
-                                                    <MessageSquare className="h-4 w-4 sm:mr-1" />
-                                                    <span className="hidden sm:inline">Add Comment</span>
-                                                </Button>
-                                            </TooltipTrigger>
-                                            <TooltipContent>Add Comment</TooltipContent>
-                                        </Tooltip>
-                                        {grievance.status !== "escalated" && (
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-muted-foreground mb-4">
+                                            <span className="flex items-center gap-1">
+                                                <User className="h-4 w-4" />
+                                                {grievance.userName || grievance.userId}
+                                            </span>
+                                            <span>Category: {grievance.category}</span>
+                                            <span>Created: {grievance.createdAt ? new Date(grievance.createdAt).toLocaleDateString() : grievance.createdDate}</span>
+                                            <span>Updated: {grievance.updatedAt ? new Date(grievance.updatedAt).toLocaleDateString() : grievance.lastUpdate}</span>
+                                            <span>Assigned: {grievance.assignedTo || "Unassigned"}</span>
+                                        </div>
+                                        <div className="flex items-center flex-wrap gap-2">
                                             <Tooltip>
                                                 <TooltipTrigger asChild>
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        className="flex-1 text-destructive hover:text-destructive group"
-                                                        onClick={() => onEscalate(grievance.id)}
+                                                        className="flex-1 group"
+                                                        onClick={() => onView(grievance.id)}
                                                     >
-                                                        <ArrowUpRight className="h-4 w-4 sm:mr-1" />
-                                                        <span className="hidden sm:inline">Escalate</span>
+                                                        <Eye className="h-4 w-4 sm:mr-1" />
+                                                        <span className="hidden sm:inline">View Details</span>
                                                     </Button>
                                                 </TooltipTrigger>
-                                                <TooltipContent>Escalate Case</TooltipContent>
+                                                <TooltipContent>View Details</TooltipContent>
                                             </Tooltip>
-                                        )}
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        ))}
+                                            <Tooltip>
+                                                <TooltipTrigger asChild>
+                                                    <Button
+                                                        variant="outline"
+                                                        size="sm"
+                                                        className="flex-1 group"
+                                                        onClick={() => onComment(grievance.id)}
+                                                    >
+                                                        <MessageSquare className="h-4 w-4 sm:mr-1" />
+                                                        <span className="hidden sm:inline">Add Comment</span>
+                                                    </Button>
+                                                </TooltipTrigger>
+                                                <TooltipContent>Add Comment</TooltipContent>
+                                            </Tooltip>
+                                            {grievance.status?.toLowerCase() !== "escalated" && (
+                                                <Tooltip>
+                                                    <TooltipTrigger asChild>
+                                                        <Button
+                                                            variant="outline"
+                                                            size="sm"
+                                                            className="flex-1 text-destructive hover:text-destructive group"
+                                                            onClick={() => onEscalate(grievance.id)}
+                                                        >
+                                                            <ArrowUpRight className="h-4 w-4 sm:mr-1" />
+                                                            <span className="hidden sm:inline">Escalate</span>
+                                                        </Button>
+                                                    </TooltipTrigger>
+                                                    <TooltipContent>Escalate Case</TooltipContent>
+                                                </Tooltip>
+                                            )}
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))
+                        ) : (
+                            <div className="text-center py-12 border-2 border-dashed rounded-lg bg-muted/20">
+                                <p className="text-muted-foreground">No active grievances found.</p>
+                            </div>
+                        )}
                     </div>
                 </div>
             </PageSection>

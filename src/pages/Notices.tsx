@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { DashboardLayout, PageSection, SectionTitle } from "@/components/layout/DashboardLayout";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
@@ -62,13 +62,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import {
-  mockNoticeHistory as mockHistory,
-  mockNoticeLanguages as mockLanguages,
-  mockNotices as notices,
-  mockNoticeTypes,
-} from "@/data/mockNotices";
+import { useToast } from "@/components/ui/use-toast";
+import { Skeleton } from "@/components/ui/skeleton";
+import { noticesService } from "@/services/noticesService";
+import { NoticeRecord, NoticeType, NoticeLanguage, NoticeHistoryRecord } from "@/data/mockNotices";
 
+// Helper function for status badges
 const getStatusBadge = (status: string) => {
   switch (status) {
     case "active":
@@ -89,24 +88,75 @@ import { NoticeEditorSheet } from "@/components/notices/NoticeEditorSheet";
 import { AddNoticeTypeDialog } from "@/components/notices/AddNoticeTypeDialog";
 
 export default function Notices() {
+  const { toast } = useToast();
   const [showHistoryDialog, setShowHistoryDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("overview");
 
-  // New State for View/Edit
-  const [noticesList, setNoticesList] = useState(notices);
+  // State for dynamic data
+  const [noticesList, setNoticesList] = useState<NoticeRecord[]>([]);
+  const [noticeTypes, setNoticeTypes] = useState<NoticeType[]>([]);
+  const [languages, setLanguages] = useState<NoticeLanguage[]>([]);
+  const [history, setHistory] = useState<NoticeHistoryRecord[]>([]);
+  const [loading, setLoading] = useState(true);
+
   const [selectedNotice, setSelectedNotice] = useState<any>(null);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [showEditorSheet, setShowEditorSheet] = useState(false);
   const [showAddNoticeTypeDialog, setShowAddNoticeTypeDialog] = useState(false);
-  const [noticeTypes, setNoticeTypes] = useState(mockNoticeTypes);
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [noticesRes, typesRes, languagesRes] = await Promise.all([
+        noticesService.getAll(),
+        noticesService.getTypes(),
+        noticesService.getLanguages(),
+      ]);
+
+      if (noticesRes) setNoticesList(noticesRes.data || noticesRes);
+      if (typesRes) setNoticeTypes(typesRes);
+      if (languagesRes) setLanguages(languagesRes);
+
+      // Fetch global history sample
+      const globalHistory = await noticesService.getGlobalHistory();
+      if (globalHistory) setHistory(globalHistory);
+
+    } catch (err) {
+      console.error("Failed to fetch notices data:", err);
+      toast({
+        title: "Error",
+        description: "Failed to load notices data.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleCreateNotice = () => {
     setSelectedNotice(null);
     setShowEditorSheet(true);
   };
 
-  const handleAddNoticeType = (type: any) => {
-    setNoticeTypes((prev) => [...prev, type]);
+  const handleAddNoticeType = async (type: any) => {
+    try {
+      const newType = await noticesService.createType(type);
+      setNoticeTypes((prev) => [...prev, newType]);
+      toast({
+        title: "Success",
+        description: "Notice type added successfully.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to add notice type.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleViewNotice = (notice: any) => {
@@ -119,19 +169,33 @@ export default function Notices() {
     setShowEditorSheet(true);
   };
 
-  const handleSaveNotice = (updatedNotice: any) => {
-    if (!updatedNotice.id) {
-      // Create new notice
-      const newNotice = {
-        ...updatedNotice,
-        id: `NOT-${String(noticesList.length + 1).padStart(3, '0')}`,
-      };
-      setNoticesList([...noticesList, newNotice]);
-    } else {
-      // Update existing notice
-      setNoticesList(noticesList.map(n => n.id === updatedNotice.id ? updatedNotice : n));
+  const handleSaveNotice = async (updatedNotice: any) => {
+    try {
+      if (!updatedNotice.id) {
+        // Create new notice
+        const newNotice = await noticesService.create(updatedNotice);
+        setNoticesList((prev) => [...prev, newNotice]);
+        toast({
+          title: "Success",
+          description: "Privacy notice created successfully.",
+        });
+      } else {
+        // Update existing notice
+        const res = await noticesService.update(updatedNotice.id, updatedNotice);
+        setNoticesList((prev) => prev.map(n => n.id === updatedNotice.id ? res : n));
+        toast({
+          title: "Success",
+          description: "Privacy notice updated successfully.",
+        });
+      }
+      setShowEditorSheet(false);
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to save notice.",
+        variant: "destructive",
+      });
     }
-    setShowEditorSheet(false);
   };
 
   return (
@@ -179,30 +243,36 @@ export default function Notices() {
         <TabsContent value="overview" className="space-y-6">
           <PageSection className="mb-8">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              <KPICard
-                title="Active Notices"
-                value="4"
-                icon={<FileText className="h-6 w-6" />}
-                variant="success"
-              />
-              <KPICard
-                title="Total Acknowledgements"
-                value="25,640"
-                icon={<CheckCircle className="h-6 w-6" />}
-                trend={{ value: 8, direction: "up" }}
-              />
-              <KPICard
-                title="Pending Acknowledgements"
-                value="663"
-                icon={<Clock className="h-6 w-6" />}
-                variant="warning"
-              />
-              <KPICard
-                title="Drafts & Under Review"
-                value="2"
-                icon={<Edit className="h-6 w-6" />}
-                variant="info"
-              />
+              {loading ? (
+                Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)
+              ) : (
+                <>
+                  <KPICard
+                    title="Active Notices"
+                    value={noticesList.filter(n => n.status === 'active').length.toString()}
+                    icon={<FileText className="h-6 w-6" />}
+                    variant="success"
+                  />
+                  <KPICard
+                    title="Total Acknowledgements"
+                    value={noticesList.reduce((acc, n) => acc + (Number(n.acknowledgements) || 0), 0).toLocaleString()}
+                    icon={<CheckCircle className="h-6 w-6" />}
+                    trend={{ value: 8, direction: "up" }}
+                  />
+                  <KPICard
+                    title="Pending Acknowledgements"
+                    value={noticesList.reduce((acc, n) => acc + (Number(n.pendingAck) || 0), 0).toLocaleString()}
+                    icon={<Clock className="h-6 w-6" />}
+                    variant="warning"
+                  />
+                  <KPICard
+                    title="Drafts & Under Review"
+                    value={noticesList.filter(n => n.status === 'draft' || n.status === 'pending_review').length.toString()}
+                    icon={<Edit className="h-6 w-6" />}
+                    variant="info"
+                  />
+                </>
+              )}
             </div>
           </PageSection>
 
@@ -210,21 +280,27 @@ export default function Notices() {
             <div className="dashboard-card">
               <SectionTitle>Recent Activity</SectionTitle>
               <div className="mt-4 space-y-4">
-                {mockHistory.slice(0, 3).map((item, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
-                    <div className="flex items-center gap-3">
-                      <History className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-sm font-medium">{item.title}</p>
-                        <p className="text-xs text-muted-foreground">{item.changes}</p>
+                {loading ? (
+                  Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
+                ) : history.length > 0 ? (
+                  history.slice(0, 3).map((item, idx) => (
+                    <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
+                      <div className="flex items-center gap-3">
+                        <History className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-sm font-medium">{item.title}</p>
+                          <p className="text-xs text-muted-foreground">{item.changes}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <Badge variant="outline" className="mb-1">{item.version}</Badge>
+                        <p className="text-xs text-muted-foreground">{item.date}</p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <Badge variant="outline" className="mb-1">{item.version}</Badge>
-                      <p className="text-xs text-muted-foreground">{item.date}</p>
-                    </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-sm text-center py-4 text-muted-foreground">No recent activity</p>
+                )}
               </div>
             </div>
           </PageSection>
@@ -263,21 +339,33 @@ export default function Notices() {
                             </TableRow>
                           </TableHeader>
                           <TableBody>
-                            {mockHistory.map((item, idx) => (
-                              <TableRow key={idx}>
-                                <TableCell className="font-medium">{item.title}</TableCell>
-                                <TableCell>
-                                  <Badge variant="outline" className="text-xs font-mono">
-                                    {item.version}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="text-xs text-muted-foreground">{item.date}</TableCell>
-                                <TableCell className="text-xs text-muted-foreground">{item.author}</TableCell>
-                                <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate" title={item.changes}>
-                                  {item.changes}
-                                </TableCell>
+                            {loading ? (
+                              Array(5).fill(0).map((_, i) => (
+                                <TableRow key={i}>
+                                  <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
+                                </TableRow>
+                              ))
+                            ) : history.length > 0 ? (
+                              history.map((item, idx) => (
+                                <TableRow key={idx}>
+                                  <TableCell className="font-medium">{item.title}</TableCell>
+                                  <TableCell>
+                                    <Badge variant="outline" className="text-xs font-mono">
+                                      {item.version}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-xs text-muted-foreground">{item.date}</TableCell>
+                                  <TableCell className="text-xs text-muted-foreground">{item.author}</TableCell>
+                                  <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate" title={item.changes}>
+                                    {item.changes}
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">No history available</TableCell>
                               </TableRow>
-                            ))}
+                            )}
                           </TableBody>
                         </Table>
                       </div>
@@ -287,102 +375,110 @@ export default function Notices() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {noticesList.map((notice) => (
-                  <Card key={notice.id} className="hover:shadow-card-hover transition-shadow">
-                    <CardHeader className="pb-3">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                            <FileText className="h-5 w-5" />
+                {loading ? (
+                  Array(6).fill(0).map((_, i) => <Skeleton key={i} className="h-[250px] w-full rounded-xl" />)
+                ) : noticesList.length > 0 ? (
+                  noticesList.map((notice) => (
+                    <Card key={notice.id} className="hover:shadow-card-hover transition-shadow">
+                      <CardHeader className="pb-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                              <FileText className="h-5 w-5" />
+                            </div>
+                            <div>
+                              <CardTitle className="text-base">{notice.title}</CardTitle>
+                              <p className="text-xs text-muted-foreground mt-0.5">
+                                Version {notice.version}
+                              </p>
+                            </div>
                           </div>
-                          <div>
-                            <CardTitle className="text-base">{notice.title}</CardTitle>
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              Version {notice.version}
-                            </p>
-                          </div>
+                          {getStatusBadge(notice.status)}
                         </div>
-                        {getStatusBadge(notice.status)}
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3 text-sm">
-                        <div className="flex items-center justify-between">
-                          <span className="text-muted-foreground flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            Last Updated
-                          </span>
-                          <span className="font-medium">{notice.lastUpdated}</span>
-                        </div>
-
-                        <>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3 text-sm">
                           <div className="flex items-center justify-between">
                             <span className="text-muted-foreground flex items-center gap-1">
-                              <Users className="h-3 w-3" />
-                              Acknowledged
+                              <Calendar className="h-3 w-3" />
+                              Last Updated
                             </span>
-                            <span className="font-medium text-success">
-                              {notice.acknowledgements.toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-muted-foreground">Pending</span>
-                            <span className="font-medium text-warning">
-                              {notice.pendingAck}
-                            </span>
+                            <span className="font-medium">{notice.lastUpdated}</span>
                           </div>
 
-                          {/* Acknowledgement Progress */}
-                          <div className="pt-2">
-                            <div className="h-2 bg-muted rounded-full overflow-hidden">
-                              <div
-                                className="h-full bg-success rounded-full"
-                                style={{
-                                  width: `${(notice.acknowledgements / ((notice.acknowledgements + notice.pendingAck) || 1)) * 100}%`,
-                                }}
-                              />
+                          <>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground flex items-center gap-1">
+                                <Users className="h-3 w-3" />
+                                Acknowledged
+                              </span>
+                              <span className="font-medium text-success">
+                                {notice.acknowledgements.toLocaleString()}
+                              </span>
                             </div>
-                            <p className="text-xs text-muted-foreground mt-1 text-right">
-                              {((notice.acknowledgements / ((notice.acknowledgements + notice.pendingAck) || 1)) * 100).toFixed(1)}% acknowledged
-                            </p>
-                          </div>
-                        </>
-                      </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground">Pending</span>
+                              <span className="font-medium text-warning">
+                                {notice.pendingAck}
+                              </span>
+                            </div>
 
-                      <div className="flex items-center flex-wrap gap-2 mt-4 pt-4 border-t border-border">
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="outline" size="sm" className="flex-1" onClick={() => handleViewNotice(notice)}>
-                              <Eye className="h-4 w-4 sm:mr-1" />
-                              <span className="hidden sm:inline">View</span>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>View Notice</TooltipContent>
-                        </Tooltip>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEditNotice(notice)}>
-                              <Edit className="h-4 w-4 sm:mr-1" />
-                              <span className="hidden sm:inline">Edit</span>
-                            </Button>
-                          </TooltipTrigger>
-                          <TooltipContent>Edit Notice</TooltipContent>
-                        </Tooltip>
-                        {notice.status === "draft" && (
+                            {/* Acknowledgement Progress */}
+                            <div className="pt-2">
+                              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                                <div
+                                  className="h-full bg-success rounded-full"
+                                  style={{
+                                    width: `${(notice.acknowledgements / ((notice.acknowledgements + notice.pendingAck) || 1)) * 100}%`,
+                                  }}
+                                />
+                              </div>
+                              <p className="text-xs text-muted-foreground mt-1 text-right">
+                                {((notice.acknowledgements / ((notice.acknowledgements + notice.pendingAck) || 1)) * 100).toFixed(1)}% acknowledged
+                              </p>
+                            </div>
+                          </>
+                        </div>
+
+                        <div className="flex items-center flex-wrap gap-2 mt-4 pt-4 border-t border-border">
                           <Tooltip>
                             <TooltipTrigger asChild>
-                              <Button size="sm" className="flex-1">
-                                <Send className="h-4 w-4 sm:mr-1" />
-                                <span className="hidden sm:inline">Publish</span>
+                              <Button variant="outline" size="sm" className="flex-1" onClick={() => handleViewNotice(notice)}>
+                                <Eye className="h-4 w-4 sm:mr-1" />
+                                <span className="hidden sm:inline">View</span>
                               </Button>
                             </TooltipTrigger>
-                            <TooltipContent>Publish Notice</TooltipContent>
+                            <TooltipContent>View Notice</TooltipContent>
                           </Tooltip>
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEditNotice(notice)}>
+                                <Edit className="h-4 w-4 sm:mr-1" />
+                                <span className="hidden sm:inline">Edit</span>
+                              </Button>
+                            </TooltipTrigger>
+                            <TooltipContent>Edit Notice</TooltipContent>
+                          </Tooltip>
+                          {notice.status === "draft" && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button size="sm" className="flex-1">
+                                  <Send className="h-4 w-4 sm:mr-1" />
+                                  <span className="hidden sm:inline">Publish</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent>Publish Notice</TooltipContent>
+                            </Tooltip>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  ))
+                ) : (
+                  <div className="col-span-full py-12 text-center text-muted-foreground">
+                    No notices found. Get started by creating one.
+                  </div>
+                )}
               </div>
             </div>
           </PageSection>
@@ -412,33 +508,45 @@ export default function Notices() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {mockLanguages.map((lang) => (
-                        <TableRow key={lang.code}>
-                          <TableCell className="font-medium">
-                            <div className="flex items-center gap-2">
-                              <Globe className="h-4 w-4 text-muted-foreground" />
-                              {lang.name}
-                            </div>
-                          </TableCell>
-                          <TableCell><Badge variant="outline" className="font-mono text-xs">{lang.code}</Badge></TableCell>
-                          <TableCell>
-                            {lang.isDefault && <Badge variant="secondary">Default</Badge>}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <div className="h-2 flex-1 bg-muted rounded-full overflow-hidden w-20">
-                                <div className="h-full bg-primary" style={{ width: `${lang.completion}%` }} />
+                      {loading ? (
+                        Array(3).fill(0).map((_, i) => (
+                          <TableRow key={i}>
+                            <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
+                          </TableRow>
+                        ))
+                      ) : languages.length > 0 ? (
+                        languages.map((lang) => (
+                          <TableRow key={lang.code}>
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-2">
+                                <Globe className="h-4 w-4 text-muted-foreground" />
+                                {lang.name}
                               </div>
-                              <span className="text-xs text-muted-foreground">{lang.completion}%</span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <Settings className="h-4 w-4" />
-                            </Button>
-                          </TableCell>
+                            </TableCell>
+                            <TableCell><Badge variant="outline" className="font-mono text-xs">{lang.code}</Badge></TableCell>
+                            <TableCell>
+                              {lang.isDefault && <Badge variant="secondary">Default</Badge>}
+                            </TableCell>
+                            <TableCell>
+                              <div className="flex items-center gap-2">
+                                <div className="h-2 flex-1 bg-muted rounded-full overflow-hidden w-20">
+                                  <div className="h-full bg-primary" style={{ width: `${lang.completion}%` }} />
+                                </div>
+                                <span className="text-xs text-muted-foreground">{lang.completion}%</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <Settings className="h-4 w-4" />
+                              </Button>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">No languages configured</TableCell>
                         </TableRow>
-                      ))}
+                      )}
                     </TableBody>
                   </Table>
                 </div>
@@ -447,11 +555,13 @@ export default function Notices() {
                 <SectionTitle>Summary</SectionTitle>
                 <div className="space-y-4 mt-4">
                   <div className="p-4 bg-muted/30 rounded-lg border border-border">
-                    <h4 className="font-semibold text-2xl">4</h4>
+                    <h4 className="font-semibold text-2xl">{loading ? <Skeleton className="h-8 w-12" /> : languages.length}</h4>
                     <p className="text-sm text-muted-foreground">Active Languages</p>
                   </div>
                   <div className="p-4 bg-warning/10 rounded-lg border border-warning/20">
-                    <h4 className="font-semibold text-2xl text-warning">12</h4>
+                    <h4 className="font-semibold text-2xl text-warning">
+                      {loading ? <Skeleton className="h-8 w-12" /> : "12"}
+                    </h4>
                     <p className="text-sm text-warning-foreground">Missing Translations</p>
                   </div>
                 </div>
@@ -472,20 +582,26 @@ export default function Notices() {
                   </Button>
                 </div>
                 <div className="space-y-4">
-                  {noticeTypes.map((type) => (
-                    <div key={type.id} className="flex items-start justify-between p-3 border rounded-lg bg-card">
-                      <div className="flex gap-3">
-                        <div className="p-2 bg-muted rounded-md">
-                          <BookOpen className="h-4 w-4 text-foreground" />
+                  {loading ? (
+                    Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
+                  ) : noticeTypes.length > 0 ? (
+                    noticeTypes.map((type) => (
+                      <div key={type.id} className="flex items-start justify-between p-3 border rounded-lg bg-card">
+                        <div className="flex gap-3">
+                          <div className="p-2 bg-muted rounded-md">
+                            <BookOpen className="h-4 w-4 text-foreground" />
+                          </div>
+                          <div>
+                            <h5 className="font-medium text-sm">{type.name}</h5>
+                            <p className="text-xs text-muted-foreground">{type.description}</p>
+                          </div>
                         </div>
-                        <div>
-                          <h5 className="font-medium text-sm">{type.name}</h5>
-                          <p className="text-xs text-muted-foreground">{type.description}</p>
-                        </div>
+                        {type.required && <Badge variant="outline" className="text-[10px]">Required</Badge>}
                       </div>
-                      {type.required && <Badge variant="outline" className="text-[10px]">Required</Badge>}
-                    </div>
-                  ))}
+                    ))
+                  ) : (
+                    <p className="text-sm text-center py-4 text-muted-foreground">No notice types defined</p>
+                  )}
                 </div>
               </div>
 

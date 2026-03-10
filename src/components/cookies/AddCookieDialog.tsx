@@ -12,9 +12,10 @@ interface AddCookieDialogProps {
     onOpenChange: (open: boolean) => void;
     onSave: (cookie: any) => void;
     initialData?: any;
+    categories?: any[];
 }
 
-export function AddCookieDialog({ open, onOpenChange, onSave, initialData }: AddCookieDialogProps) {
+export function AddCookieDialog({ open, onOpenChange, onSave, initialData, categories }: AddCookieDialogProps) {
     const [formData, setFormData] = useState({
         name: "",
         domain: "",
@@ -101,10 +102,20 @@ export function AddCookieDialog({ open, onOpenChange, onSave, initialData }: Add
                                     <SelectValue placeholder="Select category" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="necessary">Strictly Necessary</SelectItem>
-                                    <SelectItem value="analytics">Analytics & Performance</SelectItem>
-                                    <SelectItem value="functional">Functional</SelectItem>
-                                    <SelectItem value="marketing">Marketing & Advertising</SelectItem>
+                                    {categories && categories.length > 0 ? (
+                                        categories.map((cat) => (
+                                            <SelectItem key={cat.id} value={cat.id}>
+                                                {cat.name}
+                                            </SelectItem>
+                                        ))
+                                    ) : (
+                                        <>
+                                            <SelectItem value="necessary">Strictly Necessary</SelectItem>
+                                            <SelectItem value="analytics">Analytics & Performance</SelectItem>
+                                            <SelectItem value="functional">Functional</SelectItem>
+                                            <SelectItem value="marketing">Marketing & Advertising</SelectItem>
+                                        </>
+                                    )}
                                 </SelectContent>
                             </Select>
                         </div>

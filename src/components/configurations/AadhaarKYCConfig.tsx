@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
@@ -57,35 +57,13 @@ import {
   Users,
   Activity,
   RefreshCw,
+  Loader2,
+  Save
 } from "lucide-react";
 import { AadhaarConfig, VerificationMode, UsageScope, LifecycleStatus } from "./types";
 import { useToast } from "@/hooks/use-toast";
-
-const mockConfig: AadhaarConfig = {
-  id: "1",
-  enabled: true,
-  tenantId: "acme-corp",
-  environment: "production",
-  verificationMode: "otp",
-  usageScopes: ["rights-verification", "grievance-verification"],
-  consentRequired: true,
-  consentText: "I consent to verification of my identity using Aadhaar eKYC for the purpose of processing my data rights request. My Aadhaar number will not be stored.",
-  consentRetentionDays: 30,
-  noStorageEnforced: true,
-  maskedDisplayOnly: true,
-  tokenizedReference: true,
-  encryptionEnabled: true,
-  autoPurgeEnabled: true,
-  autoPurgeDays: 7,
-  serviceProviderName: "UIDAI Licensed ASA",
-  rateLimit: 100,
-  timeoutSeconds: 30,
-  status: "active",
-  version: 2,
-  createdAt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000),
-  updatedAt: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
-  createdBy: "Super Admin",
-};
+import { aadhaarConfigService } from "@/services/configurationsService";
+import { Skeleton } from "@/components/ui/skeleton";
 
 // Mock usage statistics
 const usageStats = {
@@ -118,12 +96,34 @@ const getStatusBadge = (status: LifecycleStatus) => {
 };
 
 export function AadhaarKYCConfig() {
-  const [config, setConfig] = useState<AadhaarConfig>(mockConfig);
+  const [config, setConfig] = useState<AadhaarConfig | null>(null);
   const [activeTab, setActiveTab] = useState("configuration");
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
   const [pendingChange, setPendingChange] = useState<{ field: string; value: any } | null>(null);
   const [showApiCredentials, setShowApiCredentials] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+
+  const fetchConfig = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await aadhaarConfigService.get();
+      setConfig(data);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load Aadhaar configuration.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchConfig();
+  }, [fetchConfig]);
 
   const handleSensitiveChange = (field: string, value: any) => {
     setPendingChange({ field, value });
@@ -131,12 +131,48 @@ export function AadhaarKYCConfig() {
   };
 
   const confirmChange = () => {
-    if (pendingChange) {
-      setConfig(prev => ({ ...prev, [pendingChange.field]: pendingChange.value }));
+    if (pendingChange && config) {
+      setConfig({ ...config, [pendingChange.field]: pendingChange.value });
     }
     setShowConfirmDialog(false);
     setPendingChange(null);
   };
+
+  const handleSave = async () => {
+    if (!config) return;
+    setSaving(true);
+    try {
+      const updated = await aadhaarConfigService.update(config);
+      setConfig(updated);
+      toast({
+        title: "Configuration Saved",
+        description: "Aadhaar KYC settings have been updated successfully."
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save configuration.",
+        variant: "destructive"
+      });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <Skeleton className="h-24 w-full" />
+        <div className="flex justify-between items-center">
+            <Skeleton className="h-10 w-48" />
+            <Skeleton className="h-10 w-32" />
+        </div>
+        <Skeleton className="h-[400px] w-full" />
+      </div>
+    );
+  }
+
+  if (!config) return null;
 
   return (
     <div className="space-y-6">
@@ -186,12 +222,21 @@ export function AadhaarKYCConfig() {
             <History className="h-4 w-4 mr-2" />
             View Audit Log
           </Button>
+          <Button 
+            variant="default" 
+            onClick={handleSave}
+            disabled={saving}
+            className="bg-primary hover:bg-primary/90 shadow-sm"
+          >
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            Save Changes
+          </Button>
         </div>
       </div>
 
       {/* Main Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-4 bg-muted/50 p-1">
           <TabsTrigger value="configuration">Configuration</TabsTrigger>
           <TabsTrigger value="security">Security & Privacy</TabsTrigger>
           <TabsTrigger value="integration">Integration</TabsTrigger>
@@ -199,19 +244,19 @@ export function AadhaarKYCConfig() {
         </TabsList>
 
         {/* Configuration Tab */}
-        <TabsContent value="configuration" className="space-y-6">
+        <TabsContent value="configuration" className="space-y-6 mt-6">
           {/* Enable/Disable */}
-          <Card>
+          <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Shield className="h-5 w-5 text-primary" />
                 Aadhaar eKYC Enablement
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-4 border rounded-lg">
+              <div className="flex items-center justify-between p-4 border border-border/50 rounded-xl bg-muted/20">
                 <div>
-                  <p className="font-medium">Enable Aadhaar eKYC</p>
+                  <p className="font-semibold">Enable Aadhaar eKYC</p>
                   <p className="text-sm text-muted-foreground">
                     Master switch for Aadhaar-based identity verification
                   </p>
@@ -222,14 +267,14 @@ export function AadhaarKYCConfig() {
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
                 <div className="space-y-2">
-                  <Label>Environment</Label>
+                  <Label className="text-sm font-semibold">Environment</Label>
                   <Select 
                     value={config.environment}
                     onValueChange={(value) => handleSensitiveChange("environment", value)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-background/50 border-border/50">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -239,12 +284,12 @@ export function AadhaarKYCConfig() {
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Verification Mode</Label>
+                  <Label className="text-sm font-semibold">Verification Mode</Label>
                   <Select 
                     value={config.verificationMode}
-                    onValueChange={(value) => setConfig(prev => ({ ...prev, verificationMode: value as VerificationMode }))}
+                    onValueChange={(value) => setConfig(prev => prev ? ({ ...prev, verificationMode: value as VerificationMode }) : null)}
                   >
-                    <SelectTrigger>
+                    <SelectTrigger className="bg-background/50 border-border/50">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -259,103 +304,77 @@ export function AadhaarKYCConfig() {
           </Card>
 
           {/* Usage Scope */}
-          <Card>
+          <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle>Usage Scope</CardTitle>
+              <CardTitle className="text-lg">Usage Scope</CardTitle>
               <CardDescription>Select where Aadhaar verification is permitted</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <FileText className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Rights Requests Identity Verification</p>
-                    <p className="text-sm text-muted-foreground">Verify identity for data access, erasure requests</p>
+              {[
+                { id: "rights-verification", icon: FileText, title: "Rights Requests Identity Verification", desc: "Verify identity for data access, erasure requests" },
+                { id: "grievance-verification", icon: Users, title: "Grievance Verification", desc: "Verify identity for grievance submissions" },
+                { id: "consent-verification", icon: CheckCircle2, title: "Consent Verification (Explicit Only)", desc: "Verify identity for high-value consent collection" }
+              ].map((scope) => (
+                <div key={scope.id} className="flex items-center justify-between p-4 border border-border/50 rounded-xl hover:bg-muted/30 transition-all duration-200">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                      <scope.icon className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">{scope.title}</p>
+                      <p className="text-sm text-muted-foreground">{scope.desc}</p>
+                    </div>
                   </div>
+                  <Switch 
+                    checked={config.usageScopes.includes(scope.id as UsageScope)}
+                    onCheckedChange={(checked) => {
+                      const newScopes = checked 
+                        ? [...config.usageScopes, scope.id as UsageScope]
+                        : config.usageScopes.filter(s => s !== scope.id);
+                      setConfig(prev => prev ? ({ ...prev, usageScopes: newScopes }) : null);
+                    }}
+                  />
                 </div>
-                <Switch 
-                  checked={config.usageScopes.includes("rights-verification")}
-                  onCheckedChange={(checked) => {
-                    const newScopes = checked 
-                      ? [...config.usageScopes, "rights-verification" as UsageScope]
-                      : config.usageScopes.filter(s => s !== "rights-verification");
-                    setConfig(prev => ({ ...prev, usageScopes: newScopes }));
-                  }}
-                />
-              </div>
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <Users className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Grievance Verification</p>
-                    <p className="text-sm text-muted-foreground">Verify identity for grievance submissions</p>
-                  </div>
-                </div>
-                <Switch 
-                  checked={config.usageScopes.includes("grievance-verification")}
-                  onCheckedChange={(checked) => {
-                    const newScopes = checked 
-                      ? [...config.usageScopes, "grievance-verification" as UsageScope]
-                      : config.usageScopes.filter(s => s !== "grievance-verification");
-                    setConfig(prev => ({ ...prev, usageScopes: newScopes }));
-                  }}
-                />
-              </div>
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <p className="font-medium">Consent Verification (Explicit Only)</p>
-                    <p className="text-sm text-muted-foreground">Verify identity for high-value consent collection</p>
-                  </div>
-                </div>
-                <Switch 
-                  checked={config.usageScopes.includes("consent-verification")}
-                  onCheckedChange={(checked) => {
-                    const newScopes = checked 
-                      ? [...config.usageScopes, "consent-verification" as UsageScope]
-                      : config.usageScopes.filter(s => s !== "consent-verification");
-                    setConfig(prev => ({ ...prev, usageScopes: newScopes }));
-                  }}
-                />
-              </div>
+              ))}
             </CardContent>
           </Card>
 
           {/* Consent Controls */}
-          <Card>
+          <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle>Consent & Purpose Controls</CardTitle>
+              <CardTitle className="text-lg">Consent & Purpose Controls</CardTitle>
               <CardDescription>Configure consent requirements for Aadhaar verification</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <div className="flex items-center justify-between p-3 border rounded-lg bg-success/5 border-success/20">
+              <div className="flex items-center justify-between p-4 border border-success/20 rounded-xl bg-success/5">
                 <div>
-                  <p className="font-medium">Mandatory Explicit Consent</p>
+                  <p className="font-semibold text-success-foreground">Mandatory Explicit Consent</p>
                   <p className="text-sm text-muted-foreground">Require explicit consent before initiating eKYC</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-success/10 text-success border-success/20">Enforced</Badge>
+                  <Badge className="bg-success text-success-foreground border-0">Enforced</Badge>
                   <Lock className="h-4 w-4 text-muted-foreground" />
                 </div>
               </div>
               
               <div className="space-y-2">
-                <Label>Consent Text (shown to user)</Label>
+                <Label className="text-sm font-semibold">Consent Text (shown to user)</Label>
                 <Textarea 
-                  value={config.consentText}
-                  onChange={(e) => setConfig(prev => ({ ...prev, consentText: e.target.value }))}
+                  value={config.consentText || ""}
+                  onChange={(e) => setConfig(prev => prev ? ({ ...prev, consentText: e.target.value }) : null)}
                   rows={3}
+                  className="bg-background/50 border-border/50 resize-none focus:ring-primary/20"
                 />
               </div>
               
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Consent Retention (days)</Label>
+                  <Label className="text-sm font-semibold">Consent Retention (days)</Label>
                   <Input 
                     type="number" 
                     value={config.consentRetentionDays}
-                    onChange={(e) => setConfig(prev => ({ ...prev, consentRetentionDays: parseInt(e.target.value) }))}
+                    onChange={(e) => setConfig(prev => prev ? ({ ...prev, consentRetentionDays: parseInt(e.target.value) }) : null)}
+                    className="bg-background/50 border-border/50"
                   />
                 </div>
               </div>
@@ -364,11 +383,11 @@ export function AadhaarKYCConfig() {
         </TabsContent>
 
         {/* Security & Privacy Tab */}
-        <TabsContent value="security" className="space-y-6">
-          <Card>
+        <TabsContent value="security" className="space-y-6 mt-6">
+          <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Lock className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Lock className="h-5 w-5 text-primary" />
                 Security & Privacy Controls
               </CardTitle>
               <CardDescription>
@@ -376,63 +395,71 @@ export function AadhaarKYCConfig() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <Alert className="border-success/50 bg-success/5">
+              <Alert className="border-success/30 bg-success/5 mb-2">
                 <CheckCircle2 className="h-4 w-4 text-success" />
-                <AlertTitle className="text-success">Privacy-First Configuration</AlertTitle>
-                <AlertDescription>
+                <AlertTitle className="text-success font-semibold">Privacy-First Configuration</AlertTitle>
+                <AlertDescription className="text-success/80">
                   All security controls are enabled to ensure no Aadhaar number is stored and all 
                   verification artifacts are automatically purged.
                 </AlertDescription>
               </Alert>
 
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-4 border rounded-lg bg-success/5 border-success/20">
-                  <div className="flex items-center gap-3">
-                    <Shield className="h-5 w-5 text-success" />
+                <div className="flex items-center justify-between p-4 border border-success/20 rounded-xl bg-success/5">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-success/10 text-success">
+                      <Shield className="h-5 w-5" />
+                    </div>
                     <div>
-                      <p className="font-medium">No Aadhaar Storage</p>
+                      <p className="font-semibold text-success-foreground">No Aadhaar Storage</p>
                       <p className="text-sm text-muted-foreground">Aadhaar numbers are never stored in the system</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Badge className="bg-success/10 text-success border-success/20">Enforced</Badge>
+                    <Badge className="bg-success text-success-foreground border-0">Enforced</Badge>
                     <Lock className="h-4 w-4 text-muted-foreground" />
                   </div>
                 </div>
 
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <EyeOff className="h-5 w-5 text-muted-foreground" />
+                <div className="flex items-center justify-between p-4 border border-border/50 rounded-xl hover:bg-muted/30 transition-all duration-200">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-muted text-muted-foreground">
+                      <EyeOff className="h-5 w-5" />
+                    </div>
                     <div>
-                      <p className="font-medium">Masked Display Only</p>
+                      <p className="font-semibold">Masked Display Only</p>
                       <p className="text-sm text-muted-foreground">Show only last 4 digits (XXXX-XXXX-1234)</p>
                     </div>
                   </div>
                   <Switch 
                     checked={config.maskedDisplayOnly}
-                    onCheckedChange={(checked) => setConfig(prev => ({ ...prev, maskedDisplayOnly: checked }))}
+                    onCheckedChange={(checked) => setConfig(prev => prev ? ({ ...prev, maskedDisplayOnly: checked }) : null)}
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Key className="h-5 w-5 text-muted-foreground" />
+                <div className="flex items-center justify-between p-4 border border-border/50 rounded-xl hover:bg-muted/30 transition-all duration-200">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-muted text-muted-foreground">
+                      <Key className="h-5 w-5" />
+                    </div>
                     <div>
-                      <p className="font-medium">Tokenized Verification Reference</p>
+                      <p className="font-semibold">Tokenized Verification Reference</p>
                       <p className="text-sm text-muted-foreground">Use tokens instead of Aadhaar for internal references</p>
                     </div>
                   </div>
                   <Switch 
                     checked={config.tokenizedReference}
-                    onCheckedChange={(checked) => setConfig(prev => ({ ...prev, tokenizedReference: checked }))}
+                    onCheckedChange={(checked) => setConfig(prev => prev ? ({ ...prev, tokenizedReference: checked }) : null)}
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <Lock className="h-5 w-5 text-muted-foreground" />
+                <div className="flex items-center justify-between p-4 border border-border/50 rounded-xl hover:bg-muted/30 transition-all duration-200">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-muted text-muted-foreground">
+                      <Lock className="h-5 w-5" />
+                    </div>
                     <div>
-                      <p className="font-medium">Encryption in Transit & At Rest</p>
+                      <p className="font-semibold">Encryption in Transit & At Rest</p>
                       <p className="text-sm text-muted-foreground">AES-256 encryption for all verification data</p>
                     </div>
                   </div>
@@ -442,11 +469,13 @@ export function AadhaarKYCConfig() {
                   />
                 </div>
 
-                <div className="flex items-center justify-between p-4 border rounded-lg">
-                  <div className="flex items-center gap-3">
-                    <RefreshCw className="h-5 w-5 text-muted-foreground" />
+                <div className="flex items-center justify-between p-4 border border-border/50 rounded-xl hover:bg-muted/30 transition-all duration-200">
+                  <div className="flex items-center gap-4">
+                    <div className="p-2 rounded-lg bg-muted text-muted-foreground">
+                      <RefreshCw className="h-5 w-5" />
+                    </div>
                     <div>
-                      <p className="font-medium">Auto-Purge Verification Artifacts</p>
+                      <p className="font-semibold">Auto-Purge Verification Artifacts</p>
                       <p className="text-sm text-muted-foreground">
                         Automatically delete temporary verification data after {config.autoPurgeDays} days
                       </p>
@@ -456,10 +485,10 @@ export function AadhaarKYCConfig() {
                     <Input 
                       type="number" 
                       value={config.autoPurgeDays}
-                      onChange={(e) => setConfig(prev => ({ ...prev, autoPurgeDays: parseInt(e.target.value) }))}
-                      className="w-20"
+                      onChange={(e) => setConfig(prev => prev ? ({ ...prev, autoPurgeDays: parseInt(e.target.value) }) : null)}
+                      className="w-24 bg-background/50"
                     />
-                    <span className="text-sm text-muted-foreground">days</span>
+                    <span className="text-sm text-muted-foreground font-medium">days</span>
                   </div>
                 </div>
               </div>
@@ -468,39 +497,44 @@ export function AadhaarKYCConfig() {
         </TabsContent>
 
         {/* Integration Tab */}
-        <TabsContent value="integration" className="space-y-6">
-          <Card>
+        <TabsContent value="integration" className="space-y-6 mt-6">
+          <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle>UIDAI Service Provider Configuration</CardTitle>
+              <CardTitle className="text-lg">UIDAI Service Provider Configuration</CardTitle>
               <CardDescription>Configure connection to UIDAI Authentication Service</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6">
               <div className="space-y-2">
-                <Label>Service Provider Name</Label>
+                <Label className="text-sm font-semibold">Service Provider Name</Label>
                 <Input 
                   value={config.serviceProviderName}
-                  onChange={(e) => setConfig(prev => ({ ...prev, serviceProviderName: e.target.value }))}
+                  onChange={(e) => setConfig(prev => prev ? ({ ...prev, serviceProviderName: e.target.value }) : null)}
+                  className="bg-background/50"
                 />
               </div>
               
               <div className="space-y-2">
-                <Label>API Credentials</Label>
+                <Label className="text-sm font-semibold">API Credentials</Label>
                 <div className="flex gap-2">
-                  <Input 
-                    type={showApiCredentials ? "text" : "password"}
-                    value="••••••••••••••••••••••••"
-                    readOnly
-                    className="font-mono"
-                  />
-                  <Button 
-                    variant="outline" 
-                    size="icon"
-                    onClick={() => setShowApiCredentials(!showApiCredentials)}
-                  >
-                    {showApiCredentials ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                  </Button>
+                  <div className="relative flex-1">
+                      <Input 
+                        type={showApiCredentials ? "text" : "password"}
+                        value="••••••••••••••••••••••••"
+                        readOnly
+                        className="font-mono bg-background/50 pr-10"
+                      />
+                      <Button 
+                        variant="ghost" 
+                        size="icon"
+                        className="absolute right-0 top-0 h-full hover:bg-transparent"
+                        onClick={() => setShowApiCredentials(!showApiCredentials)}
+                      >
+                        {showApiCredentials ? <EyeOff className="h-4 w-4 text-muted-foreground" /> : <Eye className="h-4 w-4 text-muted-foreground" />}
+                      </Button>
+                  </div>
                   <Button
                     variant="outline"
+                    className="border-dashed"
                     onClick={() => toast({ title: "Credentials Update", description: "Credential update workflow opened." })}
                   >
                     <Settings2 className="h-4 w-4 mr-2" />
@@ -509,21 +543,23 @@ export function AadhaarKYCConfig() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                  <Label>Rate Limit (requests/hour)</Label>
+                  <Label className="text-sm font-semibold">Rate Limit (requests/hour)</Label>
                   <Input 
                     type="number" 
                     value={config.rateLimit}
-                    onChange={(e) => setConfig(prev => ({ ...prev, rateLimit: parseInt(e.target.value) }))}
+                    onChange={(e) => setConfig(prev => prev ? ({ ...prev, rateLimit: parseInt(e.target.value) }) : null)}
+                    className="bg-background/50"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Timeout (seconds)</Label>
+                  <Label className="text-sm font-semibold">Timeout (seconds)</Label>
                   <Input 
                     type="number" 
                     value={config.timeoutSeconds}
-                    onChange={(e) => setConfig(prev => ({ ...prev, timeoutSeconds: parseInt(e.target.value) }))}
+                    onChange={(e) => setConfig(prev => prev ? ({ ...prev, timeoutSeconds: parseInt(e.target.value) }) : null)}
+                    className="bg-background/50"
                   />
                 </div>
               </div>
@@ -532,60 +568,41 @@ export function AadhaarKYCConfig() {
         </TabsContent>
 
         {/* Monitoring Tab */}
-        <TabsContent value="monitoring" className="space-y-6">
+        <TabsContent value="monitoring" className="space-y-6 mt-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Total Verifications</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{usageStats.totalVerifications.toLocaleString()}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Success Rate</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-success">{usageStats.successRate}%</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">Failure Rate</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold text-destructive">{usageStats.failureRate}%</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">This Month</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">
-                  {usageStats.monthlyUsage[usageStats.monthlyUsage.length - 1].count}
-                </div>
-              </CardContent>
-            </Card>
+            {[
+                { title: "Total Verifications", value: usageStats.totalVerifications.toLocaleString(), color: "text-foreground" },
+                { title: "Success Rate", value: `${usageStats.successRate}%`, color: "text-success" },
+                { title: "Failure Rate", value: `${usageStats.failureRate}%`, color: "text-destructive" },
+                { title: "This Month", value: usageStats.monthlyUsage[usageStats.monthlyUsage.length - 1].count, color: "text-primary" }
+            ].map((stat, i) => (
+                <Card key={i} className="border-0 shadow-sm bg-card/60 backdrop-blur-sm overflow-hidden">
+                    <CardHeader className="pb-2">
+                        <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{stat.title}</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                        <div className={`text-2xl font-bold ${stat.color}`}>{stat.value}</div>
+                    </CardContent>
+                </Card>
+            ))}
           </div>
 
-          <Card>
+          <Card className="border-0 shadow-sm bg-card/60 backdrop-blur-sm">
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5" />
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Activity className="h-5 w-5 text-primary" />
                 Usage by Purpose
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
+              <div className="space-y-6">
                 {usageStats.byPurpose.map(item => (
                   <div key={item.purpose} className="space-y-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="font-medium">{item.purpose}</span>
-                      <span className="text-muted-foreground">{item.count} ({item.percentage}%)</span>
+                      <span className="font-semibold">{item.purpose}</span>
+                      <span className="text-muted-foreground font-mono">{item.count} ({item.percentage}%)</span>
                     </div>
-                    <Progress value={item.percentage} className="h-2" />
+                    <Progress value={item.percentage} className="h-2.5 bg-muted/50" />
                   </div>
                 ))}
               </div>
@@ -596,32 +613,32 @@ export function AadhaarKYCConfig() {
 
       {/* Confirmation Dialog */}
       <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
-        <DialogContent>
+        <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-warning" />
-              Confirm Configuration Change
+            <DialogTitle className="flex items-center gap-2 text-warning">
+              <AlertTriangle className="h-5 w-5" />
+              Confirm Sensitive Change
             </DialogTitle>
             <DialogDescription>
-              You are about to modify a sensitive Aadhaar eKYC configuration. This change will be 
+              You are about to modify a critical Aadhaar eKYC configuration. This change will be 
               logged and may require additional approval for production environments.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4">
-            <Alert>
-              <Info className="h-4 w-4" />
-              <AlertTitle>Audit Notice</AlertTitle>
-              <AlertDescription>
+          <div className="py-2">
+            <Alert className="bg-muted border-border/50">
+              <Info className="h-4 w-4 text-primary" />
+              <AlertTitle className="text-sm font-semibold">Audit Trail Notice</AlertTitle>
+              <AlertDescription className="text-xs text-muted-foreground">
                 All changes to Aadhaar configuration are logged with your user ID, timestamp, 
                 and IP address for regulatory compliance.
               </AlertDescription>
             </Alert>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setShowConfirmDialog(false)}>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" onClick={() => setShowConfirmDialog(false)}>
               Cancel
             </Button>
-            <Button onClick={confirmChange}>
+            <Button onClick={confirmChange} className="bg-warning hover:bg-warning/90 text-warning-foreground">
               Confirm Change
             </Button>
           </DialogFooter>

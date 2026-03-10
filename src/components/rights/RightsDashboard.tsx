@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
@@ -28,11 +28,8 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { RIGHTS_TYPE_INFO, REGULATION_INFO } from "./types";
-import {
-  mockRightsBreakdown as mockBreakdown,
-  mockRightsBreakdownChart as breakdownChartData,
-  mockRightsMetrics as mockMetrics,
-} from "@/data/mockRights";
+import { rightsService } from "@/services/rightsService";
+import { handleApiError } from "@/lib/errorHandler";
 
 const regulationBreakdown = [
   { name: "GDPR", value: 523, color: REGULATION_INFO.gdpr.color },
@@ -65,11 +62,36 @@ const slaBySeverity = [
 
 export function RightsDashboard() {
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [metricsData, setMetricsData] = useState<any>(null);
+
+  const fetchData = async () => {
+    try {
+      setIsLoading(true);
+      const data = await rightsService.getMetrics();
+      setMetricsData(data);
+    } catch (error) {
+      handleApiError(error, 'Rights Dashboard');
+    } finally {
+      setIsLoading(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleRefresh = () => {
     setIsRefreshing(true);
-    setTimeout(() => setIsRefreshing(false), 1000);
+    fetchData();
   };
+
+  if (isLoading && !metricsData) {
+    return <div className="h-48 flex items-center justify-center">Loading dashboard...</div>;
+  }
+
+  const { metrics = {}, breakdown = {}, breakdownChart = [] } = metricsData || {};
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -90,33 +112,33 @@ export function RightsDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <KPICard
           title="Total Requests"
-          value={mockMetrics.total.toLocaleString()}
+          value={metrics.total?.toLocaleString() || "0"}
           icon={<Scale className="h-6 w-6" />}
           trend={{ value: 12, direction: "up", label: "vs last month" }}
         />
         <KPICard
           title="New This Week"
-          value={mockMetrics.newThisWeek}
+          value={metrics.newThisWeek || 0}
           icon={<TrendingUp className="h-6 w-6" />}
           trend={{ value: 8, direction: "up" }}
           variant="info"
         />
         <KPICard
           title="Pending"
-          value={mockMetrics.pending}
+          value={metrics.pending || 0}
           icon={<Clock className="h-6 w-6" />}
           variant="warning"
         />
         <KPICard
           title="Completed"
-          value={mockMetrics.completed.toLocaleString()}
+          value={metrics.completed?.toLocaleString() || "0"}
           icon={<CheckCircle className="h-6 w-6" />}
           variant="success"
           trend={{ value: 15, direction: "up" }}
         />
         <KPICard
           title="SLA Breaches"
-          value={mockMetrics.slaBreaches}
+          value={metrics.slaBreaches || 0}
           icon={<AlertTriangle className="h-6 w-6" />}
           variant="destructive"
           trend={{ value: 25, direction: "down", label: "improvement" }}
@@ -127,25 +149,25 @@ export function RightsDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <KPICard
           title="SLA Compliance"
-          value={`${mockMetrics.slaCompliance}%`}
+          value={`${metrics.slaCompliance || 0}%`}
           icon={<CheckCircle className="h-6 w-6" />}
           variant="success"
         />
         <KPICard
           title="Avg Resolution"
-          value={`${mockMetrics.avgResolutionDays} days`}
+          value={`${metrics.avgResolutionDays || 0} days`}
           icon={<Timer className="h-6 w-6" />}
           trend={{ value: 10, direction: "down", label: "faster" }}
           variant="info"
         />
         <KPICard
           title="Rejected"
-          value={mockMetrics.rejected}
+          value={metrics.rejected || 0}
           icon={<XCircle className="h-6 w-6" />}
         />
         <KPICard
           title="New Today"
-          value={mockMetrics.newToday}
+          value={metrics.newToday || 0}
           icon={<FileText className="h-6 w-6" />}
           variant="info"
         />
@@ -154,7 +176,7 @@ export function RightsDashboard() {
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <ConsentDonutChart
-          data={breakdownChartData}
+          data={breakdownChart}
           title="Rights Requests Type Distribution"
         />
         <ConsentDonutChart
@@ -219,7 +241,7 @@ export function RightsDashboard() {
               <CardContent>
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">Total Requests</span>
+                     <span className="text-muted-foreground">Total Requests</span>
                     <span className="font-medium">{item.count}</span>
                   </div>
                   <div className="flex justify-between text-sm">
@@ -244,7 +266,7 @@ export function RightsDashboard() {
       <div className="dashboard-card">
         <h3 className="text-lg font-semibold text-foreground mb-4">Detailed Rights Breakdown</h3>
         <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-          {Object.entries(mockBreakdown).map(([key, value]) => {
+          {Object.entries(breakdown).map(([key, value]) => {
             const info = RIGHTS_TYPE_INFO[key as keyof typeof RIGHTS_TYPE_INFO];
             return (
               <div key={key} className="p-4 rounded-lg border bg-card hover:shadow-md transition-shadow">
@@ -258,7 +280,7 @@ export function RightsDashboard() {
                   {key === 'nominate' && <CheckCircle className="h-4 w-4 text-primary" />}
                   <span className="text-xs text-muted-foreground truncate">{info?.label || key}</span>
                 </div>
-                <p className="text-2xl font-bold text-foreground">{value}</p>
+                <p className="text-2xl font-bold text-foreground">{value as React.ReactNode}</p>
               </div>
             );
           })}

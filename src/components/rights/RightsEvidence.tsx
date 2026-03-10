@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { rightsService } from "@/services/rightsService";
+import { handleApiError } from "@/lib/errorHandler";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -42,6 +44,14 @@ import {
   AlertTriangle,
   Clock,
 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 
 interface EvidenceItem {
   id: string;
@@ -67,129 +77,20 @@ interface AuditRecord {
   severity: "info" | "warning" | "critical";
 }
 
-const mockEvidence: EvidenceItem[] = [
-  {
-    id: "1",
-    caseNumber: "RR-2024-001234",
-    fileName: "identity_verification_email.pdf",
-    fileType: "pdf",
-    category: "Identity Proof",
-    uploadedBy: "Jane Doe",
-    uploadedAt: "2024-01-18T14:00:00Z",
-    size: "245 KB",
-    verified: true,
-  },
-  {
-    id: "2",
-    caseNumber: "RR-2024-001234",
-    fileName: "data_extract_personal.xlsx",
-    fileType: "xlsx",
-    category: "Data Extract",
-    uploadedBy: "System",
-    uploadedAt: "2024-01-19T10:30:00Z",
-    size: "1.2 MB",
-    verified: true,
-  },
-  {
-    id: "3",
-    caseNumber: "RR-2024-001233",
-    fileName: "aadhaar_ekyc_response.json",
-    fileType: "json",
-    category: "Identity Proof",
-    uploadedBy: "System",
-    uploadedAt: "2024-01-15T15:00:00Z",
-    size: "12 KB",
-    verified: true,
-  },
-  {
-    id: "4",
-    caseNumber: "RR-2024-001233",
-    fileName: "deletion_confirmation.pdf",
-    fileType: "pdf",
-    category: "Deletion Confirmation",
-    uploadedBy: "Raj Kumar",
-    uploadedAt: "2024-01-20T09:00:00Z",
-    size: "156 KB",
-    verified: false,
-  },
-  {
-    id: "5",
-    caseNumber: "RR-2024-001232",
-    fileName: "communication_log.pdf",
-    fileType: "pdf",
-    category: "Communication",
-    uploadedBy: "Jane Doe",
-    uploadedAt: "2024-01-12T11:00:00Z",
-    size: "89 KB",
-    verified: true,
-  },
-];
-
-const mockAuditRecords: AuditRecord[] = [
-  {
-    id: "1",
-    caseNumber: "RR-2024-001234",
-    action: "Data Access Request Initiated",
-    performedBy: "System",
-    performedAt: "2024-01-18T10:30:00Z",
-    details: "Request submitted via web portal",
-    system: "Website",
-    severity: "info",
-  },
-  {
-    id: "2",
-    caseNumber: "RR-2024-001234",
-    action: "Identity Verified",
-    performedBy: "Jane Doe",
-    performedAt: "2024-01-18T14:00:00Z",
-    details: "Email verification completed successfully",
-    system: "CMS",
-    severity: "info",
-  },
-  {
-    id: "3",
-    caseNumber: "RR-2024-001233",
-    action: "Data Deletion Executed",
-    performedBy: "System",
-    performedAt: "2024-01-19T16:00:00Z",
-    details: "Data deleted from CRM, HRMS, Marketing systems",
-    system: "Multi-System",
-    consentVersion: "v2.3",
-    severity: "critical",
-  },
-  {
-    id: "4",
-    caseNumber: "RR-2024-001232",
-    action: "SLA Breach Detected",
-    performedBy: "System",
-    performedAt: "2024-01-19T00:00:00Z",
-    details: "Request exceeded 45-day CCPA deadline",
-    system: "SLA Monitor",
-    severity: "warning",
-  },
-  {
-    id: "5",
-    caseNumber: "RR-2024-001234",
-    action: "Data Extract Generated",
-    performedBy: "System",
-    performedAt: "2024-01-19T10:30:00Z",
-    details: "Personal data extracted from 3 systems",
-    system: "Data Export Service",
-    severity: "info",
-  },
-];
-
 const getFileIcon = (type: string) => {
-  switch (type) {
+  switch (type.toLowerCase()) {
     case "pdf":
       return <FileText className="h-4 w-4 text-destructive" />;
     case "xlsx":
     case "csv":
       return <File className="h-4 w-4 text-success" />;
     case "json":
+    case "txt":
       return <File className="h-4 w-4 text-warning" />;
     case "jpg":
     case "png":
+    case "jpeg":
+    case "gif":
       return <Image className="h-4 w-4 text-info" />;
     default:
       return <File className="h-4 w-4" />;
@@ -197,7 +98,7 @@ const getFileIcon = (type: string) => {
 };
 
 const getSeverityBadge = (severity: string) => {
-  switch (severity) {
+  switch (severity.toLowerCase()) {
     case "critical":
       return <Badge variant="destructive">Critical</Badge>;
     case "warning":
@@ -207,22 +108,34 @@ const getSeverityBadge = (severity: string) => {
   }
 };
 
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogFooter,
-} from "@/components/ui/dialog";
-
-// ... existing imports
-
 export function RightsEvidence() {
+  const [evidenceData, setEvidenceData] = useState<EvidenceItem[]>([]);
+  const [auditData, setAuditData] = useState<AuditRecord[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [activeTab, setActiveTab] = useState<"evidence" | "audit">("evidence");
   const [viewingEvidence, setViewingEvidence] = useState<EvidenceItem | null>(null);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [evidence, audit] = await Promise.all([
+          rightsService.getEvidence(),
+          rightsService.getAuditTrail()
+        ]);
+        setEvidenceData(evidence || []);
+        setAuditData(audit || []);
+      } catch (error) {
+        handleApiError(error, 'Rights Evidence');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -234,18 +147,22 @@ export function RightsEvidence() {
     });
   };
 
-  const filteredEvidence = mockEvidence.filter((item) => {
+  const filteredEvidence = evidenceData.filter((item) => {
     const matchesSearch =
-      item.caseNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.fileName.toLowerCase().includes(searchQuery.toLowerCase());
+      (item.caseNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.fileName || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter === "all" || item.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
 
-  const filteredAudit = mockAuditRecords.filter((item) =>
-    item.caseNumber.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.action.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredAudit = auditData.filter((item) =>
+    (item.caseNumber || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (item.action || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  if (isLoading && evidenceData.length === 0 && auditData.length === 0) {
+    return <div className="p-8 text-center text-muted-foreground animate-pulse">Loading evidence repository...</div>;
+  }
 
   return (
     <div className="space-y-6 animate-fade-in">
@@ -258,7 +175,7 @@ export function RightsEvidence() {
                 <FileText className="h-6 w-6 text-primary" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockEvidence.length}</p>
+                <p className="text-2xl font-bold">{evidenceData.length}</p>
                 <p className="text-sm text-muted-foreground">Total Evidence</p>
               </div>
             </div>
@@ -271,7 +188,7 @@ export function RightsEvidence() {
                 <CheckCircle className="h-6 w-6 text-success" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockEvidence.filter(e => e.verified).length}</p>
+                <p className="text-2xl font-bold">{evidenceData.filter(e => e.verified).length}</p>
                 <p className="text-sm text-muted-foreground">Verified</p>
               </div>
             </div>
@@ -284,7 +201,7 @@ export function RightsEvidence() {
                 <Clock className="h-6 w-6 text-warning" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockEvidence.filter(e => !e.verified).length}</p>
+                <p className="text-2xl font-bold">{evidenceData.filter(e => !e.verified).length}</p>
                 <p className="text-sm text-muted-foreground">Pending Review</p>
               </div>
             </div>
@@ -297,7 +214,7 @@ export function RightsEvidence() {
                 <History className="h-6 w-6 text-info" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockAuditRecords.length}</p>
+                <p className="text-2xl font-bold">{auditData.length}</p>
                 <p className="text-sm text-muted-foreground">Audit Entries</p>
               </div>
             </div>
@@ -379,63 +296,71 @@ export function RightsEvidence() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredEvidence.map((item) => (
-                <TableRow key={item.id}>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      {getFileIcon(item.fileType)}
-                      <span className="font-medium">{item.fileName}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{item.caseNumber}</Badge>
-                  </TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{item.category}</Badge>
-                  </TableCell>
-                  <TableCell>{item.uploadedBy}</TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(item.uploadedAt)}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{item.size}</TableCell>
-                  <TableCell>
-                    {item.verified ? (
-                      <Badge className="bg-success/10 text-success">
-                        <CheckCircle className="h-3 w-3 mr-1" />
-                        Verified
-                      </Badge>
-                    ) : (
-                      <Badge variant="secondary">
-                        <Clock className="h-3 w-3 mr-1" />
-                        Pending
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setViewingEvidence(item)}>
-                          <Eye className="h-4 w-4 mr-2" />
-                          View
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Download className="h-4 w-4 mr-2" />
-                          Download
-                        </DropdownMenuItem>
-                        <DropdownMenuItem>
-                          <Shield className="h-4 w-4 mr-2" />
-                          Verify
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
+              {filteredEvidence.length > 0 ? (
+                filteredEvidence.map((item) => (
+                  <TableRow key={item.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        {getFileIcon(item.fileType)}
+                        <span className="font-medium">{item.fileName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{item.caseNumber}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{item.category}</Badge>
+                    </TableCell>
+                    <TableCell>{item.uploadedBy}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(item.uploadedAt)}
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">{item.size}</TableCell>
+                    <TableCell>
+                      {item.verified ? (
+                        <Badge className="bg-success/10 text-success">
+                          <CheckCircle className="h-3 w-3 mr-1" />
+                          Verified
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary">
+                          <Clock className="h-3 w-3 mr-1" />
+                          Pending
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon">
+                            <MoreHorizontal className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                          <DropdownMenuItem onClick={() => setViewingEvidence(item)}>
+                            <Eye className="h-4 w-4 mr-2" />
+                            View
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Download className="h-4 w-4 mr-2" />
+                            Download
+                          </DropdownMenuItem>
+                          <DropdownMenuItem>
+                            <Shield className="h-4 w-4 mr-2" />
+                            Verify
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={8} className="h-24 text-center text-muted-foreground">
+                    No evidence items found.
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </div>
@@ -457,30 +382,38 @@ export function RightsEvidence() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredAudit.map((record) => (
-                <TableRow key={record.id}>
-                  <TableCell className="font-medium">{record.action}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline">{record.caseNumber}</Badge>
-                  </TableCell>
-                  <TableCell>{record.performedBy}</TableCell>
-                  <TableCell>
-                    <Badge variant="secondary">{record.system}</Badge>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {formatDate(record.performedAt)}
-                  </TableCell>
-                  <TableCell>{getSeverityBadge(record.severity)}</TableCell>
-                  <TableCell className="max-w-[300px] truncate text-muted-foreground">
-                    {record.details}
-                    {record.consentVersion && (
-                      <Badge variant="outline" className="ml-2">
-                        {record.consentVersion}
-                      </Badge>
-                    )}
+              {filteredAudit.length > 0 ? (
+                filteredAudit.map((record) => (
+                  <TableRow key={record.id}>
+                    <TableCell className="font-medium">{record.action}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{record.caseNumber}</Badge>
+                    </TableCell>
+                    <TableCell>{record.performedBy}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary">{record.system}</Badge>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {formatDate(record.performedAt)}
+                    </TableCell>
+                    <TableCell>{getSeverityBadge(record.severity)}</TableCell>
+                    <TableCell className="max-w-[300px] truncate text-muted-foreground">
+                      {record.details}
+                      {record.consentVersion && (
+                        <Badge variant="outline" className="ml-2">
+                          {record.consentVersion}
+                        </Badge>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={7} className="h-24 text-center text-muted-foreground">
+                    No audit records found.
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </div>

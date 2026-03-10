@@ -1,4 +1,8 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { consentService } from "@/services/consentService";
+import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 import {
   History,
   Search,
@@ -74,90 +78,19 @@ interface ConsentVersion {
   createdBy: string;
 }
 
-// Mock data for versions
-const mockVersions: ConsentVersion[] = [
-  {
-    id: "v-001",
-    templateId: "tpl-001",
-    templateName: "Marketing Communications Consent",
-    version: "2.1",
-    status: "active",
-    changeSummary: "Updated data retention period from 1 year to 2 years",
-    changedFields: ["retention.period", "retention.justification"],
-    changeReason: "Legal compliance update for extended marketing campaigns",
-    approvedBy: "Legal Team Lead",
-    approvalTimestamp: "2024-01-20T10:30:00Z",
-    effectiveFrom: "2024-01-21",
-    effectiveTo: null,
-    usersImpacted: 12500,
-    reconsentTriggered: false,
-    createdAt: "2024-01-20",
-    createdBy: "Admin User",
-  },
-  {
-    id: "v-002",
-    templateId: "tpl-001",
-    templateName: "Marketing Communications Consent",
-    version: "2.0",
-    status: "archived",
-    changeSummary: "Added GDPR compliance fields and withdrawal mechanism",
-    changedFields: ["regulations", "withdrawal.method", "withdrawal.effect"],
-    changeReason: "EU market expansion requires GDPR compliance",
-    approvedBy: "DPO",
-    approvalTimestamp: "2024-01-01T09:00:00Z",
-    effectiveFrom: "2024-01-01",
-    effectiveTo: "2024-01-20",
-    usersImpacted: 8000,
-    reconsentTriggered: true,
-    createdAt: "2023-12-28",
-    createdBy: "DPO",
-  },
-  {
-    id: "v-003",
-    templateId: "tpl-001",
-    templateName: "Marketing Communications Consent",
-    version: "1.0",
-    status: "locked",
-    changeSummary: "Initial version - Marketing consent template",
-    changedFields: [],
-    changeReason: "Initial release",
-    approvedBy: "Admin User",
-    approvalTimestamp: "2023-06-01T08:00:00Z",
-    effectiveFrom: "2023-06-01",
-    effectiveTo: "2023-12-31",
-    usersImpacted: 5000,
-    reconsentTriggered: false,
-    createdAt: "2023-06-01",
-    createdBy: "Admin User",
-  },
-  {
-    id: "v-004",
-    templateId: "tpl-002",
-    templateName: "Data Analytics Processing",
-    version: "1.0",
-    status: "active",
-    changeSummary: "Initial version - Analytics consent template",
-    changedFields: [],
-    changeReason: "Initial release for analytics feature",
-    approvedBy: "DPO",
-    approvalTimestamp: "2024-02-01T11:00:00Z",
-    effectiveFrom: "2024-02-01",
-    effectiveTo: null,
-    usersImpacted: 3200,
-    reconsentTriggered: false,
-    createdAt: "2024-02-01",
-    createdBy: "DPO",
-  },
-];
+// Removed mockVersions - now handled by consentService fallback and service layer mapping
 
-const getStatusBadge = (status: ConsentVersion["status"]) => {
-  switch (status) {
+const getStatusBadge = (status: string) => {
+  switch (status.toLowerCase()) {
     case "active":
+    case "published":
       return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
     case "archived":
       return <Badge variant="secondary">Archived</Badge>;
     case "locked":
       return <Badge className="bg-warning/10 text-warning border-warning/20">Locked</Badge>;
+    default:
+      return <Badge variant="outline">{status}</Badge>;
   }
 };
 
@@ -171,16 +104,39 @@ export function ConsentVersionHistory() {
   const [expandedRow, setExpandedRow] = useState<string | null>(null);
   const { toast } = useToast();
 
-  const templates = [...new Set(mockVersions.map((v) => v.templateName))];
-
-  const filteredVersions = mockVersions.filter((version) => {
-    const matchesSearch =
-      version.templateName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      version.changeSummary.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = statusFilter === "all" || version.status === statusFilter;
-    const matchesTemplate = templateFilter === "all" || version.templateName === templateFilter;
-    return matchesSearch && matchesStatus && matchesTemplate;
+  // Fetch versions
+  const { data: versionsData, isLoading: versionsLoading } = useQuery({
+    queryKey: ['consent-versions'],
+    queryFn: () => consentService.getConsentVersions(),
   });
+
+  // Fetch templates for the filter dropdown
+  const { data: templatesData } = useQuery({
+    queryKey: ['consent-templates-list'],
+    queryFn: () => consentService.getTemplates({ limit: 100 }),
+  });
+
+  const allVersions = versionsData?.data || [];
+  const templates = templatesData?.data || [];
+
+  const filteredVersions = useMemo(() => {
+    return allVersions.filter((version) => {
+      const templateName = version.templateName || "Unknown Template";
+      const matchesSearch =
+        templateName.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (version.changeSummary || "").toLowerCase().includes(searchQuery.toLowerCase());
+      const matchesStatus = statusFilter === "all" || version.status.toLowerCase() === statusFilter.toLowerCase();
+      const matchesTemplate = templateFilter === "all" || version.templateId === templateFilter;
+      return matchesSearch && matchesStatus && matchesTemplate;
+    });
+  }, [allVersions, searchQuery, statusFilter, templateFilter]);
+
+  const stats = useMemo(() => ({
+    total: allVersions.length,
+    active: allVersions.filter(v => v.status === "active" || v.status === "published").length,
+    reconsent: allVersions.filter(v => v.reconsentTriggered).length,
+    users: allVersions.reduce((acc, v) => acc + (v.usersImpacted || 0), 0)
+  }), [allVersions]);
 
   const handleCompare = () => {
     if (selectedVersions.length !== 2) {
@@ -220,7 +176,7 @@ export function ConsentVersionHistory() {
   };
 
   const comparedVersions = selectedVersions.map((id) =>
-    mockVersions.find((v) => v.id === id)
+    allVersions.find((v) => v.id === id)
   );
 
   return (
@@ -234,7 +190,7 @@ export function ConsentVersionHistory() {
                 <History className="h-5 w-5" />
               </div>
               <div>
-                <p className="text-2xl font-bold">{mockVersions.length}</p>
+                <p className="text-2xl font-bold">{versionsLoading ? <Skeleton className="h-8 w-12" /> : stats.total}</p>
                 <p className="text-xs text-muted-foreground">Total Versions</p>
               </div>
             </div>
@@ -248,7 +204,7 @@ export function ConsentVersionHistory() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockVersions.filter((v) => v.status === "active").length}
+                  {versionsLoading ? <Skeleton className="h-8 w-12" /> : stats.active}
                 </p>
                 <p className="text-xs text-muted-foreground">Active Versions</p>
               </div>
@@ -263,7 +219,7 @@ export function ConsentVersionHistory() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockVersions.filter((v) => v.reconsentTriggered).length}
+                  {versionsLoading ? <Skeleton className="h-8 w-12" /> : stats.reconsent}
                 </p>
                 <p className="text-xs text-muted-foreground">Re-consent Triggered</p>
               </div>
@@ -278,7 +234,7 @@ export function ConsentVersionHistory() {
               </div>
               <div>
                 <p className="text-2xl font-bold">
-                  {mockVersions.reduce((acc, v) => acc + v.usersImpacted, 0).toLocaleString()}
+                  {versionsLoading ? <Skeleton className="h-8 w-24" /> : stats.users.toLocaleString()}
                 </p>
                 <p className="text-xs text-muted-foreground">Total Users Impacted</p>
               </div>
@@ -307,8 +263,8 @@ export function ConsentVersionHistory() {
             <SelectContent>
               <SelectItem value="all">All Templates</SelectItem>
               {templates.map((template) => (
-                <SelectItem key={template} value={template}>
-                  {template}
+                <SelectItem key={template.id} value={template.id}>
+                  {template.name}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -352,148 +308,166 @@ export function ConsentVersionHistory() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredVersions.map((version) => (
-              <>
-                <TableRow
-                  key={version.id}
-                  className={`hover:bg-muted/30 cursor-pointer ${selectedVersions.includes(version.id) ? "bg-primary/5" : ""
-                    }`}
-                  onClick={() => setExpandedRow(expandedRow === version.id ? null : version.id)}
-                >
-                  <TableCell>
-                    <input
-                      type="checkbox"
-                      checked={selectedVersions.includes(version.id)}
-                      onChange={(e) => {
-                        e.stopPropagation();
-                        toggleVersionSelection(version.id);
-                      }}
-                      className="rounded border-muted-foreground"
-                      onClick={(e) => e.stopPropagation()}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-start gap-2">
-                      <FileText className="h-4 w-4 text-primary mt-0.5" />
-                      <span className="font-medium">{version.templateName}</span>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-mono text-sm">v{version.version}</span>
-                  </TableCell>
-                  <TableCell>{getStatusBadge(version.status)}</TableCell>
-                  <TableCell>
-                    <p className="text-sm text-muted-foreground line-clamp-1 max-w-[200px]">
-                      {version.changeSummary}
-                    </p>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm">
-                      <User className="h-3 w-3 text-muted-foreground" />
-                      {version.approvedBy}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                      <Calendar className="h-3 w-3" />
-                      {version.effectiveFrom}
-                      {version.effectiveTo && ` - ${version.effectiveTo}`}
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">{version.usersImpacted.toLocaleString()}</span>
-                      {version.reconsentTriggered && (
-                        <Badge className="bg-warning/10 text-warning border-warning/20 text-xs">
-                          Re-consent
-                        </Badge>
-                      )}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {version.status !== "locked" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setShowLockDialog(version.id);
-                          }}
-                        >
-                          <Lock className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {version.status === "active" && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleArchive(version.id);
-                          }}
-                        >
-                          <Archive className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {expandedRow === version.id ? (
-                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
-                      ) : (
-                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
-                      )}
-                    </div>
-                  </TableCell>
+            {versionsLoading ? (
+              Array.from({ length: 5 }).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={9}><Skeleton className="h-10 w-full" /></TableCell>
                 </TableRow>
-                {expandedRow === version.id && (
-                  <TableRow>
-                    <TableCell colSpan={9} className="bg-muted/20 p-4">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div>
-                          <h4 className="text-sm font-medium mb-2">Change Details</h4>
-                          <p className="text-sm text-muted-foreground mb-2">
-                            {version.changeSummary}
-                          </p>
-                          <p className="text-xs text-muted-foreground">
-                            <strong>Reason:</strong> {version.changeReason}
-                          </p>
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-medium mb-2">Changed Fields</h4>
-                          <div className="flex flex-wrap gap-1">
-                            {version.changedFields.length > 0 ? (
-                              version.changedFields.map((field) => (
-                                <Badge key={field} variant="outline" className="text-xs">
-                                  {field}
-                                </Badge>
-                              ))
-                            ) : (
-                              <span className="text-xs text-muted-foreground">
-                                Initial version - no changes
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-medium mb-2">Approval Info</h4>
-                          <div className="space-y-1 text-sm">
-                            <p className="flex items-center gap-2">
-                              <User className="h-3 w-3 text-muted-foreground" />
-                              <span>{version.approvedBy}</span>
-                            </p>
-                            <p className="flex items-center gap-2">
-                              <Clock className="h-3 w-3 text-muted-foreground" />
-                              <span>
-                                {new Date(version.approvalTimestamp).toLocaleString()}
-                              </span>
-                            </p>
-                          </div>
-                        </div>
+              ))
+            ) : filteredVersions.length > 0 ? (
+              filteredVersions.map((version) => (
+                <>
+                  <TableRow
+                    key={version.id}
+                    className={cn(
+                      "hover:bg-muted/30 cursor-pointer",
+                      selectedVersions.includes(version.id) && "bg-primary/5"
+                    )}
+                    onClick={() => setExpandedRow(expandedRow === version.id ? null : version.id)}
+                  >
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={selectedVersions.includes(version.id)}
+                        onChange={(e) => {
+                          e.stopPropagation();
+                          toggleVersionSelection(version.id);
+                        }}
+                        className="rounded border-muted-foreground"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-start gap-2">
+                        <FileText className="h-4 w-4 text-primary mt-0.5" />
+                        <span className="font-medium">{version.templateName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="font-mono text-sm">v{version.version}</span>
+                    </TableCell>
+                    <TableCell>{getStatusBadge(version.status)}</TableCell>
+                    <TableCell>
+                      <p className="text-sm text-muted-foreground line-clamp-1 max-w-[200px]">
+                        {version.changeSummary || "Finalized template snapshot"}
+                      </p>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-sm">
+                        <User className="h-3 w-3 text-muted-foreground" />
+                        {version.approvedBy}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                        <Calendar className="h-3 w-3" />
+                        {new Date(version.effectiveFrom).toLocaleDateString()}
+                        {version.effectiveTo && ` - ${new Date(version.effectiveTo).toLocaleDateString()}`}
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <span className="font-medium">{(version.usersImpacted || 0).toLocaleString()}</span>
+                        {version.reconsentTriggered && (
+                          <Badge className="bg-warning/10 text-warning border-warning/20 text-xs">
+                            Re-consent
+                          </Badge>
+                        )}
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        {version.status !== "locked" && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setShowLockDialog(version.id);
+                            }}
+                          >
+                            <Lock className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {(version.status === "active" || version.status === "published") && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleArchive(version.id);
+                            }}
+                          >
+                            <Archive className="h-4 w-4" />
+                          </Button>
+                        )}
+                        {expandedRow === version.id ? (
+                          <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
-                )}
-              </>
-            ))}
+                  {expandedRow === version.id && (
+                    <TableRow>
+                      <TableCell colSpan={9} className="bg-muted/20 p-4">
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                          <div>
+                            <h4 className="text-sm font-medium mb-2">Change Details</h4>
+                            <p className="text-sm text-muted-foreground mb-2">
+                              {version.changeSummary || "No summary provided for this version."}
+                            </p>
+                            {version.changeReason && (
+                              <p className="text-xs text-muted-foreground">
+                                <strong>Reason:</strong> {version.changeReason}
+                              </p>
+                            )}
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium mb-2">Changed Fields</h4>
+                            <div className="flex flex-wrap gap-1">
+                              {version.changedFields && version.changedFields.length > 0 ? (
+                                version.changedFields.map((field) => (
+                                  <Badge key={field} variant="outline" className="text-xs">
+                                    {field}
+                                  </Badge>
+                                ))
+                              ) : (
+                                <span className="text-xs text-muted-foreground">
+                                  Initial version or no specific fields tracked
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          <div>
+                            <h4 className="text-sm font-medium mb-2">Approval Info</h4>
+                            <div className="space-y-1 text-sm">
+                              <p className="flex items-center gap-2">
+                                <User className="h-3 w-3 text-muted-foreground" />
+                                <span>{version.approvedBy}</span>
+                              </p>
+                              <p className="flex items-center gap-2">
+                                <Clock className="h-3 w-3 text-muted-foreground" />
+                                <span>
+                                  {new Date(version.approvalTimestamp).toLocaleString()}
+                                </span>
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </>
+              ))
+            ) : (
+              <TableRow>
+                <TableCell colSpan={9} className="h-24 text-center text-muted-foreground">
+                  No version history found.
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
