@@ -169,6 +169,10 @@ const filterOptions: { key: FilterStatus; label: string }[] = [
   { key: "disconnected", label: "Disconnected" },
 ];
 
+import { integrationsService } from "@/services/integrationsService";
+import { useEffect, useCallback } from "react";
+import { Skeleton } from "@/components/ui/skeleton";
+
 // ═══════════════════════════════════════════════════════════════
 //  MAIN COMPONENT
 // ═══════════════════════════════════════════════════════════════
@@ -183,6 +187,66 @@ export default function Integrations() {
   const [disconnectTarget, setDisconnectTarget] = useState<Integration | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [filterStatus, setFilterStatus] = useState<FilterStatus>("all");
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [metrics, setMetrics] = useState<any>(null);
+
+  // ─── Data Fetching ──────────────────────────────────────────
+  const fetchIntegrations = useCallback(async () => {
+    setIsLoading(true);
+    try {
+      const [intData, metricsData] = await Promise.all([
+        integrationsService.getAll(),
+        integrationsService.getMetrics(),
+      ]);
+
+      if (intData && Array.isArray(intData.data)) {
+        // Map backend response array to frontend Integration interface
+        const mapped = intData.data.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          type: item.type || "Integration",
+          status: item.status?.toLowerCase() || "disconnected",
+          lastSync: item.lastSync ? new Date(item.lastSync).toLocaleString() : "Never",
+          apiCalls: item.syncLogs?.length || 0, // Fallback mapping
+          icon: item.icon || "🔗", 
+          baseUrl: item.baseUrl || "",
+          authMethod: item.authMethod || "api_key",
+          syncFrequency: item.syncFrequency || "daily",
+          description: item.description || "",
+        }));
+        setIntegrationsList(mapped);
+      } else if (intData && Array.isArray(intData)) {
+         const mapped = intData.map((item: any) => ({
+          id: item.id,
+          name: item.name,
+          type: item.type || "Integration",
+          status: item.status?.toLowerCase() || "disconnected",
+          lastSync: item.lastSync ? new Date(item.lastSync).toLocaleString() : "Never",
+          apiCalls: item.syncLogs?.length || 0, 
+          icon: item.icon || "🔗", 
+          baseUrl: item.baseUrl || "",
+          authMethod: item.authMethod || "api_key",
+          syncFrequency: item.syncFrequency || "daily",
+          description: item.description || "",
+        }));
+        setIntegrationsList(mapped);
+      }
+
+      if (metricsData) {
+        setMetrics(metricsData);
+      }
+    } catch (err) {
+      console.error("Failed to fetch integrations:", err);
+      // Fallback to initial bindings if we crash completely / mock fails
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchIntegrations();
+  }, [fetchIntegrations]);
 
   // ─── Computed values ────────────────────────────────────────
   const connectedCount = integrationsList.filter((i) => i.status === "connected").length;
@@ -219,22 +283,33 @@ export default function Integrations() {
     });
   };
 
-  const handleSyncAll = () => {
+  const handleSyncAll = async () => {
     if (isSyncing) return;
     setIsSyncing(true);
 
-    setTimeout(() => {
-      setIntegrationsList((prev) =>
-        prev.map((i) =>
-          i.status === "connected" ? { ...i, lastSync: "Just now" } : i
-        )
-      );
-      setIsSyncing(false);
-      toast({
-        title: "Sync Complete",
-        description: `Successfully synced ${connectedCount} connected integration${connectedCount !== 1 ? "s" : ""}.`,
-      });
-    }, 2000);
+    try {
+        const connected = integrationsList.filter(i => i.status === "connected");
+        // Sync them concurrently
+        await Promise.all(connected.map(i => integrationsService.sync(i.id.toString())));
+        
+        setIntegrationsList((prev) =>
+            prev.map((i) =>
+                i.status === "connected" ? { ...i, lastSync: "Just now" } : i
+            )
+        );
+        toast({
+            title: "Sync Complete",
+            description: `Successfully synced ${connectedCount} connected integration${connectedCount !== 1 ? "s" : ""}.`,
+        });
+    } catch (e) {
+        toast({
+            title: "Sync Failed",
+            description: "Failed to trigger sync for all integrations.",
+            variant: "destructive"
+        });
+    } finally {
+        setIsSyncing(false);
+    }
   };
 
   // ─── Card action handlers ──────────────────────────────────
@@ -242,48 +317,64 @@ export default function Integrations() {
     setConfigureTarget(integration);
   };
 
-  const handleSaveConfig = (updated: Integration) => {
-    setIntegrationsList((prev) =>
-      prev.map((i) => (i.id === updated.id ? updated : i))
-    );
+  const handleSaveConfig = async (updated: Integration) => {
+    try {
+        await integrationsService.update(updated.id.toString(), updated);
+        setIntegrationsList((prev) =>
+          prev.map((i) => (i.id === updated.id ? updated : i))
+        );
+    } catch (e) {
+        toast({ title: "Error", description: "Failed to update integration.", variant: "destructive" });
+    }
   };
 
-  const handleConnect = (integration: Integration) => {
-    setIntegrationsList((prev) =>
-      prev.map((i) =>
-        i.id === integration.id
-          ? { ...i, status: "connected" as const, lastSync: "Just now" }
-          : i
-      )
-    );
-    toast({
-      title: "Connected Successfully",
-      description: `"${integration.name}" is now connected and syncing.`,
-    });
+  const handleConnect = async (integration: Integration) => {
+    try {
+        await integrationsService.connect(integration.id.toString());
+        setIntegrationsList((prev) =>
+          prev.map((i) =>
+            i.id === integration.id
+              ? { ...i, status: "connected" as const, lastSync: "Just now" }
+              : i
+          )
+        );
+        toast({
+          title: "Connected Successfully",
+          description: `"${integration.name}" is now connected and syncing.`,
+        });
+    } catch (e) {
+        toast({ title: "Error", description: "Failed to connect integration.", variant: "destructive" });
+    }
   };
 
   const handleRequestDisconnect = (integration: Integration) => {
     setDisconnectTarget(integration);
   };
 
-  const handleConfirmDisconnect = () => {
+  const handleConfirmDisconnect = async () => {
     if (!disconnectTarget) return;
-    setIntegrationsList((prev) =>
-      prev.map((i) =>
-        i.id === disconnectTarget.id
-          ? { ...i, status: "disconnected" as const, apiCalls: 0 }
-          : i
-      )
-    );
-    toast({
-      title: "Disconnected",
-      description: `"${disconnectTarget.name}" has been disconnected.`,
-    });
-    setDisconnectTarget(null);
+    try {
+        await integrationsService.disconnect(disconnectTarget.id.toString());
+        setIntegrationsList((prev) =>
+          prev.map((i) =>
+            i.id === disconnectTarget.id
+              ? { ...i, status: "disconnected" as const, apiCalls: 0 }
+              : i
+          )
+        );
+        toast({
+          title: "Disconnected",
+          description: `"${disconnectTarget.name}" has been disconnected.`,
+        });
+    } catch (e) {
+        toast({ title: "Error", description: "Failed to disconnect integration.", variant: "destructive" });
+    } finally {
+        setDisconnectTarget(null);
+    }
   };
 
   // ─── Add new integration handler ───────────────────────────
-  const handleAddIntegration = (data: {
+  const handleAddIntegration = async (data: {
     name: string;
     type: string;
     icon: string;
@@ -292,20 +383,36 @@ export default function Integrations() {
     syncFrequency: string;
     description: string;
   }) => {
-    const newIntegration: Integration = {
-      id: Date.now(), // unique ID
-      name: data.name,
-      type: data.type,
-      status: "connected",
-      lastSync: "Just now",
-      apiCalls: 0,
-      icon: data.icon,
-      baseUrl: data.baseUrl,
-      authMethod: data.authMethod,
-      syncFrequency: data.syncFrequency,
-      description: data.description,
-    };
-    setIntegrationsList((prev) => [...prev, newIntegration]);
+    try {
+        const created = await integrationsService.create({
+            name: data.name,
+            type: data.type,
+            icon: data.icon,
+            baseUrl: data.baseUrl,
+            authMethod: data.authMethod,
+            syncFrequency: data.syncFrequency,
+            description: data.description,
+            status: "connected"
+        });
+        
+        const newIntegration: Integration = {
+          id: created.id, 
+          name: created.name,
+          type: created.type,
+          status: "connected",
+          lastSync: "Just now",
+          apiCalls: 0,
+          icon: created.icon || data.icon,
+          baseUrl: created.baseUrl,
+          authMethod: created.authMethod,
+          syncFrequency: created.syncFrequency,
+          description: created.description,
+        };
+        setIntegrationsList((prev) => [...prev, newIntegration]);
+        toast({ title: "Success", description: "Integration added successfully." });
+    } catch (e) {
+        toast({ title: "Error", description: "Failed to add integration.", variant: "destructive" });
+    }
   };
 
   // ═════════════════════════════════════════════════════════════
@@ -332,25 +439,25 @@ export default function Integrations() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <KPICard
               title="Active Integrations"
-              value={connectedCount.toString()}
+              value={isLoading ? "..." : (metrics?.connectedCount ?? connectedCount).toString()}
               icon={<Plug className="h-6 w-6" />}
               variant="success"
             />
             <KPICard
               title="Failed Connections"
-              value={failedCount.toString()}
+              value={isLoading ? "..." : (metrics?.failedCount ?? failedCount).toString()}
               icon={<XCircle className="h-6 w-6" />}
-              variant={failedCount > 0 ? "destructive" : "default"}
+              variant={(metrics?.failedCount ?? failedCount) > 0 ? "destructive" : "default"}
             />
             <KPICard
-              title="API Calls (Today)"
-              value={totalApiCalls.toLocaleString()}
+              title="API Calls (Overall)"
+              value={isLoading ? "..." : (metrics?.apiUsageData?.reduce((acc: number, curr: any) => acc + curr.calls, 0) ?? totalApiCalls).toLocaleString()}
               icon={<Activity className="h-6 w-6" />}
               trend={{ value: 12, direction: "up" }}
             />
             <KPICard
               title="Last Sync"
-              value="1 min ago"
+              value={integrationsList.length > 0 ? integrationsList[0].lastSync : "Never"}
               icon={<Clock className="h-6 w-6" />}
               valueClassName="whitespace-nowrap text-2xl"
             />
@@ -362,12 +469,12 @@ export default function Integrations() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div className="lg:col-span-3 lg:h-full">
               <TrendLineChart
-                data={apiUsageData}
+                data={metrics?.apiUsageData && metrics.apiUsageData.length > 0 ? metrics.apiUsageData : apiUsageData}
                 lines={[
                   {
                     dataKey: "calls",
                     color: "hsl(217, 91%, 50%)",
-                    label: "API Calls",
+                    label: "API Syncs",
                   },
                 ]}
                 title="API Usage (Last 7 Days)"
@@ -399,7 +506,7 @@ export default function Integrations() {
                   variant="outline"
                   className="w-full justify-start"
                   onClick={handleSyncAll}
-                  disabled={isSyncing}
+                  disabled={isSyncing || isLoading}
                 >
                   {isSyncing ? (
                     <>
@@ -459,7 +566,13 @@ export default function Integrations() {
               </div>
             </div>
 
-            {filteredIntegrations.length === 0 ? (
+            {isLoading ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Array.from({ length: 6 }).map((_, i) => (
+                    <Skeleton key={i} className="h-48 w-full rounded-xl" />
+                  ))}
+                </div>
+            ) : filteredIntegrations.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Plug className="h-12 w-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">

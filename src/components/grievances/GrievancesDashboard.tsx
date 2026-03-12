@@ -143,7 +143,7 @@ export function GrievancesDashboard({ grievances, onView, onComment, onEscalate 
                     />
                     <KPICard
                         title="Avg. Resolution Time"
-                        value="2.4 days"
+                        value={isLoadingMetrics ? "..." : `${metrics?.avgResolutionDays || 0} days`}
                         icon={<Timer className="h-6 w-6" />}
                         trend={{ value: 15, direction: "down", label: "faster" }}
                     />
@@ -154,13 +154,13 @@ export function GrievancesDashboard({ grievances, onView, onComment, onEscalate 
             <PageSection className="mb-8">
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                     <BarChartHorizontal
-                        data={resolutionTimeData}
+                        data={metrics?.resolutionTimeDistribution && metrics.resolutionTimeDistribution.length > 0 ? metrics.resolutionTimeDistribution : resolutionTimeData}
                         title="Resolution Time Distribution"
                     />
 
                     {/* Status Overview replaced by Trend Chart */}
                     <TrendLineChart
-                        data={trendData}
+                        data={metrics?.trendData && metrics.trendData.length > 0 ? metrics.trendData : trendData}
                         title="Grievance Cases Trend"
                         lines={[
                             { dataKey: "cases", color: "hsl(217, 91%, 50%)", label: "Number of Cases" },

@@ -85,80 +85,12 @@ const IconMap: Record<string, any> = {
   Target
 };
 
-const cookieStats = [
-  { name: "Necessary", value: 100, color: "hsl(142, 76%, 36%)" },
-  { name: "Analytics", value: 72, color: "hsl(217, 91%, 50%)" },
-  { name: "Marketing", value: 45, color: "hsl(262, 83%, 58%)" },
-  { name: "Functional", value: 68, color: "hsl(199, 89%, 48%)" },
-];
-
-const cookieCategories = [
-  {
-    id: "necessary",
-    name: "Strictly Necessary",
-    description: "Essential cookies required for the website to function properly. These cannot be disabled.",
-    icon: Shield,
-    count: 8,
-    enabled: true,
-    locked: true,
-  },
-  {
-    id: "analytics",
-    name: "Analytics & Performance",
-    description: "Cookies that help us understand how visitors interact with our website.",
-    icon: BarChart3,
-    count: 12,
-    enabled: true,
-    locked: false,
-  },
-  {
-    id: "functional",
-    name: "Functional",
-    description: "Cookies that enable personalized features and enhanced functionality.",
-    icon: Settings,
-    count: 6,
-    enabled: true,
-    locked: false,
-  },
-  {
-    id: "marketing",
-    name: "Marketing & Advertising",
-    description: "Cookies used to deliver relevant advertisements and track campaign effectiveness.",
-    icon: Target,
-    count: 15,
-    enabled: false,
-    locked: false,
-  },
-];
-
-// Mock Data for Inventory
-const mockInventory = [
-  { id: 1, name: "session_id", domain: ".example.com", category: "necessary", expiration: "Session", description: "Maintains user session state" },
-  { id: 2, name: "_ga", domain: ".example.com", category: "analytics", expiration: "2 years", description: "Google Analytics unique user ID" },
-  { id: 3, name: "theme_pref", domain: ".example.com", category: "functional", expiration: "1 year", description: "Stores user theme preference" },
-  { id: 4, name: "ads_uuid", domain: ".ad-network.com", category: "marketing", expiration: "30 days", description: "Ad tracking identifier" },
-  { id: 5, name: "cart_items", domain: ".example.com", category: "necessary", expiration: "Session", description: "Stores temporary cart data" },
-];
-
 import { AddCookieDialog } from "@/components/cookies/AddCookieDialog";
 
 import { CreateBannerDialog } from "@/components/cookies/CreateBannerDialog";
 
 import { AddWebsiteDialog } from "@/components/cookies/AddWebsiteDialog";
 import { FileText } from "lucide-react";
-
-// Mock Data for websites
-const mockWebsites = [
-  { id: 1, name: "Main Corporate Site", url: "https://example.com", frequency: "weekly", lastScan: "2024-03-20", status: "Active", depth: "standard", email: "admin@example.com", autoCategorize: true, scanBehindLogin: false },
-  { id: 2, name: "E-commerce Store", url: "https://shop.example.com", frequency: "daily", lastScan: "2024-03-21", status: "Active", depth: "deep", email: "shop@example.com", autoCategorize: true, scanBehindLogin: true },
-];
-
-// Mock Data for Consent Logs
-const mockConsentLogs = [
-  { id: 1, userId: "USR-001", date: "2024-03-22 10:30 AM", region: "India", categories: ["Necessary", "Analytics"], status: "Active" },
-  { id: 2, userId: "USR-002", date: "2024-03-22 11:15 AM", region: "Europe (GDPR)", categories: ["Necessary", "Marketing", "Functional"], status: "Active" },
-  { id: 3, userId: "USR-003", date: "2024-03-21 04:45 PM", region: "USA", categories: ["Necessary"], status: "Withdrawn" },
-];
 
 export default function CookiesManagement() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -884,19 +816,19 @@ export default function CookiesManagement() {
                   </div>
 
                   {/* Banner Preview */}
-                  <div className={`p-6 bg-card border shadow-lg transition-all duration-300 w-full max-w-lg m-4 rounded-lg
-                      ${bannerPosition === 'center' ? 'mb-auto mt-auto' : ''}
-                      ${bannerPosition === 'top' ? 'mb-auto mt-4' : ''}
-                      // ${bannerPosition === 'bottom' ? 'mb-4' : ''}
+                  <div className={`p-6 bg-card border shadow-lg transition-all duration-300 w-full max-w-lg m-4 rounded-lg 
+                      ${bannerPosition === 'center' ? 'mb-auto mt-auto' : ''} 
+                      ${bannerPosition === 'top' ? 'mb-auto mt-4' : ''} 
+                      ${bannerPosition === 'bottom' ? 'mb-4 mt-auto' : ''} 
                    `}>
                     <h4 className="font-semibold text-lg mb-2">We value your privacy</h4>
                     <p className="text-sm text-muted-foreground mb-4">
                       We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic. By clicking "Accept All", you consent to our use of cookies.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-2">
-                      <Button className="flex-1">Accept All</Button>
-                      <Button variant="outline" className="flex-1">Reject All</Button>
-                      <Button variant="ghost" className="flex-1">Preferences</Button>
+                       <Button className="flex-1">Accept All</Button>
+                       <Button variant="outline" className="flex-1">Reject All</Button>
+                       <Button variant="ghost" className="flex-1">Preferences</Button>
                     </div>
                   </div>
                 </div>

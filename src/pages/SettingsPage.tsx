@@ -45,6 +45,9 @@ import {
 import { Separator } from "@/components/ui/separator";
 
 import { WorkflowConfiguration } from "@/components/workflows/WorkflowConfiguration";
+import { settingsService } from "@/services/settingsService";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useEffect, useCallback } from "react";
 
 // New Configurations
 import { AadhaarKYCConfig } from "@/components/configurations/AadhaarKYCConfig";
@@ -58,7 +61,7 @@ import { EscalationRules } from "@/components/configurations/EscalationRules";
 import { LogRetentionRules } from "@/components/configurations/LogRetentionRules";
 import { cn } from "@/lib/utils";
 
-const purposes = [
+const fallbackPurposes = [
   { id: 1, name: "Marketing Communications", active: true, consents: 4520 },
   { id: 2, name: "Analytics & Performance", active: true, consents: 3890 },
   { id: 3, name: "Personalization", active: true, consents: 2340 },
@@ -66,21 +69,21 @@ const purposes = [
   { id: 5, name: "Research & Development", active: false, consents: 0 },
 ];
 
-const templates = [
+const fallbackTemplates = [
   { id: 1, name: "Standard Consent", type: "Consent Collection", active: true },
   { id: 2, name: "Marketing Opt-In", type: "Consent Collection", active: true },
   { id: 3, name: "Data Access Request", type: "Rights Request", active: true },
   { id: 4, name: "Data Deletion Request", type: "Rights Request", active: true },
 ];
 
-const workflows = [
+const fallbackWorkflows = [
   { id: 1, name: "Consent Collection", enabled: true, steps: 4 },
   { id: 2, name: "Rights Request Processing", enabled: true, steps: 6 },
   { id: 3, name: "Grievance Handling", enabled: true, steps: 5 },
   { id: 4, name: "Consent Renewal", enabled: false, steps: 3 },
 ];
 
-const languages = [
+const fallbackLanguages = [
   { code: "en", name: "English", enabled: true, primary: true },
   { code: "hi", name: "Hindi", enabled: true, primary: false },
   { code: "ta", name: "Tamil", enabled: true, primary: false },
@@ -130,9 +133,37 @@ export default function SettingsPage() {
   const [showWorkflowConfig, setShowWorkflowConfig] = useState(false);
   const [showNewSettingDialog, setShowNewSettingDialog] = useState(false);
   const [activeTab, setActiveTab] = useState("general");
-  const [purposeItems, setPurposeItems] = useState(purposes);
-  const [languageItems, setLanguageItems] = useState(languages);
+  
+  const [loading, setLoading] = useState(true);
+  const [purposeItems, setPurposeItems] = useState(fallbackPurposes);
+  const [languageItems, setLanguageItems] = useState(fallbackLanguages);
+  const [workflowItems, setWorkflowItems] = useState(fallbackWorkflows);
   const { toast } = useToast();
+
+  const fetchSettings = useCallback(async () => {
+    setLoading(true);
+    try {
+      const res = await settingsService.get();
+      if (res) {
+        if (res.purposes?.length) setPurposeItems(res.purposes);
+        if (res.languages?.length) setLanguageItems(res.languages);
+        if (res.workflows?.length) setWorkflowItems(res.workflows);
+      }
+    } catch (error) {
+       console.error("Failed to default settings api", error);
+       toast({
+         title: "Warning",
+         description: "Failed to load live settings. Using default fallback cache.",
+         variant: "destructive"
+       });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
 
   const handleNewSettingAction = (action: string) => {
     switch (action) {
@@ -284,8 +315,13 @@ export default function SettingsPage() {
                   </div>
                   <Button variant="outline" size="sm" onClick={handleAddPurpose}>Add Purpose</Button>
                 </div>
-                <div className="grid gap-4">
-                  {purposeItems.map((purpose) => (
+                {loading ? (
+                   <div className="space-y-4">
+                     {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
+                   </div>
+                ) : (
+                  <div className="grid gap-4">
+                    {purposeItems.map((purpose) => (
                     <div key={purpose.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className={`h-2 w-2 rounded-full ${purpose.active ? "bg-success" : "bg-muted"}`} />
@@ -298,6 +334,7 @@ export default function SettingsPage() {
                     </div>
                   ))}
                 </div>
+                )}
               </div>
 
               <Separator />
@@ -311,8 +348,13 @@ export default function SettingsPage() {
                   </div>
                   <Button variant="outline" size="sm" onClick={handleAddLanguage}>Add Language</Button>
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {languageItems.map((lang) => (
+                {loading ? (
+                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                     {Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)}
+                   </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {languageItems.map((lang) => (
                     <div key={lang.code} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center gap-3">
                         <span className="text-xs font-bold uppercase bg-muted px-2 py-1 rounded">{lang.code}</span>
@@ -325,6 +367,7 @@ export default function SettingsPage() {
                     </div>
                   ))}
                 </div>
+                )}
               </div>
             </div>
           )}
@@ -402,7 +445,7 @@ export default function SettingsPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      {workflows.map((wf) => (
+                      {workflowItems.map((wf) => (
                         <div key={wf.id} className="flex items-center justify-between p-3 border rounded-lg">
                           <div>
                             <p className="font-medium text-sm">{wf.name}</p>

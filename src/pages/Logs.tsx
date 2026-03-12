@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { DashboardLayout, PageSection, SectionTitle } from "@/components/layout/DashboardLayout";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { StatusBadge } from "@/components/dashboard/StatusBadge";
@@ -38,6 +37,11 @@ import {
   Clock,
   User,
 } from "lucide-react";
+import { useEffect, useState, useCallback } from "react";
+import { systemLogsService } from "@/services/reportsLogsSecurityService";
+import { Skeleton } from "@/components/ui/skeleton";
+import { format } from "date-fns";
+import { useToast } from "@/components/ui/use-toast";
 
 const logs = [
   {
@@ -103,7 +107,8 @@ const logs = [
 ];
 
 const getCategoryBadge = (category: string) => {
-  switch (category) {
+  const cat = category.toLowerCase().replace("log_", "");
+  switch (cat) {
     case "consent":
       return <StatusBadge status="active" dot={false}>Consent</StatusBadge>;
     case "rights":
@@ -112,17 +117,91 @@ const getCategoryBadge = (category: string) => {
       return <StatusBadge status="warning" dot={false}>Security</StatusBadge>;
     case "system":
       return <StatusBadge status="info" dot={false}>System</StatusBadge>;
+    case "audit":
+      return <StatusBadge status="info" dot={false}>Audit</StatusBadge>;
+    case "compliance":
+      return <StatusBadge status="success" dot={false}>Compliance</StatusBadge>;
     default:
-      return <StatusBadge status="info" dot={false}>{category}</StatusBadge>;
+      return <StatusBadge status="info" dot={false}>{cat}</StatusBadge>;
   }
 };
 
 export default function Logs() {
   const [activeTab, setActiveTab] = useState("all");
+  const [logsList, setLogsList] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [totalLogs, setTotalLogs] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedDate, setSelectedDate] = useState("");
+  const [kpiCounts, setKpiCounts] = useState({
+    consent: 0,
+    rights: 0,
+    system: 0,
+    security: 0
+  });
+  const { toast } = useToast();
 
-  const filteredLogs = activeTab === "all"
-    ? logs
-    : logs.filter(log => log.category === activeTab);
+  const fetchLogs = useCallback(async () => {
+    setLoading(true);
+    try {
+      const category = activeTab === "all" ? undefined : `LOG_${activeTab.toUpperCase()}`;
+      const response = await systemLogsService.getAll({
+        category,
+        search: searchQuery || undefined,
+        startDate: selectedDate || undefined,
+        limit: 50
+      });
+      if (response) {
+        setLogsList(response.data || []);
+        setTotalLogs(response.total || 0);
+      }
+    } catch (error) {
+      console.error("Failed to fetch logs", error);
+    } finally {
+      setLoading(false);
+    }
+  }, [activeTab, searchQuery, selectedDate]);
+
+  const fetchKpis = async () => {
+    try {
+      const categories = ["LOG_CONSENT", "LOG_RIGHTS", "LOG_SYSTEM", "LOG_SECURITY"];
+      const counts = await Promise.all(
+        categories.map(cat => systemLogsService.getAll({ category: cat, limit: 1 }))
+      );
+      setKpiCounts({
+        consent: counts[0]?.total || 0,
+        rights: counts[1]?.total || 0,
+        system: counts[2]?.total || 0,
+        security: counts[3]?.total || 0
+      });
+    } catch (error) {
+      console.error("Failed to fetch log KPIs", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchLogs();
+  }, [fetchLogs]);
+
+  useEffect(() => {
+    fetchKpis();
+  }, []);
+
+  const handleExport = async () => {
+    try {
+      toast({ title: "Export Started", description: "Preparing your log export..." });
+      const category = activeTab === "all" ? undefined : `LOG_${activeTab.toUpperCase()}`;
+      const result = await systemLogsService.export({
+        category,
+        startDate: selectedDate || undefined
+      });
+      if (result) {
+        toast({ title: "Export Ready", description: `Successfully prepared ${result.total} records for export.` });
+      }
+    } catch (error) {
+      toast({ title: "Export Failed", description: "Failed to export logs.", variant: "destructive" });
+    }
+  };
 
   return (
     <DashboardLayout
@@ -131,7 +210,7 @@ export default function Logs() {
       actions={
         <Tooltip>
           <TooltipTrigger asChild>
-            <Button variant="outline" size="sm">
+            <Button variant="outline" size="sm" onClick={handleExport}>
               <Download className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Export Logs</span>
             </Button>
@@ -145,22 +224,22 @@ export default function Logs() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
           <KPICard
             title="Consent Logs"
-            value="12,450"
+            value={kpiCounts.consent.toLocaleString()}
             icon={<FileCheck className="h-6 w-6" />}
           />
           <KPICard
             title="Rights Logs"
-            value="580"
+            value={kpiCounts.rights.toLocaleString()}
             icon={<Scale className="h-6 w-6" />}
           />
           <KPICard
             title="System Logs"
-            value="3,200"
+            value={kpiCounts.system.toLocaleString()}
             icon={<Activity className="h-6 w-6" />}
           />
           <KPICard
             title="Security Logs"
-            value="1,890"
+            value={kpiCounts.security.toLocaleString()}
             icon={<Shield className="h-6 w-6" />}
           />
         </div>
@@ -175,11 +254,21 @@ export default function Logs() {
               <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
                 <div className="relative flex-1 sm:w-64">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search logs..." className="pl-9 w-full" />
+                  <Input 
+                    placeholder="Search logs..." 
+                    className="pl-9 w-full" 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
                 </div>
                 <div className="relative">
                   <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input type="date" className="pl-9 w-full sm:w-40" />
+                  <Input 
+                    type="date" 
+                    className="pl-9 w-full sm:w-40" 
+                    value={selectedDate}
+                    onChange={(e) => setSelectedDate(e.target.value)}
+                  />
                 </div>
               </div>
             </div>
@@ -210,35 +299,58 @@ export default function Logs() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLogs.map((log) => (
-                  <TableRow key={log.id} className="hover:bg-muted/30">
-                    <TableCell className="text-muted-foreground text-sm font-mono">
-                      <div className="flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {log.timestamp}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div>
-                        <p className="font-medium text-foreground">{log.action}</p>
-                        <p className="text-xs text-muted-foreground">{log.details}</p>
-                      </div>
-                    </TableCell>
-                    <TableCell>{getCategoryBadge(log.category)}</TableCell>
-                    <TableCell className="text-sm">
-                      <div className="flex items-center gap-1">
-                        <User className="h-3 w-3 text-muted-foreground" />
-                        {log.user}
-                      </div>
-                    </TableCell>
-                    <TableCell className="text-sm font-mono text-muted-foreground">
-                      {log.target}
-                    </TableCell>
-                    <TableCell className="text-sm font-mono text-muted-foreground">
-                      {log.ip}
+                {loading ? (
+                  Array(5).fill(0).map((_, i) => (
+                    <TableRow key={i}>
+                      <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                      <TableCell><Skeleton className="h-8 w-full" /></TableCell>
+                      <TableCell><Skeleton className="h-6 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-20" /></TableCell>
+                      <TableCell><Skeleton className="h-4 w-28" /></TableCell>
+                    </TableRow>
+                  ))
+                ) : logsList.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="h-24 text-center">
+                      No logs found.
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  logsList.map((log) => (
+                    <TableRow key={log.id} className="hover:bg-muted/30">
+                      <TableCell className="text-muted-foreground text-sm font-mono">
+                        <div className="flex items-center gap-1">
+                          <Clock className="h-3 w-3" />
+                          {format(new Date(log.createdAt), "yyyy-MM-dd HH:mm:ss")}
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        <div>
+                          <p className="font-medium text-foreground">{log.action}</p>
+                          {log.details && (
+                            <p className="text-xs text-muted-foreground truncate max-w-md">
+                              {typeof log.details === 'string' ? log.details : JSON.stringify(log.details)}
+                            </p>
+                          )}
+                        </div>
+                      </TableCell>
+                      <TableCell>{getCategoryBadge(log.category)}</TableCell>
+                      <TableCell className="text-sm">
+                        <div className="flex items-center gap-1">
+                          <User className="h-3 w-3 text-muted-foreground" />
+                          {log.userName || "System"}
+                        </div>
+                      </TableCell>
+                      <TableCell className="text-sm font-mono text-muted-foreground">
+                        {log.target || "N/A"}
+                      </TableCell>
+                      <TableCell className="text-sm font-mono text-muted-foreground">
+                        {log.ipAddress || "Unknown"}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
@@ -246,7 +358,7 @@ export default function Logs() {
           {/* Pagination */}
           <div className="flex items-center justify-between mt-4">
             <p className="text-sm text-muted-foreground">
-              Showing 1-6 of 18,120 logs
+              Showing {logsList.length} of {totalLogs.toLocaleString()} logs
             </p>
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" disabled>Previous</Button>

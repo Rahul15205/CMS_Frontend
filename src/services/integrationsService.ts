@@ -12,6 +12,12 @@ export const integrationsService = {
     return res.data;
   },
 
+  getMetrics: async () => {
+    if (!FEATURE_FLAGS.integrations) return null;
+    const res = await api.get('/api/integrations/metrics');
+    return res.data;
+  },
+
   getById: async (id: string) => {
     if (!FEATURE_FLAGS.integrations) return null;
     const res = await api.get(`/api/integrations/${id}`);

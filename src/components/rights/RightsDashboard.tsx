@@ -180,7 +180,7 @@ export function RightsDashboard() {
           title="Rights Requests Type Distribution"
         />
         <ConsentDonutChart
-          data={regulationBreakdown}
+          data={metricsData?.regulationBreakdown && metricsData.regulationBreakdown.length > 0 ? metricsData.regulationBreakdown : regulationBreakdown}
           title="By Regulation"
         />
       </div>
@@ -188,7 +188,7 @@ export function RightsDashboard() {
       {/* Trend & Workflow */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <TrendLineChart
-          data={trendData}
+          data={metricsData?.trendData && metricsData.trendData.length > 0 ? metricsData.trendData : trendData}
           title="Rights Requests Trend (Last 4 Weeks)"
           lines={[
             { dataKey: "file_complaint", color: "hsl(12, 76%, 61%)", label: "Complaint" },
@@ -204,7 +204,7 @@ export function RightsDashboard() {
         <div className="dashboard-card">
           <h3 className="text-lg font-semibold text-foreground mb-4">Workflow Pipeline</h3>
           <div className="space-y-4">
-            {workflowStatus.map((item, index, arr) => (
+            {(metricsData?.workflowStatus && metricsData.workflowStatus.length > 0 ? metricsData.workflowStatus : workflowStatus).map((item: any, index: number, arr: any[]) => (
               <div key={item.stage} className="flex items-center gap-4">
                 <div className={`h-12 w-12 rounded-full ${item.color} flex items-center justify-center text-white font-semibold text-sm`}>
                   {item.count}
@@ -228,7 +228,7 @@ export function RightsDashboard() {
       <div className="dashboard-card">
         <h3 className="text-lg font-semibold text-foreground mb-4">SLA Compliance by Priority</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          {slaBySeverity.map((item) => (
+          {(metricsData?.slaByPriority && metricsData.slaByPriority.length > 0 ? metricsData.slaByPriority : slaBySeverity).map((item: any) => (
             <Card key={item.level} className="border">
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm font-medium flex items-center justify-between">

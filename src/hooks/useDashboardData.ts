@@ -32,19 +32,43 @@ export function useDashboardData() {
     enabled: isEnabled && !!user,
   });
 
+  const trendsQuery = useQuery({
+    queryKey: ['dashboard', 'charts', 'trends', tenantId],
+    queryFn: () => dashboardService.getChartData('trends', tenantId),
+    enabled: isEnabled && !!user,
+  });
+
+  const consentByTypeQuery = useQuery({
+    queryKey: ['dashboard', 'charts', 'consent-by-type', tenantId],
+    queryFn: () => dashboardService.getChartData('consent-by-type', tenantId),
+    enabled: isEnabled && !!user,
+  });
+
+  const rightsByTypeQuery = useQuery({
+    queryKey: ['dashboard', 'charts', 'rights-by-type', tenantId],
+    queryFn: () => dashboardService.getChartData('rights-by-type', tenantId),
+    enabled: isEnabled && !!user,
+  });
+
   return {
     kpis: kpisQuery.data,
     isLoadingKpis: kpisQuery.isLoading,
     alerts: alertsQuery.data,
     recentActivity: recentActivityQuery.data || [],
     consentChart: consentChartQuery.data?.data || [],
-    isLoadingCharts: consentChartQuery.isLoading,
-    isError: kpisQuery.isError || alertsQuery.isError || recentActivityQuery.isError,
+    trends: trendsQuery.data?.data || [],
+    consentByType: consentByTypeQuery.data?.data || [],
+    rightsByType: rightsByTypeQuery.data?.data || [],
+    isLoadingCharts: consentChartQuery.isLoading || trendsQuery.isLoading || consentByTypeQuery.isLoading || rightsByTypeQuery.isLoading,
+    isError: kpisQuery.isError || alertsQuery.isError || recentActivityQuery.isError || trendsQuery.isError || rightsByTypeQuery.isError,
     refetchAll: () => {
       kpisQuery.refetch();
       alertsQuery.refetch();
       recentActivityQuery.refetch();
       consentChartQuery.refetch();
+      trendsQuery.refetch();
+      consentByTypeQuery.refetch();
+      rightsByTypeQuery.refetch();
     }
   };
 }

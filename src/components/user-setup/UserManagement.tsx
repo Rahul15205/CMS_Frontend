@@ -58,6 +58,8 @@ import {
 import { User, UserStatus } from "./types";
 import { ConfirmationDialog } from "./ConfirmationDialog";
 import { useToast } from "@/hooks/use-toast";
+import { auditLogsService, usersService } from "@/services/userSetupService";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const mockUsers: User[] = [
   {
@@ -263,7 +265,7 @@ const mockUsers: User[] = [
     isDormant: false,
     isHighRisk: true,
   },
-];
+]; // keeping mock array for fallback if needed
 
 const getStatusIcon = (status: UserStatus) => {
   switch (status) {
@@ -320,6 +322,7 @@ interface UserManagementProps {
 
 export function UserManagement({ onEditUser }: UserManagementProps) {
   const [users, setUsers] = useState<User[]>(mockUsers);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [roleFilter, setRoleFilter] = useState<string>("all");
@@ -342,10 +345,10 @@ export function UserManagement({ onEditUser }: UserManagementProps) {
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase());
+      (user.name || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (user.email || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesStatus = statusFilter === "all" || user.status === statusFilter;
-    const matchesRole = roleFilter === "all" || user.roles.includes(roleFilter);
+    const matchesRole = roleFilter === "all" || (user.roles || []).includes(roleFilter);
     const matchesMfa =
       mfaFilter === "all" ||
       (mfaFilter === "enabled" && user.mfaEnabled) ||
@@ -367,6 +370,23 @@ export function UserManagement({ onEditUser }: UserManagementProps) {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, roleFilter, mfaFilter, accountTypeFilter, tenantFilter, apiAccessFilter, riskFilter]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      try {
+        const data = await usersService.getAll();
+        if (data && data.length > 0) {
+          setUsers(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch users", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchUsers();
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / itemsPerPage));
   const paginatedUsers = filteredUsers.slice(
@@ -587,7 +607,16 @@ export function UserManagement({ onEditUser }: UserManagementProps) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {paginatedUsers.map((user) => (
+              {loading ? (
+                Array(5).fill(0).map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell colSpan={9}>
+                      <Skeleton className="h-12 w-full" />
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                paginatedUsers.map((user) => (
                 <TableRow key={user.id} className={`hover:bg-muted/30 ${user.isHighRisk ? 'bg-destructive/5' : user.isDormant ? 'bg-warning/5' : ''}`}>
                   <TableCell>
                     <div className="flex items-center gap-3">
@@ -799,7 +828,7 @@ export function UserManagement({ onEditUser }: UserManagementProps) {
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))}
+              )))}
             </TableBody>
           </Table>
         </div>
@@ -851,27 +880,37 @@ export function UserManagement({ onEditUser }: UserManagementProps) {
             onOpenChange={() => setConfirmAction(null)}
             title={confirmAction.title}
             description={confirmAction.description}
-            onConfirm={() => {
+            onConfirm={async () => {
               if (!confirmAction) return;
               const { type, user } = confirmAction;
-              setUsers((prev) =>
-                prev.map((u) => {
-                  if (u.id !== user.id) return u;
-                  if (type === "lock") return { ...u, status: "locked" };
-                  if (type === "unlock") return { ...u, status: "active" };
-                  if (type === "disable") return { ...u, status: "disabled" };
-                  if (type === "enable") return { ...u, status: "active" };
-                  if (type === "suspend") return { ...u, status: "suspended" };
-                  if (type === "revokeApi") return { ...u, apiAccess: { ...u.apiAccess, enabled: false, scopes: [] } };
-                  if (type === "resetMfa") return { ...u, mfaEnabled: false };
-                  if (type === "transferTenant") return { ...u, tenantId: "4", tenantName: "Transferred Tenant" };
-                  return u;
-                })
-              );
-              toast({
-                title: "Action Completed",
-                description: `${type} applied for ${user.name}.`,
-              });
+              try {
+                let modifications = {};
+                if (type === "lock") modifications = { status: "locked" };
+                if (type === "unlock") modifications = { status: "active" };
+                if (type === "disable") modifications = { status: "disabled" };
+                if (type === "enable") modifications = { status: "active" };
+                if (type === "suspend") modifications = { status: "suspended" };
+                if (type === "revokeApi") modifications = { apiAccess: { ...user.apiAccess, enabled: false, scopes: [] } };
+                if (type === "resetMfa") modifications = { mfaEnabled: false };
+                if (type === "transferTenant") modifications = { tenantId: "4", tenantName: "Transferred Tenant" };
+
+                if (Object.keys(modifications).length > 0) {
+                  await usersService.update(user.id, modifications);
+                }
+
+                setUsers((prev) =>
+                  prev.map((u) => {
+                    if (u.id !== user.id) return u;
+                    return { ...u, ...modifications };
+                  })
+                );
+                toast({
+                  title: "Action Completed",
+                  description: `${type} applied for ${user.name}.`,
+                });
+              } catch (error) {
+                 toast({ title: "Error", description: "Failed to apply user action.", variant: "destructive" });
+              }
               setConfirmAction(null);
             }}
           />
@@ -880,3 +919,5 @@ export function UserManagement({ onEditUser }: UserManagementProps) {
     </div >
   );
 }
+
+

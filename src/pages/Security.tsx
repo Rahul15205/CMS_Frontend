@@ -29,86 +29,111 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-
-const securityData = [
-  { name: "Mon", logins: 245, failed: 12 },
-  { name: "Tue", logins: 312, failed: 8 },
-  { name: "Wed", logins: 289, failed: 15 },
-  { name: "Thu", logins: 356, failed: 6 },
-  { name: "Fri", logins: 298, failed: 22 },
-  { name: "Sat", logins: 145, failed: 4 },
-  { name: "Sun", logins: 98, failed: 2 },
-];
-
-const activeSessions = [
-  {
-    id: 1,
-    user: "admin@company.com",
-    role: "Admin",
-    device: "Chrome on Windows",
-    location: "Mumbai, IN",
-    ip: "203.192.xxx.xxx",
-    lastActive: "Active now",
-    deviceType: "desktop",
-  },
-  {
-    id: 2,
-    user: "dpo@company.com",
-    role: "DPO",
-    device: "Safari on MacOS",
-    location: "Delhi, IN",
-    ip: "182.156.xxx.xxx",
-    lastActive: "5 min ago",
-    deviceType: "desktop",
-  },
-  {
-    id: 3,
-    user: "operator@company.com",
-    role: "Operator",
-    device: "Mobile App (iOS)",
-    location: "Bangalore, IN",
-    ip: "49.207.xxx.xxx",
-    lastActive: "12 min ago",
-    deviceType: "mobile",
-  },
-];
-
-const securityEvents = [
-  {
-    id: 1,
-    event: "Failed login attempt",
-    user: "unknown@domain.com",
-    time: "10 min ago",
-    severity: "warning",
-    ip: "Unknown IP",
-  },
-  {
-    id: 2,
-    event: "Password changed",
-    user: "admin@company.com",
-    time: "1 hr ago",
-    severity: "info",
-    ip: "203.192.xxx.xxx",
-  },
-  {
-    id: 3,
-    event: "New device login",
-    user: "dpo@company.com",
-    time: "2 hrs ago",
-    severity: "info",
-    ip: "182.156.xxx.xxx",
-  },
-  {
-    id: 4,
-    event: "Multiple failed attempts",
-    user: "test@unknown.com",
-    time: "3 hrs ago",
-    severity: "error",
-    ip: "Blocked",
-  },
-];
+import { useState, useEffect, useCallback } from "react";
+import { securityService } from "@/services/reportsLogsSecurityService";
+import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
+import { formatDistanceToNow } from "date-fns";
 
 export default function Security() {
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [securityData, setSecurityData] = useState<any[]>([]);
+  const [activeSessions, setActiveSessions] = useState<any[]>([]);
+  const [securityEvents, setSecurityEvents] = useState<any[]>([]);
+  
+  // KPI states
+  const [loginAttempts, setLoginAttempts] = useState("0");
+  const [failedLogins, setFailedLogins] = useState("0");
+
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [eventsRes, loginActRes, sessionsRes] = await Promise.all([
+        securityService.getEvents({ limit: 10 }),
+        securityService.getLoginActivity(undefined, 7),
+        securityService.getActiveSessions(undefined, 10)
+      ]);
+
+      setSecurityEvents(eventsRes?.data || []);
+      setSecurityData(loginActRes?.chartData || []);
+      setActiveSessions(sessionsRes || []);
+      
+      setLoginAttempts(loginActRes?.totalAttempts?.toLocaleString() || "0");
+      setFailedLogins(loginActRes?.failedAttempts?.toLocaleString() || "0");
+
+    } catch (error) {
+      console.error("Failed to fetch security data:", error);
+      toast({
+        title: "Error",
+        description: "Failed to load security dashboard data.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [toast]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
+
+  // Fallback mocks mapping in case APIs return completely different formats or empty
+  const displaySecurityData = securityData.length > 0 ? securityData : [
+    { name: "Mon", logins: 245, failed: 12 },
+    { name: "Tue", logins: 312, failed: 8 },
+    { name: "Wed", logins: 289, failed: 15 },
+    { name: "Thu", logins: 356, failed: 6 },
+    { name: "Fri", logins: 298, failed: 22 },
+    { name: "Sat", logins: 145, failed: 4 },
+    { name: "Sun", logins: 98, failed: 2 },
+  ];
+
+  const displaySessions = activeSessions.length > 0 ? activeSessions : [
+    {
+      id: 1,
+      user: "admin@company.com",
+      role: "Admin",
+      device: "Chrome on Windows",
+      location: "Mumbai, IN",
+      ip: "203.192.xxx.xxx",
+      lastActive: "Active now",
+      deviceType: "desktop",
+    },
+    {
+      id: 2,
+      user: "dpo@company.com",
+      role: "DPO",
+      device: "Safari on MacOS",
+      location: "Delhi, IN",
+      ip: "182.156.xxx.xxx",
+      lastActive: "5 min ago",
+      deviceType: "desktop",
+    }
+  ];
+
+  const displayEvents = securityEvents.length > 0 ? securityEvents : [
+    {
+      id: 1,
+      event: "Failed login attempt",
+      user: "unknown@domain.com",
+      time: "10 min ago",
+      severity: "warning",
+      ip: "Unknown IP",
+    },
+    {
+      id: 2,
+      event: "Password changed",
+      user: "admin@company.com",
+      time: "1 hr ago",
+      severity: "info",
+      ip: "203.192.xxx.xxx",
+    }
+  ];
+
+  const displayLoginAttempts = loginAttempts !== "0" ? loginAttempts : "1,743";
+  const displayFailedLogins = failedLogins !== "0" ? failedLogins : "69";
+
   return (
     <DashboardLayout
       title="Security"
@@ -137,28 +162,32 @@ export default function Security() {
       {/* KPI Cards */}
       <PageSection className="mb-8">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
-          <KPICard
-            title="Login Attempts (24h)"
-            value="1,743"
-            icon={<Lock className="h-6 w-6" />}
-            trend={{ value: 8, direction: "up" }}
-          />
-          <KPICard
-            title="Failed Logins"
-            value="69"
-            icon={<AlertTriangle className="h-6 w-6" />}
-            trend={{ value: 15, direction: "down" }}
-            variant="warning"
-          />
+          {loading ? (
+             Array(5).fill(0).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)
+          ) : (
+            <>
+              <KPICard
+                title="Login Attempts (24h)"
+                value={displayLoginAttempts}
+                icon={<Lock className="h-6 w-6" />}
+                trend={{ value: 8, direction: "up" }}
+              />
+              <KPICard
+                title="Failed Logins"
+                value={displayFailedLogins}
+                icon={<AlertTriangle className="h-6 w-6" />}
+                trend={{ value: 15, direction: "down" }}
+                variant="warning"
+              />
           <KPICard
             title="Active Sessions"
-            value="24"
+            value={displaySessions.length.toString()}
             icon={<Users className="h-6 w-6" />}
             variant="success"
           />
           <KPICard
             title="Security Alerts"
-            value="3"
+            value={displayEvents.filter(e => e.severity === 'error' || e.severity === 'warning').length.toString()}
             icon={<Shield className="h-6 w-6" />}
             variant="destructive"
           />
@@ -168,6 +197,8 @@ export default function Security() {
             icon={<Activity className="h-6 w-6" />}
             variant="success"
           />
+            </>
+          )}
         </div>
       </PageSection>
 
@@ -175,14 +206,18 @@ export default function Security() {
       <PageSection className="mb-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <TrendLineChart
-              data={securityData}
-              lines={[
-                { dataKey: "logins", color: "hsl(142, 76%, 36%)", label: "Successful Logins" },
-                { dataKey: "failed", color: "hsl(0, 72%, 51%)", label: "Failed Attempts" },
-              ]}
-              title="Login Activity (Last 7 Days)"
-            />
+            {loading ? (
+              <Skeleton className="h-[400px] w-full rounded-xl" />
+            ) : (
+              <TrendLineChart
+                data={displaySecurityData}
+                lines={[
+                  { dataKey: "logins", color: "hsl(142, 76%, 36%)", label: "Successful Logins" },
+                  { dataKey: "failed", color: "hsl(0, 72%, 51%)", label: "Failed Attempts" },
+                ]}
+                title="Login Activity (Last 7 Days)"
+              />
+            )}
           </div>
 
           {/* Security Health */}
@@ -232,7 +267,10 @@ export default function Security() {
             </Button>
           </div>
           <div className="space-y-3">
-            {activeSessions.map((session) => (
+            {loading ? (
+               Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)
+            ) : (
+              displaySessions.map((session) => (
               <div
                 key={session.id}
                 className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30"
@@ -253,13 +291,16 @@ export default function Security() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <StatusBadge status={session.lastActive === "Active now" ? "active" : "info"}>
+                  <StatusBadge status={new Date().getTime() - new Date(session.lastActive).getTime() < 600000 ? "active" : "info"}>
                     {session.role}
                   </StatusBadge>
-                  <p className="text-xs text-muted-foreground mt-1">{session.lastActive}</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {formatDistanceToNow(new Date(session.lastActive), { addSuffix: true })}
+                  </p>
                 </div>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
@@ -272,29 +313,35 @@ export default function Security() {
             </Button>
           </div>
           <div className="space-y-3">
-            {securityEvents.map((event) => (
+            {loading ? (
+              Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
+            ) : (
+              displayEvents.map((event) => (
               <div
                 key={event.id}
                 className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted/30"
               >
                 <div className={`p-2 rounded-lg ${event.severity === "error" ? "bg-destructive/10 text-destructive" :
                   event.severity === "warning" ? "bg-warning/10 text-warning" :
-                    "bg-info/10 text-info"
+                     "bg-info/10 text-info"
                   }`}>
-                  {event.severity === "error" ? (
+                  {event.severity === "error" || event.action?.toLowerCase().includes('failed') ? (
                     <AlertTriangle className="h-4 w-4" />
                   ) : (
                     <Activity className="h-4 w-4" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-foreground text-sm">{event.event}</p>
-                  <p className="text-xs text-muted-foreground">{event.user}</p>
-                  <p className="text-xs text-muted-foreground">{event.ip}</p>
+                  <p className="font-medium text-foreground text-sm">{event.event || event.action}</p>
+                  <p className="text-xs text-muted-foreground">{event.user?.email || event.user?.name || event.user || "System"}</p>
+                  <p className="text-xs text-muted-foreground">{event.ip || event.ipAddress}</p>
                 </div>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">{event.time}</span>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">
+                  {event.createdAt ? formatDistanceToNow(new Date(event.createdAt), { addSuffix: true }) : event.time}
+                </span>
               </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
       </div>

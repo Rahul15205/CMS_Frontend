@@ -37,6 +37,8 @@ import {
 } from "lucide-react";
 import { Session } from "./types";
 import { useToast } from "@/hooks/use-toast";
+import { sessionsService } from "@/services/userSetupService";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const mockSessions: Session[] = [
   {
@@ -102,7 +104,7 @@ const mockSessions: Session[] = [
 ];
 
 const getDeviceIcon = (device: string) => {
-  switch (device.toLowerCase()) {
+  switch ((device || "").toLowerCase()) {
     case "desktop":
       return <Monitor className="h-4 w-4" />;
     case "mobile":
@@ -118,6 +120,7 @@ const getDeviceIcon = (device: string) => {
 
 export function SessionManagement() {
   const [sessions, setSessions] = useState<Session[]>(mockSessions);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmAction, setConfirmAction] = useState<{
     type: "single" | "all" | "lock";
@@ -130,14 +133,31 @@ export function SessionManagement() {
 
   const filteredSessions = sessions.filter(
     (session) =>
-      session.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      session.ipAddress.includes(searchQuery) ||
-      session.location.toLowerCase().includes(searchQuery.toLowerCase())
+      (session.userName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (session.ipAddress || "").includes(searchQuery) ||
+      (session.location || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, sessions.length]);
+
+  useEffect(() => {
+    const fetchSessions = async () => {
+      setLoading(true);
+      try {
+        const data = await sessionsService.getAll();
+        if (data && data.length > 0) {
+          setSessions(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch sessions", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchSessions();
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(filteredSessions.length / itemsPerPage));
   const paginatedSessions = filteredSessions.slice(
@@ -264,10 +284,19 @@ export function SessionManagement() {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {paginatedSessions.map((session) => {
-              const isActive =
-                new Date(session.lastActivity) > new Date(Date.now() - 30 * 60 * 1000);
-              const isSuspicious = session.location === "Unknown";
+            {loading ? (
+              Array(5).fill(0).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell colSpan={8}>
+                    <Skeleton className="h-12 w-full" />
+                  </TableCell>
+                </TableRow>
+              ))
+            ) : (
+              paginatedSessions.map((session) => {
+                const isActive =
+                  new Date(session.lastActivity) > new Date(Date.now() - 30 * 60 * 1000);
+                const isSuspicious = session.location === "Unknown";
 
               return (
                 <TableRow
@@ -277,13 +306,13 @@ export function SessionManagement() {
                   <TableCell>
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs">
-                        {session.userName
+                        {(session.userName || "Unknown")
                           .split(" ")
                           .map((n) => n[0])
                           .join("")}
                       </div>
                       <div>
-                        <p className="font-medium text-sm">{session.userName}</p>
+                        <p className="font-medium text-sm">{session.userName || "Unknown User"}</p>
                         {session.isCurrentSession && (
                           <Badge variant="outline" className="text-xs bg-success/10 text-success border-success/20">
                             Current
@@ -345,7 +374,7 @@ export function SessionManagement() {
                   </TableCell>
                 </TableRow>
               );
-            })}
+            }))}
           </TableBody>
         </Table>
       </div>

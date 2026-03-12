@@ -17,6 +17,7 @@ import {
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useQuery } from "@tanstack/react-query";
 import { consentService } from "@/services/consentService";
+import { dashboardService } from "@/services/dashboardService";
 import type { ConsentAnalyticsData } from "./types";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -125,6 +126,13 @@ export function ConsentAnalytics() {
     queryKey: ["consent-analytics"],
     queryFn: () => consentService.getAnalytics(),
   });
+
+  const { data: trendsData, isLoading: isLoadingTrends } = useQuery({
+    queryKey: ["dashboard-trends"],
+    queryFn: () => dashboardService.getChartData("trends"),
+  });
+
+  const consentTrends = trendsData?.data || [];
 
   const getWidget = (id: string) => config.widgets.find(w => w.id === id);
   const isEnabled = (id: string) => getWidget(id)?.enabled ?? false;
@@ -381,9 +389,9 @@ export function ConsentAnalytics() {
             <CardContent>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={consentTrendData}>
+                  <AreaChart data={consentTrends.length > 0 ? consentTrends : consentTrendData}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                    <XAxis dataKey="month" className="text-xs" />
+                    <XAxis dataKey="name" className="text-xs" />
                     <YAxis className="text-xs" />
                     <Tooltip
                       contentStyle={{
@@ -609,9 +617,9 @@ export function ConsentAnalytics() {
           <CardContent>
             <div className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={consentTrendData}>
+                <BarChart data={consentTrends.length > 0 ? consentTrends : consentTrendData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                  <XAxis dataKey="month" className="text-xs" />
+                  <XAxis dataKey="name" className="text-xs" />
                   <YAxis className="text-xs" />
                   <Tooltip
                     contentStyle={{

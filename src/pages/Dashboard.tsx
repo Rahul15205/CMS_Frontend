@@ -133,7 +133,7 @@ function AdminDashboard() {
   const { config, addRole, setRole, roleLabels, availableRoles } = useDashboard();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { kpis, isLoadingKpis, alerts, recentActivity: liveActivity, consentChart, refetchAll } = useDashboardData();
+  const { kpis, isLoadingKpis, alerts, recentActivity: liveActivity, consentChart, trends, consentByType, refetchAll } = useDashboardData();
 
   const getWidget = (id: string) => config.widgets.find(w => w.id === id);
   const isEnabled = (id: string) => getWidget(id)?.enabled ?? false;
@@ -360,9 +360,9 @@ function AdminDashboard() {
           {isEnabled("chart-donut") && (
             <ConsentDonutChart
               data={consentChart && consentChart.length > 0 ? consentChart.map((c: any) => ({
-                name: c.label === "GRANTED" ? "Active" : c.label === "REVOKED" ? "Withdrawn/Expired" : c.label,
+                name: c.label,
                 value: c.count,
-                color: c.label === "GRANTED" ? "hsl(142, 76%, 36%)" : "hsl(0, 72%, 51%)"
+                color: c.color // The backend now provides colors
               })) : consentStatusData}
               title="Consent Status Distribution"
             />
@@ -370,15 +370,14 @@ function AdminDashboard() {
           {isEnabled("chart-trend") && (
             <div>
               <TrendLineChart
-                data={trendData}
+                data={trends && trends.length > 0 ? trends : trendData}
                 lines={[
-                  { dataKey: "active", color: "hsl(142, 76%, 36%)", label: "Active" },
-                  { dataKey: "withdrawn", color: "hsl(0, 72%, 51%)", label: "Withdrawn" },
-                  { dataKey: "expired", color: "hsl(38, 92%, 50%)", label: "Expired" },
-                  { dataKey: "rejected", color: "hsl(262, 83%, 58%)", label: "Rejected" },
-                  { dataKey: "pending", color: "hsl(199, 89%, 48%)", label: "Pending" },
+                  { dataKey: "active", color: "hsl(142, 76%, 36%)", label: "Consents (Active)" },
+                  { dataKey: "withdrawn", color: "hsl(0, 72%, 51%)", label: "Consents (Withdrawn)" },
+                  { dataKey: "rights", color: "hsl(199, 89%, 48%)", label: "Rights Requests" },
+                  { dataKey: "grievances", color: "hsl(262, 83%, 58%)", label: "Grievances" },
                 ]}
-                title="Consent Trends"
+                title="Activity Trends (Last 6 Months)"
               />
             </div>
           )}
@@ -391,27 +390,27 @@ function AdminDashboard() {
         {isEnabled("compliance-score") && (
           <div className="dashboard-card flex flex-col items-center justify-center py-8">
             <SectionTitle>Compliance Health</SectionTitle>
-            <ComplianceScore score={87} size="lg" className="mt-4" />
+            <ComplianceScore score={kpis?.complianceScore || 0} size="lg" className="mt-4" />
             <div className="mt-6 w-full space-y-2">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Consent Module</span>
-                <span className="font-medium text-success">92%</span>
+                <span className={`font-medium ${kpis?.complianceBreakdown?.consent >= 90 ? 'text-success' : kpis?.complianceBreakdown?.consent >= 70 ? 'text-warning' : 'text-error'}`}>{kpis?.complianceBreakdown?.consent || 0}%</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Rights Management</span>
-                <span className="font-medium text-success">88%</span>
+                <span className={`font-medium ${kpis?.complianceBreakdown?.rights >= 90 ? 'text-success' : kpis?.complianceBreakdown?.rights >= 70 ? 'text-warning' : 'text-error'}`}>{kpis?.complianceBreakdown?.rights || 0}%</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Grievances</span>
-                <span className="font-medium text-warning">76%</span>
+                <span className={`font-medium ${kpis?.complianceBreakdown?.grievances >= 90 ? 'text-success' : kpis?.complianceBreakdown?.grievances >= 70 ? 'text-warning' : 'text-error'}`}>{kpis?.complianceBreakdown?.grievances || 0}%</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Notices</span>
-                <span className="font-medium text-success">91%</span>
+                <span className={`font-medium ${kpis?.complianceBreakdown?.notices >= 90 ? 'text-success' : kpis?.complianceBreakdown?.notices >= 70 ? 'text-warning' : 'text-error'}`}>{kpis?.complianceBreakdown?.notices || 0}%</span>
               </div>
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Cookie Management</span>
-                <span className="font-medium text-success">85%</span>
+                <span className={`font-medium ${kpis?.complianceBreakdown?.cookies >= 90 ? 'text-success' : kpis?.complianceBreakdown?.cookies >= 70 ? 'text-warning' : 'text-error'}`}>{kpis?.complianceBreakdown?.cookies || 0}%</span>
               </div>
             </div>
           </div>
@@ -536,7 +535,7 @@ function DPODashboard() {
   const { config } = useDashboard();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { kpis, isLoadingKpis, alerts, consentChart, refetchAll } = useDashboardData();
+  const { kpis, isLoadingKpis, alerts, consentChart, rightsByType, recentActivity: liveActivity, refetchAll } = useDashboardData();
 
   const getWidget = (id: string) => config.widgets.find(w => w.id === id);
   const isEnabled = (id: string) => getWidget(id)?.enabled ?? false;
@@ -641,9 +640,9 @@ function DPODashboard() {
           {isEnabled("chart-donut") && (
             <ConsentDonutChart
               data={consentChart && consentChart.length > 0 ? consentChart.map((c: any) => ({
-                name: c.label === "GRANTED" ? "Active" : c.label === "REVOKED" ? "Withdrawn/Expired" : c.label,
+                name: c.label,
                 value: c.count,
-                color: c.label === "GRANTED" ? "hsl(142, 76%, 36%)" : "hsl(0, 72%, 51%)"
+                color: c.color
               })) : consentStatusData}
               title="Consent Status"
             />
@@ -656,7 +655,11 @@ function DPODashboard() {
               </CardHeader>
               <CardContent>
                 <BarChartHorizontal
-                  data={rightsData}
+                  data={rightsByType && rightsByType.length > 0 ? rightsByType.map((r: any) => ({
+                    name: r.label,
+                    value: r.count,
+                    max: Math.max(...rightsByType.map((x: any) => x.count)) * 1.2
+                  })) : rightsData}
                   title=""
                 />
               </CardContent>
@@ -725,16 +728,22 @@ function DPODashboard() {
               </Button>
             </div>
             <div className="space-y-1">
-              {recentActivities.slice(0, 4).map((activity, index) => (
-                <ActivityItem
-                  key={index}
-                  icon={activity.icon}
-                  title={activity.title}
-                  description={activity.description}
-                  time={activity.time}
-                  variant={activity.variant}
-                />
-              ))}
+              {liveActivity && liveActivity.length > 0 ? liveActivity.slice(0, 4).map((activity: any, index: number) => {
+                const isWarning = activity.action.toLowerCase().includes('failed') || activity.action.toLowerCase().includes('deleted');
+                const isSuccess = activity.action.toLowerCase().includes('created') || activity.action.toLowerCase().includes('granted');
+                return (
+                  <ActivityItem
+                    key={activity.id || index}
+                    icon={isWarning ? <AlertTriangle className="h-4 w-4" /> : isSuccess ? <CheckCircle className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
+                    title={activity.action}
+                    description={activity.details || `User: ${activity.user?.name || activity.userId}`}
+                    time={new Date(activity.createdAt).toLocaleDateString()}
+                    variant={isWarning ? "error" : isSuccess ? "success" : "default"}
+                  />
+                )
+              }) : (
+                <p className="text-sm text-muted-foreground p-4 text-center">No recent activity found.</p>
+              )}
             </div>
           </div>
         )}
@@ -747,7 +756,7 @@ function DataPrincipalDashboard() {
   const { config } = useDashboard();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { kpis, isLoadingKpis } = useDashboardData();
+  const { kpis, isLoadingKpis, consentChart, recentActivity: liveActivity } = useDashboardData();
 
   const getWidget = (id: string) => config.widgets.find(w => w.id === id);
   const isEnabled = (id: string) => getWidget(id)?.enabled ?? false;
@@ -832,8 +841,12 @@ function DataPrincipalDashboard() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
         {isEnabled("chart-my-consents") && (
           <ConsentDonutChart
-            data={myConsentsData}
-            title="My Consents by Purpose"
+            data={consentChart && consentChart.length > 0 ? consentChart.map((c: any) => ({
+              name: c.label === "GRANTED" ? "Active" : c.label === "REVOKED" ? "Withdrawn/Expired" : c.label,
+              value: c.count,
+              color: c.label === "GRANTED" ? "hsl(142, 76%, 36%)" : "hsl(0, 72%, 51%)"
+            })) : myConsentsData}
+            title="My Consents by Status"
           />
         )}
 
@@ -881,36 +894,24 @@ function DataPrincipalDashboard() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-                <div className="p-2 rounded-full bg-success/10">
-                  <CheckCircle className="h-4 w-4 text-success" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-sm">Marketing consent granted</p>
-                  <p className="text-xs text-muted-foreground">You agreed to receive marketing emails</p>
-                </div>
-                <span className="text-xs text-muted-foreground">2 days ago</span>
-              </div>
-              <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-                <div className="p-2 rounded-full bg-info/10">
-                  <Scale className="h-4 w-4 text-info" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-sm">Data access request submitted</p>
-                  <p className="text-xs text-muted-foreground">Request ID: REQ-2024-1234</p>
-                </div>
-                <span className="text-xs text-muted-foreground">5 days ago</span>
-              </div>
-              <div className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
-                <div className="p-2 rounded-full bg-warning/10">
-                  <FileText className="h-4 w-4 text-warning" />
-                </div>
-                <div className="flex-1">
-                  <p className="font-medium text-sm">Privacy notice acknowledged</p>
-                  <p className="text-xs text-muted-foreground">Version 2.3 - Updated terms</p>
-                </div>
-                <span className="text-xs text-muted-foreground">1 week ago</span>
-              </div>
+              {liveActivity && liveActivity.length > 0 ? liveActivity.slice(0, 3).map((activity: any, index: number) => {
+                const isWarning = activity.action.toLowerCase().includes('failed') || activity.action.toLowerCase().includes('deleted');
+                const isSuccess = activity.action.toLowerCase().includes('created') || activity.action.toLowerCase().includes('granted');
+                return (
+                  <div key={activity.id || index} className="flex items-center gap-4 p-3 rounded-lg bg-muted/50">
+                    <div className={`p-2 rounded-full ${isWarning ? 'bg-error/10' : isSuccess ? 'bg-success/10' : 'bg-info/10'}`}>
+                      {isWarning ? <XCircle className={`h-4 w-4 ${isWarning ? 'text-error' : ''}`} /> : isSuccess ? <CheckCircle className="h-4 w-4 text-success" /> : <Scale className="h-4 w-4 text-info" />}
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-medium text-sm">{activity.action}</p>
+                      <p className="text-xs text-muted-foreground">{activity.details || "No details available"}</p>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{new Date(activity.createdAt).toLocaleDateString()}</span>
+                  </div>
+                )
+              }) : (
+                <p className="text-sm text-muted-foreground p-4 text-center">No recent activity found.</p>
+              )}
             </div>
           </CardContent>
         </Card>

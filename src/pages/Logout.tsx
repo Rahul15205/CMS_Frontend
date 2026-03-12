@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -14,14 +15,18 @@ import { Shield, LogOut } from "lucide-react";
 export default function Logout() {
   const [open, setOpen] = useState(true);
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const handleLogout = () => {
-    // In a real app, this would clear session, tokens, etc.
     setOpen(false);
-    // Show a brief message then redirect
+    
+    // Navigate to root to ensure URL doesn't stay on /logout
+    navigate("/");
+    
+    // Defer the actual logout so Router has time to process the navigation
     setTimeout(() => {
-      navigate("/");
-    }, 500);
+      logout();
+    }, 100);
   };
 
   const handleCancel = () => {

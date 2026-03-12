@@ -47,10 +47,13 @@ import { Role, ModulePermissions } from "./types";
 
 import { defaultPermissions, permissionTypes, modules } from "@/data/mockRoles";
 import { useAuth } from "@/contexts/AuthContext";
+import { Skeleton } from "@/components/ui/skeleton";
+import { rolesService } from "@/services/userSetupService";
 import { useToast } from "@/hooks/use-toast";
 
 export function RoleManagement() {
-  const { roles, setRoles } = useAuth();
+  const [roles, setRoles] = useState<Role[]>([]);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -95,6 +98,23 @@ export function RoleManagement() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, typeFilter, roles.length]);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      setLoading(true);
+      try {
+        const data = await rolesService.getAll();
+        if (data && data.length > 0) {
+          setRoles(data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch roles", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRoles();
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(filteredRoles.length / itemsPerPage));
   const paginatedRoles = useMemo(
@@ -145,9 +165,14 @@ export function RoleManagement() {
     setShowCreateDialog(true);
   };
 
-  const handleArchiveRole = (roleId: string) => {
-    setRoles(roles.map((role) => (role.id === roleId ? { ...role, status: "archived" } : role)));
-    toast({ title: "Role Archived", description: "Role moved to archived list." });
+  const handleArchiveRole = async (roleId: string) => {
+    try {
+      await rolesService.update(roleId, { status: "archived" });
+      setRoles(roles.map((role) => (role.id === roleId ? { ...role, status: "archived" } : role)));
+      toast({ title: "Role Archived", description: "Role moved to archived list." });
+    } catch {
+      toast({ title: "Error", description: "Failed to archive role.", variant: "destructive" });
+    }
   };
 
   const handleViewUsers = (role: Role) => {
@@ -155,47 +180,57 @@ export function RoleManagement() {
     setShowViewUsersDialog(true);
   };
 
-  const handleSaveRole = () => {
+  const handleSaveRole = async () => {
     if (!newRole.name.trim()) {
       toast({ title: "Role name required", description: "Please enter a role name before saving." });
       return;
     }
 
-    if (editingRoleId) {
-      setRoles(
-        roles.map((role) =>
-          role.id === editingRoleId
-            ? {
-              ...role,
-              name: newRole.name,
-              description: newRole.description,
-              permissions: newRole.permissions,
-              expiresAt: newRole.hasExpiry ? newRole.expiresAt : undefined,
-            }
-            : role
-        )
-      );
-      toast({ title: "Role Updated", description: `${newRole.name} has been updated.` });
-    } else {
-      const createdRole: Role = {
-        id: `role-${Date.now()}`,
-        name: newRole.name,
-        description: newRole.description,
-        permissions: newRole.permissions,
-        status: "active",
-        isSystemRole: false,
-        usersCount: 0,
-        createdAt: new Date().toISOString().split("T")[0],
-        expiresAt: newRole.hasExpiry ? newRole.expiresAt : undefined,
-        isTemporary: newRole.hasExpiry,
-        clonedFrom: cloneFrom?.id,
-      };
-      setRoles([createdRole, ...roles]);
-      toast({ title: "Role Created", description: `${createdRole.name} has been created.` });
+    try {
+      if (editingRoleId) {
+        const payload = {
+          name: newRole.name,
+          description: newRole.description,
+          permissions: newRole.permissions,
+          expiresAt: newRole.hasExpiry ? newRole.expiresAt : undefined,
+        };
+        await rolesService.update(editingRoleId, payload);
+        
+        setRoles(
+          roles.map((role) =>
+            role.id === editingRoleId
+              ? { ...role, ...payload }
+              : role
+          )
+        );
+        toast({ title: "Role Updated", description: `${newRole.name} has been updated.` });
+      } else {
+        const payload = {
+          name: newRole.name,
+          description: newRole.description,
+          permissions: newRole.permissions,
+          status: "active",
+          isSystemRole: false,
+          isTemporary: newRole.hasExpiry,
+          expiresAt: newRole.hasExpiry ? newRole.expiresAt : undefined,
+          clonedFrom: cloneFrom?.id,
+        };
+        const createdData = await rolesService.create(payload);
+        const createdRole: Role = createdData?.id ? createdData : {
+          ...payload,
+          id: `role-${Date.now()}`,
+          usersCount: 0,
+          createdAt: new Date().toISOString().split("T")[0],
+        };
+        setRoles([createdRole, ...roles]);
+        toast({ title: "Role Created", description: `${createdRole.name} has been created.` });
+      }
+      setShowCreateDialog(false);
+      setEditingRoleId(null);
+      setCloneFrom(null);
+    } catch (error) {
+       toast({ title: "Error", description: "Failed to save role.", variant: "destructive" });
     }
-    setShowCreateDialog(false);
-    setEditingRoleId(null);
-    setCloneFrom(null);
   };
 
   const togglePermission = (module: string, permission: string) => {
@@ -298,8 +333,10 @@ export function RoleManagement() {
           Active Roles ({totalActiveRoles})
         </h3>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {activeRoles.map((role) => (
-            <Card key={role.id} className="hover:shadow-md transition-shadow">
+          {loading ? (
+             Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-48 w-full rounded-xl" />)
+          ) : activeRoles.map((role) => (
+              <Card key={role.id} className="hover:shadow-md transition-shadow">
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-2">
@@ -631,3 +668,5 @@ export function RoleManagement() {
     </div>
   );
 }
+
+
