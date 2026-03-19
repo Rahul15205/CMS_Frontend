@@ -45,6 +45,7 @@ import {
 } from "lucide-react";
 import { Invitation, InviteStatus } from "./types";
 import { useToast } from "@/hooks/use-toast";
+import { invitationsService, rolesService } from "@/services/userSetupService";
 
 const mockInvitations: Invitation[] = [
   {
@@ -95,7 +96,7 @@ const mockInvitations: Invitation[] = [
   },
 ];
 
-const availableRoles = ["Admin", "DPO", "Operator", "Viewer", "Compliance", "Auditor"];
+// Available roles loaded dynamically
 
 const getStatusIcon = (status: InviteStatus) => {
   switch (status) {
@@ -126,7 +127,9 @@ const getStatusBadge = (status: InviteStatus) => {
 };
 
 export function InvitationManagement() {
-  const [invitations, setInvitations] = useState<Invitation[]>(mockInvitations);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [availableRoles, setAvailableRoles] = useState<string[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [showInviteDialog, setShowInviteDialog] = useState(false);
@@ -153,6 +156,24 @@ export function InvitationManagement() {
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery, statusFilter, invitations.length]);
+  useEffect(() => {
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        const [invsResp, rolesResp] = await Promise.all([
+          invitationsService.getAll(),
+          rolesService.getAll()
+        ]);
+        if (invsResp && invsResp.data) setInvitations(invsResp.data);
+        if (rolesResp && rolesResp.data) setAvailableRoles(rolesResp.data.map((r: any) => r.name));
+      } catch (error) {
+        console.error("Failed to fetch data", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   const totalPages = Math.max(1, Math.ceil(filteredInvitations.length / itemsPerPage));
   const paginatedInvitations = filteredInvitations.slice(
@@ -202,6 +223,22 @@ export function InvitationManagement() {
       expiresAt: expiry.toISOString().slice(0, 16).replace("T", " "),
     }));
 
+
+    // Save to API
+    const saveInvitations = async () => {
+      try {
+        for (const invite of newInvites) {
+          await invitationsService.create({
+            email: invite.email,
+            role: invite.role,
+            expiresAt: invite.expiresAt
+          });
+        }
+      } catch (err) {
+        console.error("Failed to save to API", err);
+      }
+    };
+    saveInvitations();
     setInvitations((prev) => [...newInvites, ...prev]);
     setShowInviteDialog(false);
     setInviteData({

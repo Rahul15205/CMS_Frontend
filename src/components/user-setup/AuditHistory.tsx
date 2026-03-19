@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -39,6 +39,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { AuditLog } from "./types";
+import { auditLogsService } from "@/services/userSetupService";
 
 const mockAuditLogs: AuditLog[] = [
   {
@@ -177,11 +178,28 @@ const getCategoryBadge = (category: string) => {
 };
 
 export function AuditHistory() {
-  const [logs] = useState<AuditLog[]>(mockAuditLogs);
+  const [logs, setLogs] = useState<AuditLog[]>([]);
+  const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [showFilters, setShowFilters] = useState(false);
+  useEffect(() => {
+    const fetchLogs = async () => {
+      setLoading(true);
+      try {
+        const resp = await auditLogsService.getAll();
+        if (resp && resp.data) {
+          setLogs(resp.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch logs", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLogs();
+  }, []);
 
   const filteredLogs = logs.filter((log) => {
     const matchesSearch =

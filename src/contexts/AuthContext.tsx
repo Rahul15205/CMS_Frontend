@@ -8,7 +8,7 @@ import { handleApiError } from '@/lib/errorHandler';
 interface AuthContextType {
     isAuthenticated: boolean;
     isLoading: boolean;
-    user: { username: string; roleId: string } | null;
+    user: { username: string; name?: string; roleId: string; tenantName?: string; lastLogin?: string } | null;
     currentRole: Role | null;
     roles: Role[];
     setRoles: (roles: Role[]) => void;
@@ -22,7 +22,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [user, setUser] = useState<{ username: string; roleId: string } | null>(null);
+    const [user, setUser] = useState<{ username: string; name?: string; roleId: string; tenantName?: string; lastLogin?: string } | null>(null);
     const [currentRole, setCurrentRole] = useState<Role | null>(null);
 
     // Initialize roles from localStorage or fallback to mockRoles
@@ -54,9 +54,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
                     // Mock mode: restore from localStorage (existing behavior)
                     const storedAuth = localStorage.getItem('cms_auth_data');
                     if (storedAuth) {
-                        const { username, roleId } = JSON.parse(storedAuth);
+                        const { username, name, roleId, tenantName, lastLogin } = JSON.parse(storedAuth);
                         const role = roles.find(r => r.id === roleId) || roles[0];
-                        setUser({ username, roleId });
+                        setUser({ username, name, roleId, tenantName, lastLogin });
                         setCurrentRole(role);
                         setIsAuthenticated(true);
                     }
@@ -81,23 +81,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
                 // Use the provided roleId or default to first role
                 const selectedRoleId = roleId || result.user.roleId;
-                const userData = { username: result.user.username, roleId: selectedRoleId };
-
                 setRoles(result.roles);
-                setUser(userData);
+                setUser(result.user);
                 const role = result.roles.find(r => r.id === selectedRoleId) || result.roles[0];
                 setCurrentRole(role || null);
                 setIsAuthenticated(true);
 
                 // Store for backward compatibility with other components reading this
-                localStorage.setItem('cms_auth_data', JSON.stringify(userData));
+                localStorage.setItem('cms_auth_data', JSON.stringify(result.user));
             } else {
                 // Mock login (existing behavior)
                 if ((usernameOrEmail === 'admin' || usernameOrEmail === 'admin@cms.local') && password === 'Consent@2024') {
                     const selectedRoleId = roleId || roles[0].id;
                     const role = roles.find(r => r.id === selectedRoleId);
                     if (role) {
-                        const userData = { username: usernameOrEmail, roleId: selectedRoleId };
+                        const userData = { 
+                            username: usernameOrEmail, 
+                            name: 'System Administrator',
+                            roleId: selectedRoleId,
+                            tenantName: 'Proteccio AI',
+                            lastLogin: new Date().toISOString()
+                        };
                         localStorage.setItem('cms_auth_data', JSON.stringify(userData));
                         setUser(userData);
                         setCurrentRole(role);

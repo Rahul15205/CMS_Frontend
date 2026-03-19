@@ -182,14 +182,15 @@ export function WizardStepPurpose({ data, onChange }: WizardStepPurposeProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="purposeDesc" className="text-xs text-muted-foreground">
+          <Label htmlFor="purposeDesc" className={cn("text-xs text-muted-foreground", !newPurpose.name && "opacity-50")}>
             Purpose Description <span className="text-destructive">*</span>
           </Label>
           <Textarea
             id="purposeDesc"
-            placeholder="Clear, specific description of why this data is being collected..."
+            placeholder={newPurpose.name ? "Clear, specific description of why this data is being collected..." : "Enter purpose name first"}
             value={newPurpose.description}
             onChange={(e) => setNewPurpose({ ...newPurpose, description: e.target.value })}
+            disabled={!newPurpose.name}
             className="min-h-[80px]"
           />
           <p className="text-xs text-muted-foreground flex items-center gap-1">

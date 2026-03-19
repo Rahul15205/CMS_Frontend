@@ -57,7 +57,38 @@ export function ConsentTemplateWizard({ template, onSave, onCancel }: ConsentTem
     setFormData((prev) => ({ ...prev, ...updates }));
   };
 
+  const isStepValid = (step: number) => {
+    switch (step) {
+      case 1:
+        const hasBasicInfo = !!(formData.name && formData.description && formData.type && formData.regulations?.length);
+        const hasValidity = formData.noExpiry || !!formData.validityDuration;
+        if (!hasBasicInfo || !hasValidity) {
+          toast({
+            title: "Required Fields Missing",
+            description: "Please fill in all fields marked with * before proceeding.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        return true;
+      case 3:
+        if (!formData.purposes || formData.purposes.length === 0) {
+          toast({
+            title: "Purpose Required",
+            description: "Please add at least one purpose for data collection.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        return true;
+      default:
+        return true;
+    }
+  };
+
   const handleNext = () => {
+    if (!isStepValid(currentStep)) return;
+    
     if (currentStep < WIZARD_STEPS.length) {
       setCurrentStep((prev) => prev + 1);
     }
@@ -66,6 +97,22 @@ export function ConsentTemplateWizard({ template, onSave, onCancel }: ConsentTem
   const handlePrevious = () => {
     if (currentStep > 1) {
       setCurrentStep((prev) => prev - 1);
+    }
+  };
+
+  const handleStepClick = (stepId: number) => {
+    // If moving backward, allow it
+    if (stepId < currentStep) {
+      setCurrentStep(stepId);
+      return;
+    }
+    
+    // If moving forward, must validate current step first
+    if (stepId > currentStep) {
+      // If jumping more than 1 step forward, we still only validate the current one
+      // but the logic ensures you can't skip ahead without clearing the immediate hurdle
+      if (!isStepValid(currentStep)) return;
+      setCurrentStep(stepId);
     }
   };
 
@@ -78,6 +125,12 @@ export function ConsentTemplateWizard({ template, onSave, onCancel }: ConsentTem
   };
 
   const handlePublish = () => {
+    // Validate Step 1 and 3 one last time before publishing
+    if (!isStepValid(1) || !isStepValid(3)) {
+      setShowPreviewDialog(false);
+      return;
+    }
+
     onSave({ ...formData, status: "active" });
     toast({
       title: "Template Published",
@@ -152,7 +205,7 @@ export function ConsentTemplateWizard({ template, onSave, onCancel }: ConsentTem
           {WIZARD_STEPS.map((step) => (
             <button
               key={step.id}
-              onClick={() => setCurrentStep(step.id)}
+              onClick={() => handleStepClick(step.id)}
               className={cn(
                 "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium transition-colors",
                 currentStep === step.id

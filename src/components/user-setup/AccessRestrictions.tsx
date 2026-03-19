@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,7 @@ import {
   X,
 } from "lucide-react";
 import { AccessRule } from "./types";
+import { accessRulesService } from "@/services/userSetupService";
 import { useToast } from "@/hooks/use-toast";
 
 const mockRules: AccessRule[] = [
@@ -109,7 +110,8 @@ const getRuleTypeColor = (type: string) => {
 };
 
 export function AccessRestrictions() {
-  const [rules, setRules] = useState<AccessRule[]>(mockRules);
+  const [rules, setRules] = useState<AccessRule[]>([]);
+  const [loading, setLoading] = useState(false);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [editingRule, setEditingRule] = useState<AccessRule | null>(null);
   const [newRule, setNewRule] = useState({
@@ -126,21 +128,33 @@ export function AccessRestrictions() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
   const { toast } = useToast();
+  useEffect(() => {
+    const fetchRules = async () => {
+      setLoading(true);
+      try {
+        const resp = await accessRulesService.getAll();
+        if (resp && resp.data) {
+          setRules(resp.data);
+        }
+      } catch (error) {
+        console.error("Failed to fetch rules", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRules();
+  }, []);
 
-  const toggleRuleStatus = (ruleId: string) => {
-    setRules(
-      rules.map((rule) =>
-        rule.id === ruleId
-          ? { ...rule, status: rule.status === "active" ? "inactive" : "active" }
-          : rule
-      )
-    );
-    const updated = rules.find((rule) => rule.id === ruleId);
-    if (updated) {
-      toast({
-        title: "Rule Status Updated",
-        description: `${updated.name} set to ${updated.status === "active" ? "inactive" : "active"}.`,
-      });
+  const toggleRuleStatus = async (ruleId: string) => {
+    const rule = rules.find(r => r.id === ruleId);
+    if (!rule) return;
+    const newStatus = rule.status === 'active' ? 'inactive' : 'active';
+    try {
+      await accessRulesService.update(ruleId, { status: newStatus });
+      setRules(rules.map((r) => r.id === ruleId ? { ...r, status: newStatus } : r));
+      toast({ title: "Status Updated", description: `${rule.name} set to ${newStatus}.` });
+    } catch (err) {
+      toast({ title: "Error", description: "Failed to update rule on server", variant: "destructive" });
     }
   };
 
@@ -534,7 +548,7 @@ export function AccessRestrictions() {
                             timezone: newRule.timezone,
                             days: newRule.days,
                           }
-                          : { description: newRule.description },
+                          : {},
                 };
 
                 setRules((prev) =>

@@ -86,18 +86,22 @@ const getStatusBadge = (status: ConsentDeploymentType["status"]) => {
 interface DeploymentConfigFormProps {
   initialData?: Partial<ConsentDeploymentType>;
   templates: ConsentTemplate[];
+  applications: any[];
   onDeploy: (config: any) => void;
   onCancel: () => void;
   isLoading?: boolean;
 }
 
-function DeploymentConfigForm({ initialData, templates, onDeploy, onCancel, isLoading }: DeploymentConfigFormProps) {
+function DeploymentConfigForm({ initialData, templates, applications, onDeploy, onCancel, isLoading }: DeploymentConfigFormProps) {
   const [config, setConfig] = useState({
     templateId: initialData?.templateId || templates[0]?.id || "",
+    applicationId: initialData?.applicationId || applications[0]?.id || "",
     deploymentMode: initialData?.deploymentMode || "manual",
     activationDate: initialData?.activationDate || "",
     region: initialData?.region || "India",
-    platform: initialData?.platform?.split(", ") || ["Web"],
+    platform: Array.isArray(initialData?.platform) 
+      ? initialData?.platform 
+      : (initialData?.platform as any)?.split?.(", ") || ["Web"],
     userSegment: initialData?.userSegment || "All Users",
     approvalRequired: initialData?.approvalRequired ?? true,
     rollbackAllowed: initialData?.rollbackAllowed ?? true,
@@ -109,23 +113,47 @@ function DeploymentConfigForm({ initialData, templates, onDeploy, onCancel, isLo
   return (
     <div className="space-y-6 py-2">
       <div className="grid gap-6">
-        <div className="space-y-3">
-          <Label htmlFor="templateId" className="text-sm font-semibold">Consent Template</Label>
-          <Select
-            value={config.templateId}
-            onValueChange={(value) => setConfig({ ...config, templateId: value })}
-          >
-            <SelectTrigger id="templateId">
-              <SelectValue placeholder="Select consent template" />
-            </SelectTrigger>
-            <SelectContent>
-              {templates.map((template) => (
-                <SelectItem key={template.id} value={template.id}>
-                  {template.name} (v{template.version})
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-3">
+            <Label htmlFor="templateId" className="text-sm font-semibold">Consent Template</Label>
+            <Select
+              value={config.templateId}
+              onValueChange={(value) => setConfig({ ...config, templateId: value })}
+            >
+              <SelectTrigger id="templateId">
+                <SelectValue placeholder="Select template" />
+              </SelectTrigger>
+              <SelectContent>
+                {templates.map((template) => (
+                  <SelectItem key={template.id} value={template.id}>
+                    {template.name} (v{template.version})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-3">
+            <Label htmlFor="applicationId" className="text-sm font-semibold">Target Application</Label>
+            <Select
+              value={config.applicationId}
+              onValueChange={(value) => setConfig({ ...config, applicationId: value })}
+            >
+              <SelectTrigger id="applicationId">
+                <SelectValue placeholder="Select application" />
+              </SelectTrigger>
+              <SelectContent>
+                {applications.map((app) => (
+                  <SelectItem key={app.id} value={app.id}>
+                    {app.name}
+                  </SelectItem>
+                ))}
+                {applications.length === 0 && (
+                  <SelectItem value="none" disabled>No applications found</SelectItem>
+                )}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -189,7 +217,7 @@ function DeploymentConfigForm({ initialData, templates, onDeploy, onCancel, isLo
             <Label className="text-xs font-medium">Platform</Label>
             <Select
               value={config.platform.join(", ")}
-              onValueChange={(v) => setConfig({ ...config, platform: [v] })}
+              onValueChange={(v) => setConfig({ ...config, platform: v.split(", ") })}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Platform" />
@@ -259,6 +287,11 @@ export function ConsentDeployment({ templates }: ConsentDeploymentProps) {
     queryFn: () => consentService.getDeployments(),
   });
 
+  const { data: appsData } = useQuery({
+    queryKey: ['applications-list'],
+    queryFn: () => consentService.getApplications({ limit: 100 }),
+  });
+
   const { data: logsData, isLoading: isLogsLoading } = useQuery({
     queryKey: ['deployment-logs'],
     queryFn: async () => {
@@ -280,27 +313,35 @@ export function ConsentDeployment({ templates }: ConsentDeploymentProps) {
   const deployMutation = useMutation({
     mutationFn: (config: any) => {
       const selected = templates.find(t => t.id === config.templateId);
+      
+      if (!selected?.latestVersionId) {
+        throw new Error("This template has no published versions. Please publish a version before deploying.");
+      }
+
       const payload = {
         ...config,
-        templateName: selected?.name || "Unknown",
-        versionId: selected?.version || "1.0",
-        applicationId: "app-default",
+        templateName: selected.name,
+        versionId: selected.latestVersionId,
         isActive: true,
       };
       
       if (editingDeployment) {
-        // Update logic if existing
-        return consentService.createDeployment(payload); // Placeholder for update
+        // ... update logic
       }
       return consentService.createDeployment(payload);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['consent-deployments'] });
-      toast({ title: "Success", description: "Deployment processed." });
+      toast({ title: "Success", description: "Deployment rollout successful." });
       setShowConfigDialog(false);
+      setEditingDeployment(null);
     },
     onError: (err: any) => {
-      toast({ title: "Error", description: err.message, variant: "destructive" });
+      toast({ 
+        title: "Deployment Failed", 
+        description: err.response?.data?.message?.[0] || err.message || "An unexpected error occurred.", 
+        variant: "destructive" 
+      });
     }
   });
 
@@ -459,6 +500,7 @@ export function ConsentDeployment({ templates }: ConsentDeploymentProps) {
           </DialogHeader>
           <DeploymentConfigForm
             templates={templates}
+            applications={appsData?.data || []}
             initialData={editingDeployment || undefined}
             onDeploy={deployMutation.mutate}
             onCancel={() => setShowConfigDialog(false)}

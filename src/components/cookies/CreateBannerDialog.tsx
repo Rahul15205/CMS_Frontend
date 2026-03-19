@@ -17,14 +17,14 @@ export function CreateBannerDialog({ open, onOpenChange, onSave }: CreateBannerD
         name: "",
         theme: "bg-primary",
         language: "en",
-        position: "bottom"
+        position: "BOTTOM"
     });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         onSave({
             ...formData,
-            status: "Draft",
+            status: "DRAFT",
             lastModified: "Just now"
         });
         onOpenChange(false);
@@ -33,7 +33,7 @@ export function CreateBannerDialog({ open, onOpenChange, onSave }: CreateBannerD
             name: "",
             theme: "bg-primary",
             language: "en",
-            position: "bottom"
+            position: "BOTTOM"
         });
     };
 
@@ -97,10 +97,10 @@ export function CreateBannerDialog({ open, onOpenChange, onSave }: CreateBannerD
                                     <SelectValue placeholder="Select position" />
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="bottom">Bottom Bar</SelectItem>
-                                    <SelectItem value="top">Top Bar</SelectItem>
-                                    <SelectItem value="center">Center Modal</SelectItem>
-                                    <SelectItem value="corner">Bottom Corner</SelectItem>
+                                    <SelectItem value="BOTTOM">Bottom Bar</SelectItem>
+                                    <SelectItem value="TOP">Top Bar</SelectItem>
+                                    <SelectItem value="CENTER">Center Modal</SelectItem>
+                                    <SelectItem value="CORNER">Bottom Corner</SelectItem>
                                 </SelectContent>
                             </Select>
                         </div>

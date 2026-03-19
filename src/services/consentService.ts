@@ -17,13 +17,26 @@ function mapBackendTemplate(backendTemplate: any): ConsentTemplate {
     id: backendTemplate.id,
     name: backendTemplate.title || wizardFields.name || '',
     description: backendTemplate.description || wizardFields.description || '',
-    status: (backendTemplate.status?.toLowerCase() || 'draft') as TemplateStatus,
+    status: (backendTemplate.status?.toLowerCase() === 'published' ? 'active' : (backendTemplate.status?.toLowerCase() || 'draft')) as TemplateStatus,
     type: (backendTemplate.type?.toLowerCase() || wizardFields.type || 'explicit') as ConsentType,
+    noExpiry: backendTemplate.noExpiry !== undefined ? backendTemplate.noExpiry : wizardFields.noExpiry,
+    ageThreshold: backendTemplate.ageThreshold !== undefined ? backendTemplate.ageThreshold : wizardFields.ageThreshold,
+    consentGivenBy: (backendTemplate.consentGivenBy?.toLowerCase() || wizardFields.consentGivenBy || 'self') as any,
+    mechanism: (backendTemplate.mechanism?.toLowerCase() || wizardFields.mechanism || 'checkbox') as any,
+    separateConsents: backendTemplate.separateConsents !== undefined ? backendTemplate.separateConsents : wizardFields.separateConsents,
+    withdrawVisible: backendTemplate.withdrawVisible !== undefined ? backendTemplate.withdrawVisible : wizardFields.withdrawVisible,
+    dataSharing: backendTemplate.dataSharing !== undefined ? backendTemplate.dataSharing : wizardFields.dataSharing,
+    privacyNoticeRef: backendTemplate.privacyNoticeRef || wizardFields.privacyNoticeRef || '',
+    auditTrailEnabled: backendTemplate.auditTrailEnabled !== undefined ? backendTemplate.auditTrailEnabled : wizardFields.auditTrailEnabled,
+    defaultLanguage: backendTemplate.defaultLanguage || wizardFields.defaultLanguage || 'en',
+    supportedLanguages: backendTemplate.supportedLanguages || wizardFields.supportedLanguages || ['en'],
     createdAt: backendTemplate.createdAt,
     updatedAt: backendTemplate.updatedAt,
+    latestVersionId: backendTemplate.versions?.[0]?.id,
     createdBy: backendTemplate.creator?.name || backendTemplate.createdBy || 'System',
-    // Ensure arrays exist even if not in wizardFields
-    regulations: (backendTemplate.regulations || wizardFields.regulations || []).map((r: string) => r.toLowerCase()),
+    // Ensure arrays exist and are mapped to lowercase
+    regulations: (backendTemplate.regulations || wizardFields.regulations || []).map((r: string) => r.toLowerCase() as any),
+    targetUserCategory: (backendTemplate.targetUserCategory || wizardFields.targetUserCategory || []).map((c: string) => c.toLowerCase()),
     purposes: wizardFields.purposes || [],
     dataCategories: wizardFields.dataCategories || [],
     thirdParties: wizardFields.thirdParties || [],
@@ -72,7 +85,9 @@ function mapBackendDeployment(backendDeployment: any): ConsentDeployment {
     isActive: backendDeployment.isActive,
     activationDate: backendDeployment.activationDate || backendDeployment.deployedAt,
     region: backendDeployment.region || 'Global',
-    platform: backendDeployment.platform || 'Web',
+    platform: Array.isArray(backendDeployment.platform) 
+      ? backendDeployment.platform 
+      : (backendDeployment.platform ? [backendDeployment.platform] : ['Web']),
     userSegment: backendDeployment.userSegment || 'All Users',
     deployedBy: backendDeployment.deployedBy || 'System',
     deployedAt: backendDeployment.deployedAt,
@@ -173,6 +188,25 @@ export const consentService = {
   },
 
   /**
+   * Publish a new version of a template (creates a snapshot).
+   */
+  publishVersion: async (templateId: string, wizardFields: any): Promise<ConsentVersion> => {
+    if (!FEATURE_FLAGS.consent) {
+      return { id: 'mock-v-' + Date.now() } as any;
+    }
+
+    const payload = {
+      templateId,
+      content: JSON.stringify(wizardFields),
+      changeSummary: 'Initial version created during publication',
+      effectiveFrom: new Date().toISOString(),
+    };
+
+    const res = await api.post('/api/consent-versions', payload);
+    return res.data;
+  },
+
+  /**
    * Save a template (Create or Update).
    */
   saveTemplate: async (template: Partial<ConsentTemplate>): Promise<ConsentTemplate> => {
@@ -180,22 +214,55 @@ export const consentService = {
       return template as ConsentTemplate;
     }
 
+    const status = template.status?.toUpperCase();
+    
+    // Map enums to UPPERCASE for backend columns
     const payload = {
       title: template.name,
       description: template.description,
-      status: template.status?.toUpperCase(),
-      wizardFields: template, // Send the whole object as wizardFields
+      status: status === 'ACTIVE' ? 'PUBLISHED' : status,
+      type: template.type?.toUpperCase(),
+      regulations: template.regulations?.map(r => r.toUpperCase()),
+      noExpiry: template.noExpiry,
+      targetUserCategory: template.targetUserCategory?.map(c => c.toUpperCase()),
+      ageThreshold: template.ageThreshold,
+      consentGivenBy: template.consentGivenBy?.toUpperCase(),
+      mechanism: template.mechanism?.toUpperCase(),
+      separateConsents: template.separateConsents,
+      withdrawVisible: template.withdrawVisible,
+      dataSharing: template.dataSharing,
+      privacyNoticeRef: template.privacyNoticeRef,
+      auditTrailEnabled: template.auditTrailEnabled,
+      defaultLanguage: template.defaultLanguage,
+      supportedLanguages: template.supportedLanguages,
+      wizardFields: template, // Keep everything in wizardFields for backward compatibility
     };
 
+    let result: ConsentTemplate;
     if (template.id && !template.id.startsWith('tpl-')) {
       // Update
       const res = await api.put(`/api/consent-templates/${template.id}`, payload);
-      return mapBackendTemplate(res.data);
+      result = mapBackendTemplate(res.data);
     } else {
       // Create
       const res = await api.post('/api/consent-templates', payload);
-      return mapBackendTemplate(res.data);
+      result = mapBackendTemplate(res.data);
     }
+
+    // AUTO-PUBLISH: If the user hit "Publish" (status active), also create a version snapshot
+    if (status === 'ACTIVE' && result.id) {
+       try {
+         await consentService.publishVersion(result.id, template);
+         // Refetch to get the latestVersionId populated
+         const refetched = await consentService.getTemplates({ limit: 1 });
+         const updated = refetched.data.find(t => t.id === result.id);
+         if (updated) result = updated;
+       } catch (err) {
+         console.error("Failed to auto-publish version:", err);
+       }
+    }
+
+    return result;
   },
 
   /**
@@ -270,7 +337,14 @@ export const consentService = {
       return data as ConsentDeployment;
     }
 
-    const res = await api.post('/api/consent-deployments', data);
+    const payload = {
+      ...data,
+      deploymentMode: data.deploymentMode?.toUpperCase(),
+      activationDate: data.activationDate || undefined, // Send undefined if empty string
+      platform: Array.isArray(data.platform) ? data.platform.map((p: string) => p.trim()) : data.platform,
+    };
+
+    const res = await api.post('/api/consent-deployments', payload);
     return mapBackendDeployment(res.data);
   },
 
@@ -296,7 +370,9 @@ export const consentService = {
         templates: { total: 0, byStatus: {}, byType: {} },
         records: { total: 0, byStatus: {} },
         deployments: { total: 0, byStatus: {} },
-        crossAppUsage: { byApplicationType: {} }
+        crossAppUsage: { byApplicationType: {} },
+        reconsentData: [],
+        fatigueIndicators: []
       };
     }
 
@@ -370,6 +446,18 @@ export const consentService = {
     }
 
     const res = await api.post('/api/consent/system-configs', config);
+    return res.data;
+  },
+
+  /**
+   * Fetch all managed applications.
+   */
+  getApplications: async (params?: { limit?: number; offset?: number }): Promise<{ data: any[]; total: number }> => {
+    if (!FEATURE_FLAGS.consent) {
+      return { data: [{ id: 'app-default', name: 'Mock Application' }], total: 1 };
+    }
+
+    const res = await api.get('/api/applications', { params });
     return res.data;
   },
 };

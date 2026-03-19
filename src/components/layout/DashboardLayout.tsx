@@ -1,4 +1,4 @@
-import { ReactNode, useState } from "react";
+import { ReactNode, useState, useEffect } from "react";
 import { AppSidebar, SidebarContent } from "./AppSidebar";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "@/components/dashboard/ThemeToggle";
@@ -30,6 +30,8 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { securityService } from "@/services/reportsLogsSecurityService";
+import { formatDistanceToNow } from "date-fns";
 
 interface DashboardLayoutProps {
   children: ReactNode;
@@ -38,6 +40,7 @@ interface DashboardLayoutProps {
   actions?: ReactNode;
   showCustomizer?: boolean;
   showUserProfile?: boolean;
+  onSearch?: (query: string) => void;
 }
 
 export function DashboardLayout({
@@ -47,10 +50,38 @@ export function DashboardLayout({
   actions,
   showCustomizer = true,
   showUserProfile = true,
+  onSearch,
 }: DashboardLayoutProps) {
   const { sidebarCollapsed } = useDashboard();
   const navigate = useNavigate();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [loadingNotifications, setLoadingNotifications] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
+    if (onSearch) {
+      onSearch(value);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    setLoadingNotifications(true);
+    try {
+      const res = await securityService.getEvents({ limit: 5 });
+      setNotifications(res?.data || []);
+    } catch (error) {
+      console.error("Failed to fetch notifications:", error);
+    } finally {
+      setLoadingNotifications(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchNotifications();
+  }, []);
 
   return (
     <main
@@ -91,8 +122,10 @@ export function DashboardLayout({
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search consents, requests, users..."
+                placeholder="Search..."
                 className="pl-10 h-9 bg-muted/50 border-2 border-border/60 focus-visible:ring-1"
+                value={searchQuery}
+                onChange={handleSearch}
               />
             </div>
           </div>
@@ -134,17 +167,47 @@ export function DashboardLayout({
               </DropdownMenuContent>
             </DropdownMenu>
 
-            <Tooltip>
-              <TooltipTrigger asChild>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative h-9 w-9">
                   <Bell className="h-4 w-4" />
-                  <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-destructive">
-                    3
-                  </Badge>
+                  {notifications.length > 0 && (
+                    <Badge className="absolute -top-1 -right-1 h-4 w-4 p-0 flex items-center justify-center text-[10px] bg-destructive animate-pulse">
+                      {notifications.length}
+                    </Badge>
+                  )}
                 </Button>
-              </TooltipTrigger>
-              <TooltipContent>Notifications</TooltipContent>
-            </Tooltip>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-80">
+                <div className="p-3 border-b border-border flex items-center justify-between">
+                  <span className="font-semibold text-sm">Notifications</span>
+                  <Badge variant="secondary" className="text-xs">{notifications.length} Unread</Badge>
+                </div>
+                <div className="max-h-80 overflow-y-auto">
+                  {loadingNotifications ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">Loading...</div>
+                  ) : notifications.length === 0 ? (
+                    <div className="p-4 text-center text-sm text-muted-foreground">No new notifications</div>
+                  ) : (
+                    notifications.map((item) => (
+                      <DropdownMenuItem key={item.id} className="flex flex-col items-start gap-1 p-3 border-b border-border/50 cursor-pointer">
+                        <div className="flex items-center gap-2">
+                           <span className={cn("h-2 w-2 rounded-full", item.severity === 'CRITICAL' ? "bg-destructive" : item.severity === 'WARNING' ? "bg-warning" : "bg-blue-500")} />
+                           <span className="font-medium text-xs truncate max-w-[240px]">{item.action}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate max-w-full">{item.user?.email || "System"}</p>
+                        <span className="text-[10px] text-muted-foreground">
+                          {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                        </span>
+                      </DropdownMenuItem>
+                    ))
+                  )}
+                </div>
+                <div className="p-2 text-center border-t border-border">
+                  <Button variant="ghost" size="sm" className="text-xs w-full h-8" onClick={() => navigate("/logs")}>View All Notifications</Button>
+                </div>
+              </DropdownMenuContent>
+            </DropdownMenu>
 
             <div className="hidden sm:block">
               <Tooltip>

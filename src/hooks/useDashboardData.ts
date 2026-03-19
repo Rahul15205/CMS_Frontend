@@ -61,14 +61,16 @@ export function useDashboardData() {
     rightsByType: rightsByTypeQuery.data?.data || [],
     isLoadingCharts: consentChartQuery.isLoading || trendsQuery.isLoading || consentByTypeQuery.isLoading || rightsByTypeQuery.isLoading,
     isError: kpisQuery.isError || alertsQuery.isError || recentActivityQuery.isError || trendsQuery.isError || rightsByTypeQuery.isError,
-    refetchAll: () => {
-      kpisQuery.refetch();
-      alertsQuery.refetch();
-      recentActivityQuery.refetch();
-      consentChartQuery.refetch();
-      trendsQuery.refetch();
-      consentByTypeQuery.refetch();
-      rightsByTypeQuery.refetch();
+    refetchAll: async () => {
+      await Promise.all([
+        kpisQuery.refetch(),
+        alertsQuery.refetch(),
+        recentActivityQuery.refetch(),
+        consentChartQuery.refetch(),
+        trendsQuery.refetch(),
+        consentByTypeQuery.refetch(),
+        rightsByTypeQuery.refetch(),
+      ]);
     }
   };
 }

@@ -321,7 +321,7 @@ interface UserManagementProps {
 }
 
 export function UserManagement({ onEditUser }: UserManagementProps) {
-  const [users, setUsers] = useState<User[]>(mockUsers);
+  const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -375,9 +375,15 @@ export function UserManagement({ onEditUser }: UserManagementProps) {
     const fetchUsers = async () => {
       setLoading(true);
       try {
-        const data = await usersService.getAll();
-        if (data && data.length > 0) {
-          setUsers(data);
+        const response = await usersService.getAll();
+        if (response && response.data) {
+          const mappedUsers: User[] = response.data.map((user: any) => ({
+            ...user,
+            roles: user.roles?.map((r: any) => r.role?.name || r.name || r) || [],
+            status: user.status?.toLowerCase() || 'pending',
+            accountType: user.accountType?.toLowerCase() || 'internal',
+          }));
+          setUsers(mappedUsers);
         }
       } catch (error) {
         console.error("Failed to fetch users", error);

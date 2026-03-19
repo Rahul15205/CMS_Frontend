@@ -176,13 +176,23 @@ export interface AuditLog {
   severity?: 'info' | 'warning' | 'critical';
 }
 
+export interface AccessRuleConditions {
+  ips?: string[];
+  countries?: string[];
+  startHour?: number;
+  endHour?: number;
+  timezone?: string;
+  days?: string[];
+  vpnRequired?: boolean;
+}
+
 export interface AccessRule {
   id: string;
   name: string;
   type: 'ip' | 'geo' | 'time' | 'device' | 'custom' | 'risk';
   status: 'active' | 'inactive';
   description: string;
-  conditions: Record<string, unknown>;
+  conditions: AccessRuleConditions;
   // Enterprise fields
   tenantId?: string;
   priority?: number;

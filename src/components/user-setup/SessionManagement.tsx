@@ -119,7 +119,7 @@ const getDeviceIcon = (device: string) => {
 };
 
 export function SessionManagement() {
-  const [sessions, setSessions] = useState<Session[]>(mockSessions);
+  const [sessions, setSessions] = useState<Session[]>([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [confirmAction, setConfirmAction] = useState<{
@@ -147,8 +147,10 @@ export function SessionManagement() {
       setLoading(true);
       try {
         const data = await sessionsService.getAll();
-        if (data && data.length > 0) {
+        if (data && Array.isArray(data)) {
           setSessions(data);
+        } else if (data && data.data) {
+          setSessions(data.data);
         }
       } catch (error) {
         console.error("Failed to fetch sessions", error);
@@ -166,10 +168,10 @@ export function SessionManagement() {
   );
 
   const activeSessions = filteredSessions.filter(
-    (s) => new Date(s.lastActivity) > new Date(Date.now() - 30 * 60 * 1000)
+    (s) => s.isCurrentSession || new Date(s.lastActivity) > new Date(Date.now() - 30 * 60 * 1000)
   );
   const idleSessions = filteredSessions.filter(
-    (s) => new Date(s.lastActivity) <= new Date(Date.now() - 30 * 60 * 1000)
+    (s) => !s.isCurrentSession && new Date(s.lastActivity) <= new Date(Date.now() - 30 * 60 * 1000)
   );
 
   const uniqueUsers = new Set(sessions.map((s) => s.userId)).size;
@@ -295,7 +297,7 @@ export function SessionManagement() {
             ) : (
               paginatedSessions.map((session) => {
                 const isActive =
-                  new Date(session.lastActivity) > new Date(Date.now() - 30 * 60 * 1000);
+                  session.isCurrentSession || new Date(session.lastActivity) > new Date(Date.now() - 30 * 60 * 1000);
                 const isSuspicious = session.location === "Unknown";
 
               return (

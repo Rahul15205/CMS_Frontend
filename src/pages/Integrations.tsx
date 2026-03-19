@@ -210,10 +210,10 @@ export default function Integrations() {
           lastSync: item.lastSync ? new Date(item.lastSync).toLocaleString() : "Never",
           apiCalls: item.syncLogs?.length || 0, // Fallback mapping
           icon: item.icon || "🔗", 
-          baseUrl: item.baseUrl || "",
-          authMethod: item.authMethod || "api_key",
-          syncFrequency: item.syncFrequency || "daily",
-          description: item.description || "",
+          baseUrl: item.config?.baseUrl || "",
+          authMethod: item.config?.authMethod || "api_key",
+          syncFrequency: item.config?.syncFrequency || "daily",
+          description: item.config?.description || "",
         }));
         setIntegrationsList(mapped);
       } else if (intData && Array.isArray(intData)) {
@@ -225,10 +225,10 @@ export default function Integrations() {
           lastSync: item.lastSync ? new Date(item.lastSync).toLocaleString() : "Never",
           apiCalls: item.syncLogs?.length || 0, 
           icon: item.icon || "🔗", 
-          baseUrl: item.baseUrl || "",
-          authMethod: item.authMethod || "api_key",
-          syncFrequency: item.syncFrequency || "daily",
-          description: item.description || "",
+          baseUrl: item.config?.baseUrl || "",
+          authMethod: item.config?.authMethod || "api_key",
+          syncFrequency: item.config?.syncFrequency || "daily",
+          description: item.config?.description || "",
         }));
         setIntegrationsList(mapped);
       }
@@ -386,13 +386,15 @@ export default function Integrations() {
     try {
         const created = await integrationsService.create({
             name: data.name,
-            type: data.type,
+            type: data.type.toUpperCase().replace(/\s+/g, '_'),
             icon: data.icon,
-            baseUrl: data.baseUrl,
-            authMethod: data.authMethod,
-            syncFrequency: data.syncFrequency,
-            description: data.description,
-            status: "connected"
+            config: {
+                baseUrl: data.baseUrl,
+                authMethod: data.authMethod,
+                syncFrequency: data.syncFrequency,
+                description: data.description,
+            },
+            status: "CONNECTED"
         });
         
         const newIntegration: Integration = {
@@ -403,10 +405,10 @@ export default function Integrations() {
           lastSync: "Just now",
           apiCalls: 0,
           icon: created.icon || data.icon,
-          baseUrl: created.baseUrl,
-          authMethod: created.authMethod,
-          syncFrequency: created.syncFrequency,
-          description: created.description,
+          baseUrl: created.config?.baseUrl || data.baseUrl,
+          authMethod: created.config?.authMethod || data.authMethod,
+          syncFrequency: created.config?.syncFrequency || data.syncFrequency,
+          description: created.config?.description || data.description,
         };
         setIntegrationsList((prev) => [...prev, newIntegration]);
         toast({ title: "Success", description: "Integration added successfully." });
@@ -434,20 +436,19 @@ export default function Integrations() {
           </Tooltip>
         }
       >
-        {/* ─── KPI Cards ─────────────────────────────────────── */}
         <PageSection className="mb-8">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <KPICard
               title="Active Integrations"
-              value={isLoading ? "..." : (metrics?.connectedCount ?? connectedCount).toString()}
+              value={isLoading ? "..." : (metrics?.connectedCount || connectedCount).toString()}
               icon={<Plug className="h-6 w-6" />}
               variant="success"
             />
             <KPICard
               title="Failed Connections"
-              value={isLoading ? "..." : (metrics?.failedCount ?? failedCount).toString()}
+              value={isLoading ? "..." : (metrics?.failedCount || failedCount).toString()}
               icon={<XCircle className="h-6 w-6" />}
-              variant={(metrics?.failedCount ?? failedCount) > 0 ? "destructive" : "default"}
+              variant={(metrics?.failedCount || failedCount) > 0 ? "destructive" : "default"}
             />
             <KPICard
               title="API Calls (Overall)"
@@ -520,26 +521,6 @@ export default function Integrations() {
                     </>
                   )}
                 </Button>
-              </div>
-
-              <div className="mt-6 pt-6 border-t border-border">
-                <h4 className="text-sm font-semibold text-foreground mb-3">
-                  Webhook Activity
-                </h4>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Sent (24h)</span>
-                    <span className="font-medium text-success">1,234</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Failed (24h)</span>
-                    <span className="font-medium text-destructive">12</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Pending</span>
-                    <span className="font-medium text-warning">5</span>
-                  </div>
-                </div>
               </div>
             </div>
           </div>

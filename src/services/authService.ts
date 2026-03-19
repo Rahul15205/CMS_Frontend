@@ -27,6 +27,7 @@ export interface BackendUser {
   permissions: Record<string, Record<string, boolean>>;
   tenantId?: string;
   tenantName?: string;
+  tenant?: string | { id: string; name: string };
   mfaEnabled?: boolean;
   lastLogin?: string;
 }
@@ -110,7 +111,7 @@ export const authService = {
    * Returns tokens + user with mapped roles.
    */
   login: async (email: string, password: string): Promise<{
-    user: { username: string; roleId: string };
+    user: { username: string; name?: string; roleId: string; tenantName?: string; lastLogin?: string };
     roles: Role[];
     accessToken: string;
     refreshToken: string;
@@ -149,8 +150,11 @@ export const authService = {
 
     return {
       user: {
-        username: user.name || user.email,
+        username: user.email,
+        name: user.name,
         roleId: mappedRoles.length > 0 ? mappedRoles[0].id : '',
+        tenantName: typeof user.tenant === 'object' ? user.tenant.name : user.tenant || user.tenantName,
+        lastLogin: user.lastLogin,
       },
       roles: mappedRoles,
       accessToken,
@@ -177,7 +181,7 @@ export const authService = {
    * Called on app initialization to restore auth state.
    */
   getProfile: async (): Promise<{
-    user: { username: string; roleId: string };
+    user: { username: string; name?: string; roleId: string; tenantName?: string; lastLogin?: string };
     roles: Role[];
   } | null> => {
     if (!FEATURE_FLAGS.auth) {
@@ -206,8 +210,11 @@ export const authService = {
 
       return {
         user: {
-          username: user.name || user.email,
+          username: user.email,
+          name: user.name,
           roleId: mappedRoles.length > 0 ? mappedRoles[0].id : '',
+          tenantName: typeof user.tenant === 'object' ? user.tenant.name : user.tenant || user.tenantName,
+          lastLogin: user.lastLogin,
         },
         roles: mappedRoles,
       };

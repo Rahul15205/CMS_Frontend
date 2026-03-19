@@ -32,6 +32,9 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { AddPurposeDialog } from "@/components/configurations/AddPurposeDialog";
+import { CreateTemplateDialog } from "@/components/configurations/CreateTemplateDialog";
+import { AddLanguageDialog } from "@/components/notices/AddLanguageDialog";
 import {
     Dialog,
     DialogContent,
@@ -62,7 +65,8 @@ import { useToast } from "@/hooks/use-toast";
 import { 
     purposesService, 
     workflowConfigsService, 
-    languagesService 
+    languagesService,
+    consentTemplatesService
 } from "@/services/configurationsService";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -74,28 +78,28 @@ export default function Configurations() {
     const [workflowItems, setWorkflowItems] = useState<any[]>([]);
     const [languageItems, setLanguageItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+
+    const [showAddPurpose, setShowAddPurpose] = useState(false);
+    const [showCreateTemplate, setShowCreateTemplate] = useState(false);
+    const [showAddLanguage, setShowAddLanguage] = useState(false);
     const { toast } = useToast();
 
     const fetchData = useCallback(async () => {
         setLoading(true);
         try {
-            const [purposes, workflows, languages] = await Promise.all([
+            const [purposes, workflows, languages, templatesData] = await Promise.all([
                 purposesService.getAll(),
                 workflowConfigsService.getAll(),
-                languagesService.getAll()
+                languagesService.getAll(),
+                consentTemplatesService.getAll()
             ]);
             
             setPurposeItems(purposes || []);
             setWorkflowItems(workflows || []);
             setLanguageItems(languages || []);
             
-            // Templates are still mock for now in the UI
-            setTemplateItems([
-                { id: 1, name: "Standard Consent", type: "Consent Collection", active: true },
-                { id: 2, name: "Marketing Opt-In", type: "Consent Collection", active: true },
-                { id: 3, name: "Data Access Request", type: "Rights Request", active: true },
-                { id: 4, name: "Data Deletion Request", type: "Rights Request", active: true },
-            ]);
+            const templatesList = Array.isArray(templatesData) ? templatesData : (templatesData?.data || []);
+            setTemplateItems(templatesList);
         } catch (error) {
             console.error("Error fetching configurations:", error);
             toast({
@@ -111,6 +115,36 @@ export default function Configurations() {
     useEffect(() => {
         fetchData();
     }, [fetchData]);
+
+    const handleAddPurpose = async (data: any) => {
+        try {
+            const created = await purposesService.create(data);
+            setPurposeItems((prev) => [...prev, created]);
+            toast({ title: "Purpose Added", description: `${data.name} created.` });
+        } catch (e) {
+            toast({ title: "Error", description: "Failed to create purpose.", variant: "destructive" });
+        }
+    };
+
+    const handleCreateTemplate = async (data: any) => {
+        try {
+            const created = await consentTemplatesService.create(data);
+            setTemplateItems((prev) => [created, ...prev]);
+            toast({ title: "Template Created", description: `${data.title} is ready for use.` });
+        } catch (e) {
+            toast({ title: "Error", description: "Failed to create template.", variant: "destructive" });
+        }
+    };
+
+    const handleAddLanguage = async (data: any) => {
+        try {
+            const created = await languagesService.create({ ...data, enabled: true });
+            setLanguageItems((prev) => [...prev, created]);
+            toast({ title: "Language Added", description: `${data.name} added successfully.` });
+        } catch (e) {
+            toast({ title: "Error", description: "Failed to add language.", variant: "destructive" });
+        }
+    };
 
     const activePurposes = purposeItems.filter(p => p.active).length;
 
@@ -199,17 +233,7 @@ export default function Configurations() {
                                     variant="outline"
                                     size="sm"
                                     disabled={loading}
-                                    onClick={async () => {
-                                        const nextId = Math.max(...purposeItems.map((item) => item.id), 0) + 1;
-                                        const newPurpose = { id: nextId, name: `New Purpose ${nextId}`, active: true, consents: 0 };
-                                        try {
-                                            const created = await purposesService.create(newPurpose);
-                                            setPurposeItems((prev) => [...prev, created]);
-                                            toast({ title: "Purpose Added", description: `New Purpose ${nextId} created.` });
-                                        } catch (e) {
-                                            toast({ title: "Error", description: "Failed to create purpose.", variant: "destructive" });
-                                        }
-                                    }}
+                                    onClick={() => setShowAddPurpose(true)}
                                 >
                                     <Plus className="h-4 w-4 mr-2" />
                                     Add Purpose
@@ -271,17 +295,7 @@ export default function Configurations() {
                                 <Button
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => {
-                                        const nextId = Math.max(...templateItems.map((item) => item.id), 0) + 1;
-                                        const newTemplate = {
-                                            id: nextId,
-                                            name: `Custom Template ${nextId}`,
-                                            type: "Consent Collection",
-                                            active: true,
-                                        };
-                                        setTemplateItems((prev) => [newTemplate, ...prev]);
-                                        toast({ title: "Template Added", description: `${newTemplate.name} created.` });
-                                    }}
+                                    onClick={() => setShowCreateTemplate(true)}
                                 >
                                     <Plus className="h-4 w-4 mr-2" />
                                     Create Template
@@ -299,7 +313,7 @@ export default function Configurations() {
                                                 <FileText className="h-4 w-4" />
                                             </div>
                                             <div>
-                                                <p className="font-medium text-foreground">{template.name}</p>
+                                                <p className="font-medium text-foreground">{template.title}</p>
                                                 <p className="text-xs text-muted-foreground">{template.type}</p>
                                             </div>
                                         </div>
@@ -380,17 +394,7 @@ export default function Configurations() {
                                     variant="outline"
                                     size="sm"
                                     disabled={loading}
-                                    onClick={async () => {
-                                        const code = `l${languageItems.length + 1}`;
-                                        const newLang = { code, name: `Language ${languageItems.length + 1}`, enabled: false, primary: false };
-                                        try {
-                                            const created = await languagesService.create(newLang);
-                                            setLanguageItems((prev) => [...prev, created]);
-                                            toast({ title: "Language Added", description: `Language ${languageItems.length + 1} added.` });
-                                        } catch (e) {
-                                            toast({ title: "Error", description: "Failed to add language.", variant: "destructive" });
-                                        }
-                                    }}
+                                    onClick={() => setShowAddLanguage(true)}
                                 >
                                     <Plus className="h-4 w-4 mr-2" />
                                     Add Language
@@ -513,6 +517,25 @@ export default function Configurations() {
                     </div>
                 </DialogContent>
             </Dialog>
+
+            <AddPurposeDialog 
+                open={showAddPurpose} 
+                onOpenChange={setShowAddPurpose} 
+                onAdd={handleAddPurpose} 
+            />
+
+            <CreateTemplateDialog 
+                open={showCreateTemplate} 
+                onOpenChange={setShowCreateTemplate} 
+                onCreate={handleCreateTemplate} 
+            />
+
+            <AddLanguageDialog 
+                open={showAddLanguage} 
+                onOpenChange={setShowAddLanguage} 
+                onAdd={handleAddLanguage} 
+                existingCodes={languageItems.map(l => l.code)} 
+            />
         </DashboardLayout>
     );
 }

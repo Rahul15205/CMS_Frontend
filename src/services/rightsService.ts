@@ -205,7 +205,16 @@ export const rightsService = {
 
   addEvidence: async (id: string, data: any) => {
     if (!FEATURE_FLAGS.rights) return { id: `evi-${Date.now()}`, ...data };
-    const res = await api.post(`/api/rights/requests/${id}/evidence`, data);
+    const isFormData = data instanceof FormData;
+    const res = await api.post(`/api/rights/requests/${id}/evidence`, data, {
+      headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+    });
+    return res.data;
+  },
+
+  verifyEvidence: async (requestId: string, id: string, verified: boolean) => {
+    if (!FEATURE_FLAGS.rights) return { id, verified };
+    const res = await api.put(`/api/rights/requests/${requestId}/evidence/${id}/verify`, { verified });
     return res.data;
   },
 

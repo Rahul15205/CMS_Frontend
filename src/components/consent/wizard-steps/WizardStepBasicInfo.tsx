@@ -64,14 +64,15 @@ export function WizardStepBasicInfo({ data, onChange }: WizardStepBasicInfoProps
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="description" className="text-sm font-medium">
+          <Label htmlFor="description" className={cn("text-sm font-medium", !data.name && "text-muted-foreground/50")}>
             Description <span className="text-destructive">*</span>
           </Label>
           <Textarea
             id="description"
-            placeholder="Describe what this consent is for in clear, simple language..."
+            placeholder={data.name ? "Describe what this consent is for in clear, simple language..." : "Please enter a template name first"}
             value={data.description || ""}
             onChange={(e) => onChange({ description: e.target.value })}
+            disabled={!data.name}
             className="max-w-xl min-h-[100px]"
           />
           <p className="text-xs text-muted-foreground flex items-center gap-1">
@@ -82,13 +83,14 @@ export function WizardStepBasicInfo({ data, onChange }: WizardStepBasicInfoProps
       </div>
 
       {/* Consent Type Selection */}
-      <div className="space-y-4">
+      <div className={cn("space-y-4", !data.description && "opacity-50 pointer-events-none")}>
         <Label className="text-sm font-medium">
           Consent Type <span className="text-destructive">*</span>
         </Label>
         <RadioGroup
           value={data.type}
           onValueChange={(value) => onChange({ type: value as ConsentType })}
+          disabled={!data.description}
           className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3"
         >
           {consentTypes.map((type) => (
@@ -114,10 +116,13 @@ export function WizardStepBasicInfo({ data, onChange }: WizardStepBasicInfoProps
             </Label>
           ))}
         </RadioGroup>
+        {!data.description && (
+          <p className="text-xs text-muted-foreground">Fill in the description to select consent type.</p>
+        )}
       </div>
 
       {/* Applicable Regulations */}
-      <div className="space-y-4">
+      <div className={cn("space-y-4", !data.type && "opacity-50 pointer-events-none")}>
         <Label className="text-sm font-medium">
           Applicable Regulations <span className="text-destructive">*</span>
         </Label>
@@ -135,6 +140,7 @@ export function WizardStepBasicInfo({ data, onChange }: WizardStepBasicInfoProps
               <Checkbox
                 checked={data.regulations?.includes(reg)}
                 onCheckedChange={() => toggleRegulation(reg)}
+                disabled={!data.type}
               />
               <div className="flex-1">
                 <div className="flex items-center gap-2">
@@ -149,16 +155,20 @@ export function WizardStepBasicInfo({ data, onChange }: WizardStepBasicInfoProps
             </Label>
           ))}
         </div>
+        {!data.type && (
+          <p className="text-xs text-muted-foreground">Select a consent type to see regulations.</p>
+        )}
       </div>
 
       {/* Validity Period */}
-      <div className="space-y-4">
+      <div className={cn("space-y-4", (!data.regulations || data.regulations.length === 0) && "opacity-50 pointer-events-none")}>
         <Label className="text-sm font-medium">Consent Validity Period</Label>
         <div className="flex items-center gap-2 mb-3">
           <Checkbox
             id="noExpiry"
             checked={data.noExpiry}
             onCheckedChange={(checked) => onChange({ noExpiry: !!checked })}
+            disabled={!data.regulations || data.regulations.length === 0}
           />
           <Label htmlFor="noExpiry" className="text-sm text-muted-foreground cursor-pointer">
             No expiry (consent remains valid until withdrawn)
@@ -181,6 +191,7 @@ export function WizardStepBasicInfo({ data, onChange }: WizardStepBasicInfoProps
                   key={duration}
                   variant={data.validityDuration === duration ? "default" : "outline"}
                   size="sm"
+                  disabled={!data.regulations || data.regulations.length === 0}
                   className={cn(
                     "h-8",
                     data.validityDuration === duration
@@ -199,6 +210,9 @@ export function WizardStepBasicInfo({ data, onChange }: WizardStepBasicInfoProps
               </p>
             )}
           </div>
+        )}
+        {(!data.regulations || data.regulations.length === 0) && (
+          <p className="text-xs text-muted-foreground">Select at least one regulation to configure validity.</p>
         )}
       </div>
     </div>

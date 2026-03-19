@@ -19,7 +19,7 @@ export function AddCookieDialog({ open, onOpenChange, onSave, initialData, categ
     const [formData, setFormData] = useState({
         name: "",
         domain: "",
-        category: "functional",
+        categoryId: "functional",
         expiration: "",
         description: ""
     });
@@ -29,7 +29,7 @@ export function AddCookieDialog({ open, onOpenChange, onSave, initialData, categ
             setFormData({
                 name: initialData.name || "",
                 domain: initialData.domain || "",
-                category: initialData.category || "functional",
+                categoryId: initialData.categoryId || initialData.category || "functional",
                 expiration: initialData.expiration || "",
                 description: initialData.description || ""
             });
@@ -37,7 +37,7 @@ export function AddCookieDialog({ open, onOpenChange, onSave, initialData, categ
             setFormData({
                 name: "",
                 domain: "",
-                category: "functional",
+                categoryId: "functional",
                 expiration: "",
                 description: ""
             });
@@ -95,8 +95,8 @@ export function AddCookieDialog({ open, onOpenChange, onSave, initialData, categ
                         </Label>
                         <div className="col-span-3">
                             <Select
-                                value={formData.category}
-                                onValueChange={(value) => setFormData({ ...formData, category: value })}
+                                value={formData.categoryId}
+                                onValueChange={(value) => setFormData({ ...formData, categoryId: value })}
                             >
                                 <SelectTrigger>
                                     <SelectValue placeholder="Select category" />

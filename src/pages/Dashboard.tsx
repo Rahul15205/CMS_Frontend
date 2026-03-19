@@ -126,8 +126,7 @@ const recentActivities = [
 
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
-
-// ... existing imports ...
+import { exportDashboardToCSV } from "@/lib/exportUtils";
 
 function AdminDashboard() {
   const { config, addRole, setRole, roleLabels, availableRoles } = useDashboard();
@@ -236,12 +235,19 @@ function AdminDashboard() {
             variant="outline"
             size="sm"
             className="flex-1 sm:flex-none"
-            onClick={() => toast({ title: "Export queued", description: "Dashboard summary export started." })}
+            onClick={() => {
+              try {
+                exportDashboardToCSV({ kpis, consentChart, trends, recentActivity: liveActivity });
+                toast({ title: "Export Started", description: "Dashboard summary report downloaded." });
+              } catch (err) {
+                toast({ title: "Export Failed", description: "Could not export data.", variant: "destructive" });
+              }
+            }}
           >
             <Download className="h-4 w-4 mr-2" />
             Export
           </Button>
-          <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={() => { refetchAll(); toast({ title: "Refreshed", description: "Dashboard data refreshed successfully." }); }}>
+          <Button variant="outline" size="sm" className="flex-1 sm:flex-none" onClick={async () => { await refetchAll(); toast({ title: "Refreshed", description: "Dashboard data refreshed successfully." }); }}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>
@@ -577,10 +583,27 @@ function DPODashboard() {
             <TabsTrigger value="90d">90 Days</TabsTrigger>
           </TabsList>
         </Tabs>
-        <Button variant="outline" size="sm" onClick={() => { refetchAll(); toast({ title: "Refreshed", description: "DPO dashboard metrics refreshed." }); }}>
-          <RefreshCw className="h-4 w-4 mr-2" />
-          Refresh
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              try {
+                exportDashboardToCSV({ kpis, consentChart, recentActivity: liveActivity });
+                toast({ title: "Export Started", description: "Dashboard summary report downloaded." });
+              } catch (err) {
+                toast({ title: "Export Failed", description: "Could not export data.", variant: "destructive" });
+              }
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Export
+          </Button>
+          <Button variant="outline" size="sm" onClick={async () => { await refetchAll(); toast({ title: "Refreshed", description: "DPO dashboard metrics refreshed." }); }}>
+            <RefreshCw className="h-4 w-4 mr-2" />
+            Refresh
+          </Button>
+        </div>
       </div>
 
       {/* DPO-focused KPIs */}

@@ -20,7 +20,8 @@ interface Notice {
     lastUpdated: string;
     acknowledgements: number;
     pendingAck: number;
-    content?: string; // Add this if you have content
+    content?: string;
+    updatedAt?: string;
 }
 
 interface NoticePreviewDialogProps {
@@ -50,7 +51,7 @@ export function NoticePreviewDialog({
                             </DialogTitle>
                             <DialogDescription className="mt-1 flex items-center gap-2">
                                 <Calendar className="h-3 w-3" />
-                                Last updated: {notice.lastUpdated}
+                                Last updated: {notice.lastUpdated || (notice.updatedAt ? new Date(notice.updatedAt).toLocaleDateString() : 'N/A')}
                             </DialogDescription>
                         </div>
                         <div className="flex gap-2">
@@ -105,8 +106,8 @@ export function NoticePreviewDialog({
                             <div className="space-y-3 text-sm">
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Status</span>
-                                    <Badge variant={notice.status === 'active' ? 'default' : 'secondary'}>
-                                        {notice.status}
+                                    <Badge variant={(notice.status === 'NOTICE_ACTIVE' || notice.status === 'active') ? 'default' : 'secondary'}>
+                                        {notice.status.replace('NOTICE_', '').replace('_', ' ').toLowerCase()}
                                     </Badge>
                                 </div>
                                 <div className="flex justify-between">
@@ -129,11 +130,11 @@ export function NoticePreviewDialog({
                             <div className="space-y-3 text-sm">
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Acknowledged</span>
-                                    <span className="text-success font-medium">{notice.acknowledgements.toLocaleString()}</span>
+                                    <span className="text-success font-medium">{(notice.acknowledgements ?? (notice as any)._count?.acknowledgements ?? 0).toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between">
                                     <span className="text-muted-foreground">Pending</span>
-                                    <span className="text-warning font-medium">{notice.pendingAck}</span>
+                                    <span className="text-warning font-medium">{notice.pendingAck ?? 0}</span>
                                 </div>
                             </div>
                         </div>

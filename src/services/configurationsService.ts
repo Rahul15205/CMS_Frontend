@@ -81,6 +81,7 @@ export const apiKeysService = createConfigService('/api/config/api-keys', mockDa
 export const logRetentionService = createConfigService('/api/config/log-retention', mockData.mockLogRetention);
 export const exportConfigsService = createConfigService('/api/config/export', mockData.mockExportConfigs);
 export const workflowConfigsService = createConfigService('/api/config/workflows', mockData.mockWorkflowConfigs);
+export const consentTemplatesService = createConfigService('/api/consent-templates');
 export const purposesService = createConfigService('/api/purposes', mockData.mockPurposes);
 export const languagesService = createConfigService('/api/languages', mockData.mockLanguages);
 

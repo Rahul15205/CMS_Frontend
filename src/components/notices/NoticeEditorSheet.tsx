@@ -57,7 +57,7 @@ export function NoticeEditorSheet({
                 id: "",
                 title: "",
                 version: "1.0",
-                status: "draft",
+                status: "NOTICE_DRAFT",
                 lastUpdated: new Date().toISOString().split('T')[0],
                 acknowledgements: 0,
                 pendingAck: 0,
@@ -126,10 +126,10 @@ export function NoticeEditorSheet({
                                         <SelectValue placeholder="Select status" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="active">Active</SelectItem>
-                                        <SelectItem value="draft">Draft</SelectItem>
-                                        <SelectItem value="pending_review">Pending Review</SelectItem>
-                                        <SelectItem value="archived">Archived</SelectItem>
+                                        <SelectItem value="NOTICE_ACTIVE">Active</SelectItem>
+                                        <SelectItem value="NOTICE_DRAFT">Draft</SelectItem>
+                                        <SelectItem value="NOTICE_PENDING_REVIEW">Pending Review</SelectItem>
+                                        <SelectItem value="NOTICE_ARCHIVED">Archived</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>

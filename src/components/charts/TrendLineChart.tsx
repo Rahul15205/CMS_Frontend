@@ -30,7 +30,7 @@ export function TrendLineChart({ data, lines, title, className }: TrendLineChart
       {title && (
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-sm font-semibold text-foreground">{title}</h3>
-          <span className="text-sm text-muted-foreground font-medium">2024</span>
+          <span className="text-sm text-muted-foreground font-medium">{new Date().getFullYear()}</span>
         </div>
       )}
       <div className="h-80 flex-grow">

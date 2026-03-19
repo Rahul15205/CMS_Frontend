@@ -70,12 +70,16 @@ import { NoticeRecord, NoticeType, NoticeLanguage, NoticeHistoryRecord } from "@
 // Helper function for status badges
 const getStatusBadge = (status: string) => {
   switch (status) {
+    case "NOTICE_ACTIVE":
     case "active":
       return <StatusBadge status="active">Published</StatusBadge>;
+    case "NOTICE_DRAFT":
     case "draft":
       return <StatusBadge status="info">Draft</StatusBadge>;
+    case "NOTICE_PENDING_REVIEW":
     case "pending_review":
       return <StatusBadge status="warning">Pending Review</StatusBadge>;
+    case "NOTICE_ARCHIVED":
     case "archived":
       return <StatusBadge status="info">Archived</StatusBadge>;
     default:
@@ -86,6 +90,8 @@ const getStatusBadge = (status: string) => {
 import { NoticePreviewDialog } from "@/components/notices/NoticePreviewDialog";
 import { NoticeEditorSheet } from "@/components/notices/NoticeEditorSheet";
 import { AddNoticeTypeDialog } from "@/components/notices/AddNoticeTypeDialog";
+import { AddLanguageDialog } from "@/components/notices/AddLanguageDialog";
+import { LanguageSettingsDialog } from "@/components/notices/LanguageSettingsDialog";
 
 export default function Notices() {
   const { toast } = useToast();
@@ -100,9 +106,12 @@ export default function Notices() {
   const [loading, setLoading] = useState(true);
 
   const [selectedNotice, setSelectedNotice] = useState<any>(null);
+  const [selectedLanguage, setSelectedLanguage] = useState<NoticeLanguage | null>(null);
   const [showPreviewDialog, setShowPreviewDialog] = useState(false);
   const [showEditorSheet, setShowEditorSheet] = useState(false);
   const [showAddNoticeTypeDialog, setShowAddNoticeTypeDialog] = useState(false);
+  const [showAddLanguageDialog, setShowAddLanguageDialog] = useState(false);
+  const [showLanguageSettingsDialog, setShowLanguageSettingsDialog] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -198,6 +207,71 @@ export default function Notices() {
     }
   };
 
+  const handleAddLanguage = async (lang: { code: string; name: string; isDefault: boolean }) => {
+    try {
+      const newLang = await noticesService.createLanguage(lang);
+      if (lang.isDefault) {
+        setLanguages((prev) => prev.map(l => ({ ...l, isDefault: false })).concat({ ...newLang, completion: 0 }));
+      } else {
+        setLanguages((prev) => [...prev, { ...newLang, completion: 0 }]);
+      }
+      toast({
+        title: "Success",
+        description: `${lang.name} added successfully.`,
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to add language.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleUpdateLanguage = async (code: string, data: { isDefault: boolean }) => {
+    try {
+      await noticesService.updateLanguage(code, data);
+      if (data.isDefault) {
+        setLanguages((prev) => prev.map(l => ({
+          ...l,
+          isDefault: l.code === code
+        })));
+      }
+      toast({
+        title: "Success",
+        description: "Language settings updated.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to update language.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteLanguage = async (code: string) => {
+    try {
+      await noticesService.deleteLanguage(code);
+      setLanguages((prev) => prev.filter(l => l.code !== code));
+      toast({
+        title: "Success",
+        description: "Language removed successfully.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to remove language.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openLanguageSettings = (lang: NoticeLanguage) => {
+    setSelectedLanguage(lang);
+    setShowLanguageSettingsDialog(true);
+  };
+
   return (
     <DashboardLayout
       title="Notices"
@@ -249,13 +323,13 @@ export default function Notices() {
                 <>
                   <KPICard
                     title="Active Notices"
-                    value={noticesList.filter(n => n.status === 'active').length.toString()}
+                    value={noticesList.filter(n => (n.status === 'NOTICE_ACTIVE' || n.status === 'active')).length.toString()}
                     icon={<FileText className="h-6 w-6" />}
                     variant="success"
                   />
                   <KPICard
                     title="Total Acknowledgements"
-                    value={noticesList.reduce((acc, n) => acc + (Number(n.acknowledgements) || 0), 0).toLocaleString()}
+                    value={noticesList.reduce((acc, n) => acc + (Number(n.acknowledgements ?? n._count?.acknowledgements) || 0), 0).toLocaleString()}
                     icon={<CheckCircle className="h-6 w-6" />}
                     trend={{ value: 8, direction: "up" }}
                   />
@@ -267,7 +341,7 @@ export default function Notices() {
                   />
                   <KPICard
                     title="Drafts & Under Review"
-                    value={noticesList.filter(n => n.status === 'draft' || n.status === 'pending_review').length.toString()}
+                    value={noticesList.filter(n => (n.status === 'NOTICE_DRAFT' || n.status === 'draft' || n.status === 'NOTICE_PENDING_REVIEW' || n.status === 'pending_review')).length.toString()}
                     icon={<Edit className="h-6 w-6" />}
                     variant="info"
                   />
@@ -403,7 +477,9 @@ export default function Notices() {
                               <Calendar className="h-3 w-3" />
                               Last Updated
                             </span>
-                            <span className="font-medium">{notice.lastUpdated}</span>
+                            <span className="font-medium">
+                              {notice.lastUpdated || (notice.updatedAt ? new Date(notice.updatedAt).toLocaleDateString() : 'N/A')}
+                            </span>
                           </div>
 
                           <>
@@ -413,13 +489,13 @@ export default function Notices() {
                                 Acknowledged
                               </span>
                               <span className="font-medium text-success">
-                                {notice.acknowledgements.toLocaleString()}
+                                {(notice.acknowledgements ?? notice._count?.acknowledgements ?? 0).toLocaleString()}
                               </span>
                             </div>
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground">Pending</span>
                               <span className="font-medium text-warning">
-                                {notice.pendingAck}
+                                {notice.pendingAck ?? 0}
                               </span>
                             </div>
 
@@ -429,12 +505,12 @@ export default function Notices() {
                                 <div
                                   className="h-full bg-success rounded-full"
                                   style={{
-                                    width: `${(notice.acknowledgements / ((notice.acknowledgements + notice.pendingAck) || 1)) * 100}%`,
+                                    width: `${((notice.acknowledgements ?? notice._count?.acknowledgements ?? 0) / (((notice.acknowledgements ?? notice._count?.acknowledgements ?? 0) + (notice.pendingAck ?? 0)) || 1)) * 100}%`,
                                   }}
                                 />
                               </div>
                               <p className="text-xs text-muted-foreground mt-1 text-right">
-                                {((notice.acknowledgements / ((notice.acknowledgements + notice.pendingAck) || 1)) * 100).toFixed(1)}% acknowledged
+                                {(((notice.acknowledgements ?? notice._count?.acknowledgements ?? 0) / (((notice.acknowledgements ?? notice._count?.acknowledgements ?? 0) + (notice.pendingAck ?? 0)) || 1)) * 100).toFixed(1)}% acknowledged
                               </p>
                             </div>
                           </>
@@ -459,7 +535,7 @@ export default function Notices() {
                             </TooltipTrigger>
                             <TooltipContent>Edit Notice</TooltipContent>
                           </Tooltip>
-                          {notice.status === "draft" && (
+                          {(notice.status === "NOTICE_DRAFT" || notice.status === "draft") && (
                             <Tooltip>
                               <TooltipTrigger asChild>
                                 <Button size="sm" className="flex-1">
@@ -491,7 +567,7 @@ export default function Notices() {
               <div className="dashboard-card lg:col-span-2">
                 <div className="flex items-center justify-between mb-6">
                   <SectionTitle>Supported Languages</SectionTitle>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={() => setShowAddLanguageDialog(true)}>
                     <Plus className="h-4 w-4 mr-2" />
                     Add Language
                   </Button>
@@ -536,7 +612,7 @@ export default function Notices() {
                               </div>
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openLanguageSettings(lang)}>
                                 <Settings className="h-4 w-4" />
                               </Button>
                             </TableCell>
@@ -680,6 +756,21 @@ export default function Notices() {
         open={showAddNoticeTypeDialog}
         onOpenChange={setShowAddNoticeTypeDialog}
         onAdd={handleAddNoticeType}
+      />
+
+      <AddLanguageDialog
+        open={showAddLanguageDialog}
+        onOpenChange={setShowAddLanguageDialog}
+        onAdd={handleAddLanguage}
+        existingCodes={languages.map(l => l.code)}
+      />
+
+      <LanguageSettingsDialog
+        open={showLanguageSettingsDialog}
+        onOpenChange={setShowLanguageSettingsDialog}
+        language={selectedLanguage}
+        onUpdate={handleUpdateLanguage}
+        onDelete={handleDeleteLanguage}
       />
     </DashboardLayout >
   );

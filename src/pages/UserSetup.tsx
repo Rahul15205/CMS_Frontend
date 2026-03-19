@@ -1,4 +1,6 @@
 import { useState } from "react";
+import { useEffect } from "react";
+import { usersService, invitationsService, sessionsService } from "@/services/userSetupService";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -14,7 +16,54 @@ import { User } from "@/components/user-setup/types";
 
 export default function UserSetup() {
   const [activeTab, setActiveTab] = useState("users");
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    pendingInvites: 0,
+    lockedAccounts: 0,
+    activeSessions: 0
+  });
   const [editingUser, setEditingUser] = useState<User | null>(null);
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const [usersResp, invResp, sessResp] = await Promise.all([
+          usersService.getAll(),
+          invitationsService.getAll(),
+          sessionsService.getAll()
+        ]);
+
+        let totalUsers = 0;
+        let activeUsers = 0;
+        let lockedAccounts = 0;
+        let pendingInvites = 0;
+        let activeSessions = 0;
+
+        if (usersResp) {
+          totalUsers = usersResp.total || 0;
+          const userList = usersResp.data || [];
+          if (totalUsers === 0) totalUsers = userList.length;
+          activeUsers = userList.filter((u) => String(u.status).toLowerCase() === 'active').length;
+          lockedAccounts = userList.filter((u) => String(u.status).toLowerCase() === 'locked').length;
+        }
+
+        if (invResp) {
+          const invList = invResp.data || [];
+          pendingInvites = invList.filter((i) => String(i.status).toLowerCase() === 'pending').length;
+        }
+
+        if (sessResp) {
+          const sessList = Array.isArray(sessResp) ? sessResp : sessResp.data || [];
+          activeSessions = sessList.filter((s: any) => s.isCurrentSession || (s.lastActivity && new Date(s.lastActivity) > new Date(Date.now() - 30 * 60 * 1000))).length;
+        }
+
+        setStats({ totalUsers, activeUsers, pendingInvites, lockedAccounts, activeSessions });
+      } catch (err) {
+        console.error("Failed to fetch stats", err);
+      }
+    };
+    fetchStats();
+  }, [activeTab]);
 
   const handleNewUser = () => {
     setEditingUser({} as User);
@@ -44,31 +93,31 @@ export default function UserSetup() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <KPICard
             title="Total Users"
-            value="25"
+            value={stats.totalUsers.toString()}
             icon={<Users className="h-6 w-6" />}
             variant="default"
           />
           <KPICard
             title="Active Users"
-            value="22"
+            value={stats.activeUsers.toString()}
             icon={<UserCheck className="h-6 w-6" />}
             variant="success"
           />
           <KPICard
             title="Pending Invites"
-            value="3"
+            value={stats.pendingInvites.toString()}
             icon={<Mail className="h-6 w-6" />}
             variant="warning"
           />
           <KPICard
             title="Locked Accounts"
-            value="1"
+            value={stats.lockedAccounts.toString()}
             icon={<Lock className="h-6 w-6" />}
             variant="destructive"
           />
           <KPICard
             title="Active Sessions"
-            value="18"
+            value={stats.activeSessions.toString()}
             icon={<Activity className="h-6 w-6" />}
             variant="info"
           />

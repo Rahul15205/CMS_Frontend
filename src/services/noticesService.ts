@@ -65,6 +65,18 @@ export const noticesService = {
     return res.data;
   },
 
+  updateLanguage: async (code: string, data: { isDefault?: boolean; tenantId?: string }) => {
+    if (!FEATURE_FLAGS.notices) return { code, ...data };
+    const res = await api.put(`/api/notices/languages/${code}`, data);
+    return res.data;
+  },
+
+  deleteLanguage: async (code: string, tenantId?: string) => {
+    if (!FEATURE_FLAGS.notices) return { success: true };
+    const res = await api.delete(`/api/notices/languages/${code}`, { params: { tenantId } });
+    return res.data;
+  },
+
   getTypes: async (tenantId?: string) => {
     if (!FEATURE_FLAGS.notices) return mockNoticeTypes;
     const res = await api.get('/api/notices/types', { params: { tenantId } });

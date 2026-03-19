@@ -127,6 +127,17 @@ export function ConsentAnalytics() {
     queryFn: () => consentService.getAnalytics(),
   });
 
+  // Use dynamic data from analytics or fallback to mock only if API hasn't responded
+  const reconsentRateData = analytics?.reconsentData || (isLoading ? reconsentData : []);
+  const fatigueMetrics = analytics?.fatigueIndicators || (isLoading ? fatigueIndicators : []);
+
+  const { data: templatesRes } = useQuery({
+    queryKey: ["consent-templates"],
+    queryFn: () => consentService.getTemplates(),
+  });
+
+  const templatesList = templatesRes?.data || [];
+
   const { data: trendsData, isLoading: isLoadingTrends } = useQuery({
     queryKey: ["dashboard-trends"],
     queryFn: () => dashboardService.getChartData("trends"),
@@ -218,15 +229,21 @@ export function ConsentAnalytics() {
   };
 
   // Calculate summary metrics from live analytics
-  const totalActive = analytics?.records.byStatus["ACTIVE"] || 0;
+  // Note: Backend now maps GRANTED->ACTIVE and REVOKED->WITHDRAWN
+  const totalActiveRecords = analytics?.records.byStatus["ACTIVE"] || 0;
   const totalRejected = analytics?.records.byStatus["REJECTED"] || 0;
   const totalWithdrawn = analytics?.records.byStatus["WITHDRAWN"] || 0;
+  
+  // For the "Total Active" KPI, if no records exist, show Active Templates count to avoid 0
+  const activeTemplates = analytics?.templates.byStatus["PUBLISHED"] || analytics?.templates.byStatus["ACTIVE"] || 0;
+  const kpiActiveValue = totalActiveRecords > 0 ? totalActiveRecords : activeTemplates;
+  const kpiActiveLabel = totalActiveRecords > 0 ? "Active Consents" : "Active Templates";
+
   const totalRecords = analytics?.records.total || 0;
-  const acceptanceRate = totalRecords > 0 ? Math.round((totalActive / totalRecords) * 100) : 0;
-  const withdrawalRate = totalActive > 0 ? Math.round((totalWithdrawn / totalActive) * 100) : 0;
+  const acceptanceRate = totalRecords > 0 ? Math.round((totalActiveRecords / totalRecords) * 100) : 0;
 
   // Map backend types to pie chart format
-  const consentByTypeData = analytics ? Object.entries(analytics.templates.byType).map(([name, value], index) => ({
+  const mappedByTypeData = analytics ? Object.entries(analytics.templates.byType).map(([name, value], index) => ({
     name: name.charAt(0) + name.slice(1).toLowerCase(),
     value: Math.round((value / analytics.templates.total) * 100),
     color: index === 0 ? "hsl(var(--primary))" : 
@@ -236,6 +253,8 @@ export function ConsentAnalytics() {
            index === 4 ? "hsl(var(--warning))" :
            "hsl(340, 75%, 55%)"
   })) : [];
+
+  const pieChartTotal = analytics?.templates.total || 0;
 
   return (
     <div id="consent-dashboard" className="space-y-6">
@@ -261,10 +280,9 @@ export function ConsentAnalytics() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Templates</SelectItem>
-              <SelectItem value="marketing">Marketing Consent</SelectItem>
-              <SelectItem value="analytics">Analytics Consent</SelectItem>
-              <SelectItem value="sharing">Third-Party Sharing</SelectItem>
-              <SelectItem value="essential">Essential Service</SelectItem>
+              {templatesList.map(t => (
+                <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+              ))}
             </SelectContent>
           </Select>
         </div>
@@ -297,8 +315,8 @@ export function ConsentAnalytics() {
                     <CheckCircle className="h-5 w-5" />
                   </div>
                   <div>
-                    <p className="text-2xl font-bold">{totalActive.toLocaleString()}</p>
-                    <p className="text-xs text-muted-foreground">Total Active</p>
+                    <p className="text-2xl font-bold">{kpiActiveValue.toLocaleString()}</p>
+                    <p className="text-xs text-muted-foreground">{kpiActiveLabel}</p>
                   </div>
                 </div>
                 <Badge className="bg-success/10 text-success border-success/20">
@@ -467,7 +485,7 @@ export function ConsentAnalytics() {
                 <ResponsiveContainer width="100%" height="100%">
                   <RechartsPieChart>
                     <Pie
-                      data={consentByTypeData}
+                      data={mappedByTypeData}
                       cx="50%"
                       cy="50%"
                       innerRadius={80}
@@ -475,7 +493,7 @@ export function ConsentAnalytics() {
                       paddingAngle={4}
                       dataKey="value"
                     >
-                      {consentByTypeData.map((entry, index) => (
+                      {mappedByTypeData.map((entry, index) => (
                         <Cell key={`cell-${index}`} fill={entry.color} />
                       ))}
                     </Pie>
@@ -496,7 +514,7 @@ export function ConsentAnalytics() {
                   </RechartsPieChart>
                 </ResponsiveContainer>
                 <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-12">
-                  <p className="text-3xl font-bold text-foreground">100%</p>
+                  <p className="text-3xl font-bold text-foreground">{pieChartTotal}</p>
                   <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Total</p>
                 </div>
               </div>
@@ -519,30 +537,36 @@ export function ConsentAnalytics() {
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {reconsentData.map((item) => (
-                <div key={item.template} className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="font-medium">{item.template}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-muted-foreground">
-                        {item.completed.toLocaleString()} / {item.sent.toLocaleString()}
-                      </span>
-                      <Badge
-                        className={
-                          item.rate >= 90
-                            ? "bg-success/10 text-success border-success/20"
-                            : item.rate >= 75
-                              ? "bg-warning/10 text-warning border-warning/20"
-                              : "bg-destructive/10 text-destructive border-destructive/20"
-                        }
-                      >
-                        {item.rate}%
-                      </Badge>
+              {reconsentRateData.length > 0 ? (
+                reconsentRateData.map((item) => (
+                  <div key={item.template} className="space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="font-medium">{item.template}</span>
+                      <div className="flex items-center gap-3">
+                        <span className="text-muted-foreground">
+                          {item.completed.toLocaleString()} / {item.sent.toLocaleString()}
+                        </span>
+                        <Badge
+                          className={
+                            item.rate >= 90
+                              ? "bg-success/10 text-success border-success/20"
+                              : item.rate >= 75
+                                ? "bg-warning/10 text-warning border-warning/20"
+                                : "bg-destructive/10 text-destructive border-destructive/20"
+                          }
+                        >
+                          {item.rate}%
+                        </Badge>
+                      </div>
                     </div>
+                    <Progress value={item.rate} className="h-2" />
                   </div>
-                  <Progress value={item.rate} className="h-2" />
+                ))
+              ) : (
+                <div className="py-8 text-center">
+                  <p className="text-sm text-muted-foreground">No published templates found for re-consent tracking.</p>
                 </div>
-              ))}
+              )}
             </div>
           </CardContent>
         </Card>
@@ -562,7 +586,7 @@ export function ConsentAnalytics() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-              {fatigueIndicators.map((indicator) => (
+              {fatigueMetrics.map((indicator) => (
                 <div
                   key={indicator.metric}
                   className={`p-4 rounded-lg border ${indicator.status === "warning"

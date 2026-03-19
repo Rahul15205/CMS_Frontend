@@ -4,7 +4,7 @@ export type ConsentType = "explicit" | "implicit" | "optional" | "mandatory" | "
 
 export type Regulation = "DPDP" | "GDPR" | "TAPA" | "PDPL" | "Custom";
 
-export type TemplateStatus = "draft" | "active" | "archived" | "deprecated";
+export type TemplateStatus = "draft" | "active" | "archived" | "deprecated" | "published";
 
 export type DataCategory =
   | "identity"
@@ -169,6 +169,7 @@ export interface ConsentTemplate {
   createdAt: string;
   updatedAt: string;
   updatedBy: string;
+  latestVersionId?: string;
 }
 
 export interface ConsentVersion {
@@ -269,6 +270,19 @@ export interface ConsentAnalyticsData {
   crossAppUsage: {
     byApplicationType: Record<string, number>;
   };
+  reconsentData: Array<{
+    template: string;
+    sent: number;
+    completed: number;
+    rate: number;
+  }>;
+  fatigueIndicators: Array<{
+    metric: string;
+    value: number;
+    threshold: number;
+    status: 'healthy' | 'warning' | 'critical';
+    description: string;
+  }>;
 }
 
 export interface SystemConfig {

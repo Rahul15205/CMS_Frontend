@@ -48,12 +48,14 @@ import { Role, ModulePermissions } from "./types";
 import { defaultPermissions, permissionTypes, modules } from "@/data/mockRoles";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
-import { rolesService } from "@/services/userSetupService";
+import { rolesService, usersService } from "@/services/userSetupService";
 import { useToast } from "@/hooks/use-toast";
 
 export function RoleManagement() {
   const [roles, setRoles] = useState<Role[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [roleUsers, setRoleUsers] = useState<any[]>([]);
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
@@ -68,6 +70,27 @@ export function RoleManagement() {
     hasExpiry: false,
     expiresAt: "",
   });
+  // Users assigned to the viewing role
+  const fetchUsersForRole = async (roleName: string) => {
+    setLoadingUsers(true);
+    try {
+      const resp = await usersService.getAll();
+      if (resp) {
+        const userList = Array.isArray(resp) ? resp : resp.data || [];
+        const filtered = userList.filter((u: any) => 
+          u.roles?.some((r: any) => r.role?.name === roleName || r.name === roleName || r === roleName)
+        );
+        setRoleUsers(filtered.map((u: any) => ({
+          ...u,
+          status: u.status?.toLowerCase() || 'pending'
+        })));
+      }
+    } catch (error) {
+      console.error("Failed to fetch users", error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
 
   const [editingRoleId, setEditingRoleId] = useState<string | null>(null);
   const [showViewUsersDialog, setShowViewUsersDialog] = useState(false);
@@ -75,18 +98,13 @@ export function RoleManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Mock users for the View Users dialog
-  const mockUsers = [
-    { id: "1", name: "Alice Johnson", email: "alice@example.com", status: "active" },
-    { id: "2", name: "Bob Smith", email: "bob@example.com", status: "active" },
-    { id: "3", name: "Charlie Brown", email: "charlie@example.com", status: "inactive" },
-  ];
+  // Mock users replaced by live fetchUsersForRole state trigger
 
   const filteredRoles = roles.filter(
     (role) => {
       const matchesSearch = role.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
         role.description.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesStatus = statusFilter === "all" || role.status === statusFilter;
+      const matchesStatus = statusFilter === "all" || role.status?.toLowerCase() === statusFilter.toLowerCase();
       const matchesType = typeFilter === "all" ||
         (typeFilter === "system" && role.isSystemRole) ||
         (typeFilter === "custom" && !role.isSystemRole);
@@ -103,9 +121,11 @@ export function RoleManagement() {
     const fetchRoles = async () => {
       setLoading(true);
       try {
-        const data = await rolesService.getAll();
-        if (data && data.length > 0) {
-          setRoles(data);
+        const response = await rolesService.getAll();
+        if (response && Array.isArray(response)) {
+          setRoles(response);
+        } else if (response && response.data) {
+          setRoles(response.data);
         }
       } catch (error) {
         console.error("Failed to fetch roles", error);
@@ -121,10 +141,10 @@ export function RoleManagement() {
     () => filteredRoles.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage),
     [filteredRoles, currentPage]
   );
-  const activeRoles = paginatedRoles.filter((r) => r.status === "active");
-  const archivedRoles = paginatedRoles.filter((r) => r.status === "archived");
-  const totalActiveRoles = filteredRoles.filter((r) => r.status === "active").length;
-  const totalArchivedRoles = filteredRoles.filter((r) => r.status === "archived").length;
+  const activeRoles = paginatedRoles.filter((r) => r.status?.toLowerCase() === "active");
+  const archivedRoles = paginatedRoles.filter((r) => r.status?.toLowerCase() === "archived");
+  const totalActiveRoles = filteredRoles.filter((r) => r.status?.toLowerCase() === "active").length;
+  const totalArchivedRoles = filteredRoles.filter((r) => r.status?.toLowerCase() === "archived").length;
 
   const handleCloneRole = (role: Role) => {
     setCloneFrom(role);
@@ -177,6 +197,7 @@ export function RoleManagement() {
 
   const handleViewUsers = (role: Role) => {
     setSelectedRoleForView(role);
+    fetchUsersForRole(role.name);
     setShowViewUsersDialog(true);
   };
 
@@ -635,9 +656,11 @@ export function RoleManagement() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-4">
-            {mockUsers.length > 0 ? (
+            {loadingUsers ? (
+              <div className="text-center py-4 text-sm text-muted-foreground">Loading users...</div>
+            ) : roleUsers.length > 0 ? (
               <div className="border rounded-md divide-y">
-                {mockUsers.map(user => (
+                {roleUsers.map(user => (
                   <div key={user.id} className="p-3 flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-medium">

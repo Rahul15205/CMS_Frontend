@@ -2,10 +2,15 @@ export interface NoticeRecord {
   id: string;
   title: string;
   version: string;
-  status: "active" | "draft" | "pending_review" | "archived";
+  status: "active" | "draft" | "pending_review" | "archived" | "NOTICE_ACTIVE" | "NOTICE_DRAFT" | "NOTICE_PENDING_REVIEW" | "NOTICE_ARCHIVED";
   lastUpdated: string;
   acknowledgements: number;
   pendingAck: number;
+  _count?: {
+    acknowledgements: number;
+    versions: number;
+  };
+  updatedAt?: string;
 }
 
 export interface NoticeHistoryRecord {

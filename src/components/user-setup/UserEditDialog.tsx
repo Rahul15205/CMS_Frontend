@@ -24,6 +24,9 @@ import { Separator } from "@/components/ui/separator";
 import { Checkbox } from "@/components/ui/checkbox";
 import { User, Info, Shield, Clock, Globe, X, Building2, Key, GitBranch, Smartphone, Database } from "lucide-react";
 import { User as UserType, ApplicationAccess, WorkflowRole, DataAccessScope } from "./types";
+import { usersService, rolesService } from "@/services/userSetupService";
+import { useToast } from "@/components/ui/use-toast";
+import { useEffect } from "react";
 
 interface UserEditDialogProps {
   user: UserType | null;
@@ -88,6 +91,60 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
   });
   const [newIp, setNewIp] = useState("");
   const [newGeo, setNewGeo] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [liveRoles, setLiveRoles] = useState<any[]>([]);
+  const { toast } = useToast();
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const resp = await rolesService.getAll();
+        if (resp && Array.isArray(resp)) setLiveRoles(resp);
+        else if (resp && resp.data) setLiveRoles(resp.data);
+      } catch (e) { console.error(e); }
+    };
+    if (open) fetchRoles();
+  }, [open]);
+
+  const handleSave = async () => {
+    setLoading(true);
+    try {
+      const payload = {
+        name: formData.name,
+        email: formData.email,
+        phone: formData.phone || undefined,
+        department: formData.department || undefined,
+        mfaEnabled: formData.mfaEnabled,
+        status: "ACTIVE" as any,
+        accountType: "INTERNAL" as any,
+        password: "Password123!", 
+        roles: formData.roles.map((r: string) => {
+          const found = liveRoles.find((lr) => lr.name === r);
+          return found ? found.id : r; 
+        }).filter((r: any) => r && r.length > 5) 
+      };
+
+      if (isCreationMode) {
+        await usersService.create(payload);
+        toast({ title: "User Created", description: "Successfully created user." });
+      } else if (user && user.id) {
+        await usersService.update(user.id, {
+          name: payload.name,
+          phone: payload.phone,
+          department: payload.department,
+          mfaEnabled: payload.mfaEnabled,
+          roles: payload.roles
+        });
+        toast({ title: "User Updated", description: "Successfully updated user." });
+      }
+      onOpenChange(false);
+    } catch (err) {
+      console.error("Failed to save user", err);
+      toast({ title: "Save Error", description: "Could not save user changes.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleAddRole = (role: string) => {
     if (!formData.roles.includes(role)) {
@@ -288,7 +345,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
                   <SelectValue placeholder="Add role..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {availableRoles
+                  {(liveRoles.length > 0 ? liveRoles.map(r => r.name) : availableRoles)
                     .filter((r) => !formData.roles.includes(r))
                     .map((role) => (
                       <SelectItem key={role} value={role}>
@@ -784,7 +841,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
-          <Button onClick={() => onOpenChange(false)}>{isCreationMode ? "Create User" : "Save Changes"}</Button>
+          <Button onClick={handleSave} disabled={loading}>{loading ? "Saving..." : (isCreationMode ? "Create User" : "Save Changes")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

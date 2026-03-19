@@ -34,6 +34,13 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -114,8 +121,12 @@ export default function CookiesManagement() {
   const [editingWebsite, setEditingWebsite] = useState<any>(null);
 
   const [bannerLang, setBannerLang] = useState("en");
-  const [bannerPosition, setBannerPosition] = useState("bottom");
+  const [bannerPosition, setBannerPosition] = useState("BOTTOM");
+  const [bannerTheme, setBannerTheme] = useState("#10b981"); // Default green
+  const [bannerHeading, setBannerHeading] = useState("We value your privacy");
+  const [bannerDescription, setBannerDescription] = useState("We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic.");
   const [previewDevice, setPreviewDevice] = useState("desktop");
+  const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
 
   const { toast } = useToast();
 
@@ -287,6 +298,71 @@ export default function CookiesManagement() {
     });
   };
 
+  // Language content mapping
+  const languageContent: Record<string, { heading: string, description: string }> = {
+    en: {
+      heading: "We value your privacy",
+      description: "We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic."
+    },
+    es: {
+      heading: "Valoramos su privacidad",
+      description: "Utilizamos cookies para mejorar su experiencia de navegación, servir anuncios o contenidos personalizados y analizar nuestro tráfico."
+    },
+    fr: {
+      heading: "Nous valorisons votre vie privée",
+      description: "Nous utilisons des cookies pour améliorer votre expérience de navigation, diffuser des publicités ou du contenu personnalisés et analyser notre trafic."
+    },
+    de: {
+      heading: "Wir schätzen Ihre Privatsphäre",
+      description: "Wir verwenden Cookies, um Ihr Surferlebnis zu verbessern, personalisierte Anzeigen oder Inhalte bereitzustellen und unseren Datenverkehr zu analysieren."
+    }
+  };
+
+  const handleLanguageChange = (lang: string) => {
+    setBannerLang(lang);
+    if (languageContent[lang]) {
+      setBannerHeading(languageContent[lang].heading);
+      setBannerDescription(languageContent[lang].description);
+    }
+  };
+
+  const handleLoadBanner = (banner: any) => {
+    // Mapping for class-based themes to hex colors used in the editor
+    const themeMap: Record<string, string> = {
+      'bg-emerald-500': '#10b981',
+      'bg-primary': '#10b981',
+      'bg-blue-600': '#2563eb',
+      'bg-purple-600': '#8b5cf6',
+      'bg-zinc-900': '#18181b',
+      'bg-slate-900': '#18181b'
+    };
+
+    // Basic mapping of banner fields to customization state
+    setBannerPosition(banner.position || "BOTTOM");
+    
+    // Handle theme color from banner object
+    let themeColor = banner.themeColor;
+    if (!themeColor) {
+      if (banner.theme?.startsWith('#')) {
+        themeColor = banner.theme;
+      } else {
+        themeColor = themeMap[banner.theme] || "#10b981";
+      }
+    }
+    
+    setBannerTheme(themeColor);
+    setBannerHeading(banner.heading || "We value your privacy");
+    setBannerDescription(banner.description || "We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic.");
+    setBannerLang(banner.language || "en");
+    
+    setActiveTab("banner");
+    
+    toast({
+      title: "Configuration Loaded",
+      description: `Settings for "${banner.name}" have been loaded into the editor.`,
+    });
+  };
+
   // Export to CSV
   const handleExportCSV = () => {
     const headers = ["Cookie ID", "Cookie Name", "Domain", "Category", "Expiration", "Description"];
@@ -296,9 +372,9 @@ export default function CookiesManagement() {
         cookie.id,
         cookie.name,
         cookie.domain,
-        cookie.category,
+        categories.find(c => c.id === (cookie.categoryId || cookie.category))?.name || cookie.category || "Uncategorized",
         cookie.expiration,
-        `"${cookie.description.replace(/"/g, '""')}"` // Escape quotes
+        `"${(cookie.description || "").replace(/"/g, '""')}"` // Escape quotes
       ].join(","))
     ].join("\n");
 
@@ -327,14 +403,18 @@ export default function CookiesManagement() {
         autoTable(doc, {
           startY: 40,
           head: [["ID", "Cookie Name", "Domain", "Category", "Expiration", "Description"]],
-          body: inventory.map(cookie => [
-            cookie.id,
-            cookie.name,
-            cookie.domain,
-            categories.find(c => c.id === cookie.category)?.name || cookie.category,
-            cookie.expiration,
-            cookie.description
-          ]),
+          body: inventory.map(cookie => {
+            const catId = cookie.categoryId || cookie.category;
+            const catName = categories.find(c => c.id === catId)?.name || cookie.category || "Uncategorized";
+            return [
+              cookie.id,
+              cookie.name,
+              cookie.domain,
+              catName,
+              cookie.expiration,
+              cookie.description || ""
+            ];
+          }),
         });
 
         doc.save("cookie_inventory.pdf");
@@ -392,8 +472,9 @@ export default function CookiesManagement() {
   // ... existing handlers
 
   return (
-    <DashboardLayout
-      title="Cookies Management"
+    <>
+      <DashboardLayout
+        title="Cookies Management"
       actions={
         <div className="flex items-center gap-2">
           {activeTab === "inventory" && (
@@ -410,18 +491,10 @@ export default function CookiesManagement() {
               </Button>
             </div>
           )}
-          {activeTab === "banner" && (
-            <Button size="sm">
-              <Eye className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Live Preview</span>
-            </Button>
-          )}
-          {activeTab !== "banner" && (
-            <Button size="sm" onClick={() => setActiveTab("banner")}>
-              <Eye className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Live Preview</span>
-            </Button>
-          )}
+          <Button size="sm" onClick={() => setIsPreviewDialogOpen(true)}>
+            <Eye className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Live Preview</span>
+          </Button>
         </div>
       }
     >
@@ -644,7 +717,7 @@ export default function CookiesManagement() {
                           <TableCell className="text-muted-foreground">{cookie.domain}</TableCell>
                           <TableCell>
                             <Badge variant="outline" className="capitalize">
-                              {categories.find(c => c.id === cookie.category)?.name || cookie.category}
+                              {cookie.category?.name || categories.find(c => c.id === (cookie.categoryId || cookie.category))?.name || "Uncategorized"}
                             </Badge>
                           </TableCell>
                           <TableCell>{cookie.expiration}</TableCell>
@@ -701,14 +774,24 @@ export default function CookiesManagement() {
                           <div className={`h-3 w-3 rounded-full ${banner.theme}`} />
                           <span className="font-medium text-sm">{banner.name}</span>
                         </div>
-                        <Badge variant={banner.status === 'Active' ? 'default' : 'secondary'} className="text-xs">
+                        <Badge variant={['ACTIVE', 'Active'].includes(banner.status) ? 'default' : 'secondary'} className="text-xs">
                           {banner.status}
                         </Badge>
                       </div>
                       <p className="text-xs text-muted-foreground">Last modified: {banner.lastModified}</p>
   
                       <div className="absolute inset-0 bg-background/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-lg backdrop-blur-[2px]">
-                        <Button size="sm" variant="secondary" className="shadow-sm">Load Configuration</Button>
+                        <Button 
+                          size="sm" 
+                          variant="secondary" 
+                          className="shadow-sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleLoadBanner(banner);
+                          }}
+                        >
+                          Load Configuration
+                        </Button>
                       </div>
                     </div>
                   ))
@@ -731,20 +814,32 @@ export default function CookiesManagement() {
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="bottom">Bottom Bar</SelectItem>
-                        <SelectItem value="top">Top Bar</SelectItem>
-                        <SelectItem value="center">Center Modal</SelectItem>
-                        <SelectItem value="corner">Botom Corner (L/R)</SelectItem>
+                        <SelectItem value="BOTTOM">Bottom Bar</SelectItem>
+                        <SelectItem value="TOP">Top Bar</SelectItem>
+                        <SelectItem value="CENTER">Center Modal</SelectItem>
+                        <SelectItem value="CORNER">Bottom Corner (L/R)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
                     <Label>Theme Color</Label>
-                    <div className="flex items-center gap-2">
-                      <div className="h-8 w-8 rounded-full bg-primary cursor-pointer ring-2 ring-offset-2 ring-primary" />
-                      <div className="h-8 w-8 rounded-full bg-blue-600 cursor-pointer" />
-                      <div className="h-8 w-8 rounded-full bg-purple-600 cursor-pointer" />
-                      <div className="h-8 w-8 rounded-full bg-zinc-900 cursor-pointer" />
+                    <div className="flex gap-2">
+                      {[
+                        { name: "Green", color: "#10b981" },
+                        { name: "Blue", color: "#2563eb" },
+                        { name: "Purple", color: "#8b5cf6" },
+                        { name: "Dark", color: "#18181b" }
+                      ].map((t) => (
+                        <div
+                          key={t.color}
+                          onClick={() => setBannerTheme(t.color)}
+                          className={`h-8 w-8 rounded-full cursor-pointer border-2 transition-all ${
+                            bannerTheme === t.color ? "border-primary scale-110 shadow-md" : "border-transparent hover:scale-105"
+                          }`}
+                          style={{ backgroundColor: t.color }}
+                          title={t.name}
+                        />
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -755,7 +850,7 @@ export default function CookiesManagement() {
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label>Language</Label>
-                    <Select value={bannerLang} onValueChange={setBannerLang}>
+                    <Select value={bannerLang} onValueChange={handleLanguageChange}>
                       <SelectTrigger>
                         <Globe className="h-4 w-4 mr-2 text-muted-foreground" />
                         <SelectValue />
@@ -770,11 +865,18 @@ export default function CookiesManagement() {
                   </div>
                   <div className="space-y-2">
                     <Label>Heading</Label>
-                    <Input defaultValue="We value your privacy" />
+                    <Input 
+                      value={bannerHeading} 
+                      onChange={(e) => setBannerHeading(e.target.value)} 
+                    />
                   </div>
                   <div className="space-y-2">
                     <Label>Description</Label>
-                    <Textarea className="h-20" defaultValue="We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic." />
+                    <Textarea 
+                      className="h-20" 
+                      value={bannerDescription} 
+                      onChange={(e) => setBannerDescription(e.target.value)} 
+                    />
                   </div>
                 </div>
               </div>
@@ -807,7 +909,7 @@ export default function CookiesManagement() {
                   </div>
                 </div>
 
-                <div className="flex-1 bg-muted/20 rounded-lg border-2 border-dashed border-border flex items-end justify-center relative overflow-hidden min-h-[400px]">
+                <div className={`flex-1 bg-muted/20 rounded-lg border-2 border-dashed border-border flex items-end justify-center relative overflow-hidden min-h-[400px] transition-all duration-300 ${previewDevice === 'mobile' ? 'max-w-xs mx-auto' : 'w-full'}`}>
                   {/* Mock Website Background */}
                   <div className="absolute inset-0 opacity-10 pointer-events-none flex flex-col items-center justify-center">
                     <div className="w-3/4 h-4 bg-foreground/20 rounded mb-4" />
@@ -816,17 +918,18 @@ export default function CookiesManagement() {
                   </div>
 
                   {/* Banner Preview */}
-                  <div className={`p-6 bg-card border shadow-lg transition-all duration-300 w-full max-w-lg m-4 rounded-lg 
-                      ${bannerPosition === 'center' ? 'mb-auto mt-auto' : ''} 
-                      ${bannerPosition === 'top' ? 'mb-auto mt-4' : ''} 
-                      ${bannerPosition === 'bottom' ? 'mb-4 mt-auto' : ''} 
+                  <div className={`p-6 bg-card border shadow-lg transition-all duration-300 w-full rounded-lg m-4
+                      ${previewDevice === 'mobile' ? 'max-w-[280px]' : 'max-w-lg'}
+                      ${['CENTER', 'center'].includes(bannerPosition) ? 'mb-auto mt-auto' : ''} 
+                      ${['TOP', 'top'].includes(bannerPosition) ? 'mb-auto mt-4' : ''} 
+                      ${['BOTTOM', 'bottom'].includes(bannerPosition) ? 'mb-4 mt-auto' : ''} 
                    `}>
-                    <h4 className="font-semibold text-lg mb-2">We value your privacy</h4>
+                    <h4 className="font-semibold text-lg mb-2">{bannerHeading}</h4>
                     <p className="text-sm text-muted-foreground mb-4">
-                      We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic. By clicking "Accept All", you consent to our use of cookies.
+                      {bannerDescription}
                     </p>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                       <Button className="flex-1">Accept All</Button>
+                    <div className={`flex gap-2 ${previewDevice === 'mobile' ? 'flex-col' : 'sm:flex-row'}`}>
+                       <Button className="flex-1" style={{ backgroundColor: bannerTheme }}>Accept All</Button>
                        <Button variant="outline" className="flex-1">Reject All</Button>
                        <Button variant="ghost" className="flex-1">Preferences</Button>
                     </div>
@@ -942,6 +1045,153 @@ export default function CookiesManagement() {
         />
       </Tabs>
     </DashboardLayout>
+    
+    <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
+      <DialogContent className="max-w-[90vw] w-[1200px] h-[85vh] p-0 overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col">
+        <DialogHeader className="p-4 border-b bg-background shrink-0">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <DialogTitle>Live Site Preview</DialogTitle>
+              <DialogDescription>
+                Simulated view of how the banner appears on your website.
+              </DialogDescription>
+            </div>
+            <div className="flex items-center bg-muted rounded-lg p-1 mr-8">
+              <Button
+                variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setPreviewDevice('desktop')}
+                className="h-7 px-3"
+              >
+                <Monitor className="h-4 w-4 mr-2" />
+                Desktop
+              </Button>
+              <Button
+                variant={previewDevice === 'mobile' ? 'secondary' : 'ghost'}
+                size="sm"
+                onClick={() => setPreviewDevice('mobile')}
+                className="h-7 px-3"
+              >
+                <Smartphone className="h-4 w-4 mr-2" />
+                Mobile
+              </Button>
+            </div>
+          </div>
+        </DialogHeader>
+
+        {/* Mock Browser Header */}
+        <div className="bg-muted/50 p-2 flex items-center gap-2 border-b shrink-0">
+          <div className="flex gap-1.5 ml-2">
+            <div className="w-2.5 h-2.5 rounded-full bg-red-400" />
+            <div className="w-2.5 h-2.5 rounded-full bg-yellow-400" />
+            <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
+          </div>
+          <div className="flex-1 max-w-md mx-auto bg-background rounded px-3 py-1 text-[11px] text-muted-foreground flex items-center gap-2 border shadow-sm">
+            <Globe className="h-3 w-3" />
+            https://example.com/shop
+          </div>
+          <div className="w-16" /> {/* Spacer for symmetry */}
+        </div>
+        
+        <div className="flex-1 relative overflow-hidden bg-slate-100/50 shadow-inner">
+          {/* Main Viewport Container */}
+          <div className="absolute inset-0 overflow-hidden">
+            {/* Scrollable Content */}
+            <div className="absolute inset-0 overflow-auto p-8 flex flex-col items-center shadow-inner">
+              <div className={`w-full transition-all duration-500 bg-white dark:bg-slate-900 shadow-sm border rounded-lg p-8 relative min-h-[1500px]
+                ${previewDevice === 'mobile' ? 'max-w-[375px]' : 'max-w-[1000px]'}
+              `}>
+                {/* Fake Content Skeleton */}
+                <div className="space-y-6">
+                  <div className="flex items-center justify-between mb-12">
+                    <div className="w-32 h-8 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                    <div className="flex gap-4">
+                      <div className="w-16 h-4 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                      <div className="w-16 h-4 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                      <div className="w-16 h-4 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <div className="w-3/4 h-12 bg-slate-200 dark:bg-slate-800 rounded animate-pulse" />
+                    <div className="w-full h-4 bg-slate-100 dark:bg-slate-800/50 rounded animate-pulse" />
+                    <div className="w-full h-4 bg-slate-100 dark:bg-slate-800/50 rounded animate-pulse" />
+                    <div className="w-1/2 h-4 bg-slate-100 dark:bg-slate-800/50 rounded animate-pulse" />
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-8 pt-12">
+                    <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+                    <div className="aspect-video bg-slate-100 dark:bg-slate-800 rounded animate-pulse" />
+                  </div>
+                  
+                  <div className="pt-20 space-y-4">
+                    <div className="w-full h-24 bg-slate-50 dark:bg-slate-800/30 rounded animate-pulse" />
+                    <div className="w-3/4 h-4 bg-slate-100 dark:bg-slate-800/50 rounded animate-pulse" />
+                    <div className="w-full h-4 bg-slate-100 dark:bg-slate-800/50 rounded animate-pulse" />
+                    <div className="w-2/3 h-4 bg-slate-100 dark:bg-slate-800/50 rounded animate-pulse" />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* FIXED BANNER OVERLAY - Restored Professional Style */}
+            <div className={`absolute inset-0 p-4 md:p-8 pointer-events-none flex z-[100]
+              ${(!bannerPosition || ['BOTTOM', 'bottom'].includes(bannerPosition)) ? 'items-end justify-center' : ''}
+              ${['TOP', 'top'].includes(bannerPosition) ? 'items-start justify-center' : ''}
+              ${['CENTER', 'center'].includes(bannerPosition) ? 'items-center justify-center bg-black/20 pointer-events-auto' : ''}
+              ${['CORNER', 'corner'].includes(bannerPosition) ? 'items-end justify-end' : ''}
+            `}>
+              <div className={`w-full transition-all duration-300 flex
+                ${(!bannerPosition || ['BOTTOM', 'bottom'].includes(bannerPosition)) ? 'items-end justify-center' : ''}
+                ${['TOP', 'top'].includes(bannerPosition) ? 'items-start justify-center' : ''}
+                ${['CENTER', 'center'].includes(bannerPosition) ? 'items-center justify-center' : ''}
+                ${['CORNER', 'corner'].includes(bannerPosition) ? 'items-end justify-end' : ''}
+                ${previewDevice === 'mobile' ? 'max-w-[375px]' : 'max-w-full'}
+              `}>
+                <div className={`pointer-events-auto bg-card border shadow-2xl transition-all duration-300 w-full rounded-xl overflow-hidden
+                  ${(!bannerPosition || ['TOP', 'bottom', 'BOTTOM', 'top'].includes(bannerPosition)) ? 'max-w-4xl' : 'max-w-md'}
+                  ${previewDevice === 'mobile' ? 'mx-4' : ''}
+                `}>
+                  <div className={previewDevice === 'mobile' ? 'p-4' : 'p-6'}>
+                    <div className={`flex gap-4 ${previewDevice === 'mobile' ? 'flex-col items-center text-center' : 'items-start'}`}>
+                      <div className={`p-2 rounded-lg shrink-0 ${previewDevice === 'mobile' ? 'w-fit' : ''}`} style={{ backgroundColor: `${bannerTheme}15` }}>
+                        <Cookie className={previewDevice === 'mobile' ? 'h-5 w-5' : 'h-6 w-6'} style={{ color: bannerTheme }} />
+                      </div>
+                      <div className="flex-1">
+                        <h4 className={`font-semibold mb-1 ${previewDevice === 'mobile' ? 'text-base' : 'text-lg'}`}>{bannerHeading}</h4>
+                        <p className={`text-muted-foreground mb-4 leading-relaxed ${previewDevice === 'mobile' ? 'text-xs' : 'text-sm'}`}>
+                          {bannerDescription}
+                        </p>
+                        <div className={`flex gap-2 ${previewDevice === 'mobile' ? 'flex-col w-full' : 'items-center gap-3'}`}>
+                          <Button 
+                            size="sm"
+                            className={previewDevice === 'mobile' ? 'w-full py-2 h-9' : 'px-6'}
+                            style={{ backgroundColor: bannerTheme }}
+                          >
+                            Accept All
+                          </Button>
+                          <div className={`flex gap-2 ${previewDevice === 'mobile' ? 'w-full' : ''}`}>
+                            <Button size="sm" variant="outline" className={previewDevice === 'mobile' ? 'flex-1 h-9' : 'px-6'}>Reject All</Button>
+                            <Button size="sm" variant="ghost" className={previewDevice === 'mobile' ? 'flex-1 h-9 text-[10px]' : 'text-xs'}>Customize</Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className={`px-6 py-2 bg-muted/30 border-t flex items-center justify-between text-muted-foreground uppercase tracking-widest font-semibold ${previewDevice === 'mobile' ? 'text-[8px] px-4' : 'text-[10px]'}`}>
+                    <span className="flex items-center gap-2">
+                       <Shield className={previewDevice === 'mobile' ? 'h-2.5 w-2.5' : 'h-3 w-3'} />
+                       GDPR & DPDP
+                    </span>
+                    <span>Proteccio</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
-
