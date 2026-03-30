@@ -100,15 +100,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }, []);
 
     // ─── Logout ───────────────────────────────────────────────
-    const logout = useCallback(() => {
-        // Fire-and-forget backend logout
-        authService.logout().catch(() => {});
-
-        localStorage.removeItem('cms_auth_data');
-        localStorage.removeItem('cms_auth_tokens');
-        setUser(null);
-        setCurrentRole(null);
-        setIsAuthenticated(false);
+    const logout = useCallback(async () => {
+        try {
+            // Wait for backend logout before clearing tokens
+            await authService.logout();
+        } catch (error) {
+            console.error('Logout failed', error);
+        } finally {
+            // Always clear state even if API call fails
+            localStorage.removeItem('cms_auth_data');
+            localStorage.removeItem('cms_auth_tokens');
+            localStorage.removeItem('cms_roles');
+            setUser(null);
+            setCurrentRole(null);
+            setIsAuthenticated(false);
+        }
     }, []);
 
     // ─── RBAC Check ───────────────────────────────────────────
