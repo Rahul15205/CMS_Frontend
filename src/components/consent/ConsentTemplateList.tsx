@@ -56,7 +56,7 @@ import {
   CONSENT_TYPE_INFO
 } from "./types";
 
-// Mock data relocated to mockData.ts
+// Templates are loaded from the live consent service
 
 const getConsentTypeIcon = (type: ConsentType) => {
   switch (type) {

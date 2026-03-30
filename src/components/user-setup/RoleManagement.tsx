@@ -44,12 +44,49 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Role, ModulePermissions } from "./types";
-
-import { defaultPermissions, permissionTypes, modules } from "@/data/mockRoles";
 import { useAuth } from "@/contexts/AuthContext";
 import { Skeleton } from "@/components/ui/skeleton";
 import { rolesService, usersService } from "@/services/userSetupService";
 import { useToast } from "@/hooks/use-toast";
+
+const modules = [
+  "Dashboard",
+  "Consent Management",
+  "Rights Management",
+  "Grievances",
+  "Cookies Management",
+  "Notices",
+  "Configurations",
+  "Integrations",
+  "Security",
+  "Settings",
+  "User Setup",
+  "Reports",
+  "Logs",
+];
+
+const permissionTypes: Array<keyof ModulePermissions[string]> = [
+  "view",
+  "create",
+  "edit",
+  "approve",
+  "export",
+  "configure",
+  "admin",
+];
+
+const defaultPermissions: ModulePermissions = modules.reduce((acc, moduleName) => {
+  acc[moduleName] = {
+    view: false,
+    create: false,
+    edit: false,
+    approve: false,
+    export: false,
+    configure: false,
+    admin: false,
+  };
+  return acc;
+}, {} as ModulePermissions);
 
 export function RoleManagement() {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -98,7 +135,7 @@ export function RoleManagement() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Mock users replaced by live fetchUsersForRole state trigger
+  // Trigger user loading when the selected role changes
 
   const filteredRoles = roles.filter(
     (role) => {
@@ -691,5 +728,3 @@ export function RoleManagement() {
     </div>
   );
 }
-
-

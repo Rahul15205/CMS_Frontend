@@ -31,7 +31,7 @@ import { ConsentUsageTraceability } from "@/components/consent/ConsentUsageTrace
 import { ConsentVersionHistory } from "@/components/consent/ConsentVersionHistory";
 import { CrossApplicationUsage } from "@/components/consent/CrossApplicationUsage";
 
-// Removed mockTemplates import - now handled by consentService fallback
+// Consent templates are loaded through the real consent service
 
 // Legacy localStorage constants removed as we move to persistent backend storage
 

@@ -40,69 +40,6 @@ import { useToast } from "@/hooks/use-toast";
 import { sessionsService } from "@/services/userSetupService";
 import { Skeleton } from "@/components/ui/skeleton";
 
-const mockSessions: Session[] = [
-  {
-    id: "1",
-    userId: "1",
-    userName: "John Smith",
-    device: "Desktop",
-    browser: "Chrome 120",
-    ipAddress: "192.168.1.100",
-    location: "Mumbai, India",
-    loginTime: "2024-01-19 10:30",
-    lastActivity: "2024-01-19 11:45",
-    isCurrentSession: true,
-  },
-  {
-    id: "2",
-    userId: "1",
-    userName: "John Smith",
-    device: "Mobile",
-    browser: "Safari 17",
-    ipAddress: "192.168.1.101",
-    location: "Mumbai, India",
-    loginTime: "2024-01-19 08:15",
-    lastActivity: "2024-01-19 09:30",
-    isCurrentSession: false,
-  },
-  {
-    id: "3",
-    userId: "2",
-    userName: "Sarah Johnson",
-    device: "Laptop",
-    browser: "Firefox 121",
-    ipAddress: "10.0.0.50",
-    location: "Delhi, India",
-    loginTime: "2024-01-19 09:00",
-    lastActivity: "2024-01-19 11:40",
-    isCurrentSession: false,
-  },
-  {
-    id: "4",
-    userId: "3",
-    userName: "Mike Wilson",
-    device: "Desktop",
-    browser: "Edge 120",
-    ipAddress: "172.16.0.25",
-    location: "Bangalore, India",
-    loginTime: "2024-01-18 16:00",
-    lastActivity: "2024-01-18 18:30",
-    isCurrentSession: false,
-  },
-  {
-    id: "5",
-    userId: "4",
-    userName: "Emily Brown",
-    device: "Tablet",
-    browser: "Chrome 120",
-    ipAddress: "203.0.113.45",
-    location: "Unknown",
-    loginTime: "2024-01-19 10:00",
-    lastActivity: "2024-01-19 10:15",
-    isCurrentSession: false,
-  },
-];
-
 const getDeviceIcon = (device: string) => {
   switch ((device || "").toLowerCase()) {
     case "desktop":

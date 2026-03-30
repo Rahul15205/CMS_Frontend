@@ -1,90 +1,194 @@
-/**
- * Configurations Service
- *
- * Covers all 10 config sections: SLA, Notification, Escalation, API Keys,
- * Encryption, Log Retention, Export, Aadhaar, Purposes, Workflows.
- */
-
 import api from '@/lib/api';
-import { FEATURE_FLAGS } from '@/lib/featureFlags';
-import * as mockData from '@/data/mockConfigurations';
 
-// Generic CRUD factory for config endpoints
-function createConfigService(basePath: string, mockCollection?: any[]) {
-  return {
-    getAll: async (params?: any) => {
-      if (!FEATURE_FLAGS.configurations) {
-        return mockCollection || [];
-      }
-      const res = await api.get(basePath, { params });
-      return res.data;
-    },
-    getById: async (id: string) => {
-      if (!FEATURE_FLAGS.configurations) {
-        return mockCollection?.find((item: any) => item.id === id) || null;
-      }
-      const res = await api.get(`${basePath}/${id}`);
-      return res.data;
-    },
-    create: async (data: any) => {
-      if (!FEATURE_FLAGS.configurations) {
-        const newItem = {
-          ...data,
-          id: `NEW-${Math.floor(Math.random() * 1000)}`,
-        };
-        return newItem;
-      }
-      const res = await api.post(basePath, data);
-      return res.data;
-    },
-    update: async (id: string, data: any) => {
-      if (!FEATURE_FLAGS.configurations) {
-        return { ...data, id };
-      }
-      const res = await api.put(`${basePath}/${id}`, data);
-      return res.data;
-    },
-    delete: async (id: string) => {
-      if (!FEATURE_FLAGS.configurations) {
-        return { success: true, id };
-      }
-      const res = await api.delete(`${basePath}/${id}`);
-      return res.data;
-    },
-  };
-}
+const unwrapList = <T>(payload: any): T[] => {
+  if (Array.isArray(payload)) return payload;
+  if (Array.isArray(payload?.data)) return payload.data;
+  return [];
+};
 
-// Singleton config services (GET/PUT only)
-function createSingletonConfigService(basePath: string, mockItem?: any) {
-  return {
-    get: async (tenantId?: string) => {
-      if (!FEATURE_FLAGS.configurations) {
-        return mockItem || null;
-      }
-      const res = await api.get(basePath, { params: { tenantId } });
-      return res.data;
-    },
-    update: async (data: any) => {
-      if (!FEATURE_FLAGS.configurations) {
-        return data;
-      }
-      const res = await api.put(basePath, data);
-      return res.data;
-    },
-  };
-}
+export const consentTemplatesService = {
+  getAll: async (params?: Record<string, unknown>) => {
+    const res = await api.get('/api/v1/consent-templates', { params });
+    return res.data;
+  },
+  create: async (data: any) => {
+    const res = await api.post('/api/v1/consent-templates', data);
+    return res.data;
+  },
+};
 
-export const slaRulesService = createConfigService('/api/config/sla-rules', mockData.mockSLARules);
-export const notificationRulesService = createConfigService('/api/config/notification-rules', mockData.mockNotificationRules);
-export const escalationRulesService = createConfigService('/api/config/escalation-rules', mockData.mockEscalationRules);
-export const apiKeysService = createConfigService('/api/config/api-keys', mockData.mockAPIKeys);
-export const logRetentionService = createConfigService('/api/config/log-retention', mockData.mockLogRetention);
-export const exportConfigsService = createConfigService('/api/config/export', mockData.mockExportConfigs);
-export const workflowConfigsService = createConfigService('/api/config/workflows', mockData.mockWorkflowConfigs);
-export const consentTemplatesService = createConfigService('/api/consent-templates');
-export const purposesService = createConfigService('/api/purposes', mockData.mockPurposes);
-export const languagesService = createConfigService('/api/languages', mockData.mockLanguages);
+export const purposesService = {
+  getAll: async () => {
+    const res = await api.get('/api/v1/purposes');
+    return unwrapList(res.data);
+  },
+  create: async (data: any) => {
+    const res = await api.post('/api/v1/purposes', data);
+    return res.data;
+  },
+  update: async (id: string, data: any) => {
+    const res = await api.put(`/api/v1/purposes/${id}`, data);
+    return res.data;
+  },
+  delete: async (id: string) => {
+    const res = await api.delete(`/api/v1/purposes/${id}`);
+    return res.data;
+  },
+};
 
-// Singleton configs (single record, not list-based)
-export const encryptionConfigService = createSingletonConfigService('/api/config/encryption', mockData.mockEncryptionConfig);
-export const aadhaarConfigService = createSingletonConfigService('/api/config/aadhaar', mockData.mockAadhaarConfig);
+export const languagesService = {
+  getAll: async () => {
+    const res = await api.get('/api/v1/languages');
+    return unwrapList(res.data);
+  },
+  create: async (data: any) => {
+    const res = await api.post('/api/v1/languages', data);
+    return res.data;
+  },
+  update: async (id: string, data: any) => {
+    const res = await api.put(`/api/v1/languages/${id}`, data);
+    return res.data;
+  },
+  delete: async (id: string) => {
+    const res = await api.delete(`/api/v1/languages/${id}`);
+    return res.data;
+  },
+};
+
+export const slaRulesService = {
+  getAll: async (params?: Record<string, unknown>) => {
+    const res = await api.get('/api/v1/config/sla-rules', { params });
+    return unwrapList(res.data);
+  },
+  create: async (data: any) => {
+    const res = await api.post('/api/v1/config/sla-rules', data);
+    return res.data;
+  },
+  update: async (id: string, data: any) => {
+    const res = await api.put(`/api/v1/config/sla-rules/${id}`, data);
+    return res.data;
+  },
+};
+
+export const notificationRulesService = {
+  getAll: async (params?: Record<string, unknown>) => {
+    const res = await api.get('/api/v1/config/notification-rules', { params });
+    return unwrapList(res.data);
+  },
+  create: async (data: any) => {
+    const res = await api.post('/api/v1/config/notification-rules', data);
+    return res.data;
+  },
+  update: async (id: string, data: any) => {
+    const res = await api.put(`/api/v1/config/notification-rules/${id}`, data);
+    return res.data;
+  },
+};
+
+export const escalationRulesService = {
+  getAll: async (params?: Record<string, unknown>) => {
+    const res = await api.get('/api/v1/config/escalation-rules', { params });
+    return unwrapList(res.data);
+  },
+  create: async (data: any) => {
+    const res = await api.post('/api/v1/config/escalation-rules', data);
+    return res.data;
+  },
+  update: async (id: string, data: any) => {
+    const res = await api.put(`/api/v1/config/escalation-rules/${id}`, data);
+    return res.data;
+  },
+};
+
+export const apiKeysService = {
+  getAll: async (tenantId?: string) => {
+    const res = await api.get('/api/v1/config/api-keys', { params: { tenantId } });
+    return unwrapList(res.data);
+  },
+  create: async (data: any) => {
+    const res = await api.post('/api/v1/config/api-keys', data);
+    return res.data;
+  },
+  update: async (id: string, data: any) => {
+    if (data?.status === 'revoked') {
+      await api.delete(`/api/v1/config/api-keys/${id}`);
+      return { ...data, id };
+    }
+    return { ...data, id };
+  },
+};
+
+export const logRetentionService = {
+  getAll: async (tenantId?: string) => {
+    const res = await api.get('/api/v1/config/log-retention', { params: { tenantId } });
+    return unwrapList(res.data);
+  },
+  create: async (data: any) => {
+    const res = await api.post('/api/v1/config/log-retention', data);
+    return res.data;
+  },
+  update: async (id: string, data: any) => {
+    const res = await api.put(`/api/v1/config/log-retention/${id}`, data);
+    return res.data;
+  },
+};
+
+export const exportConfigsService = {
+  getAll: async (tenantId?: string) => {
+    const res = await api.get('/api/v1/config/export', { params: { tenantId } });
+    return unwrapList(res.data);
+  },
+  create: async (data: any) => {
+    const res = await api.post('/api/v1/config/export', data);
+    return res.data;
+  },
+  update: async (id: string, data: any) => {
+    const res = await api.put(`/api/v1/config/export/${id}`, data);
+    return res.data;
+  },
+};
+
+export const workflowConfigsService = {
+  getAll: async (params?: Record<string, unknown>) => {
+    const res = await api.get('/api/v1/config/workflows', { params });
+    return unwrapList(res.data);
+  },
+  create: async (data: any) => {
+    const res = await api.post('/api/v1/config/workflows', data);
+    return res.data;
+  },
+  update: async (id: string, data: any) => {
+    const res = await api.put(`/api/v1/config/workflows/${id}`, data);
+    return res.data;
+  },
+  delete: async (id: string) => {
+    const res = await api.delete(`/api/v1/config/workflows/${id}`);
+    return res.data;
+  },
+};
+
+export const encryptionConfigService = {
+  get: async (tenantId?: string) => {
+    const res = await api.get('/api/v1/config/encryption', { params: { tenantId } });
+    return res.data;
+  },
+  update: async (data: any, tenantId?: string) => {
+    const res = await api.put('/api/v1/config/encryption', data, { params: { tenantId } });
+    return res.data;
+  },
+  rotate: async (tenantId?: string) => {
+    const res = await api.post('/api/v1/config/encryption/rotate', undefined, { params: { tenantId } });
+    return res.data;
+  },
+};
+
+export const aadhaarConfigService = {
+  get: async (tenantId?: string) => {
+    const res = await api.get('/api/v1/config/aadhaar', { params: { tenantId } });
+    return res.data;
+  },
+  update: async (data: any, tenantId?: string) => {
+    const res = await api.put('/api/v1/config/aadhaar', data, { params: { tenantId } });
+    return res.data;
+  },
+};

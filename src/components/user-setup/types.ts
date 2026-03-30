@@ -33,6 +33,7 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
+  aadhaarNumber?: string;
   roles: string[];
   status: UserStatus;
   accountType: AccountType;

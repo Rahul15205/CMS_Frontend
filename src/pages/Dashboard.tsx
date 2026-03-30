@@ -475,7 +475,7 @@ function AdminDashboard() {
                   key={activity.id || index}
                   icon={isWarning ? <AlertTriangle className="h-4 w-4" /> : isSuccess ? <CheckCircle className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                   title={activity.action}
-                  description={activity.details || `User: ${activity.user?.name || activity.userId}`}
+                  description={typeof activity.details === 'string' ? activity.details : `User: ${activity.user?.name || activity.user?.email || activity.userId || 'System'}`}
                   time={new Date(activity.createdAt).toLocaleDateString()}
                   variant={isWarning ? "error" : isSuccess ? "success" : "default"}
                 />
@@ -759,7 +759,7 @@ function DPODashboard() {
                     key={activity.id || index}
                     icon={isWarning ? <AlertTriangle className="h-4 w-4" /> : isSuccess ? <CheckCircle className="h-4 w-4" /> : <FileText className="h-4 w-4" />}
                     title={activity.action}
-                    description={activity.details || `User: ${activity.user?.name || activity.userId}`}
+                    description={typeof activity.details === 'string' ? activity.details : `User: ${activity.user?.name || activity.user?.email || activity.userId || 'System'}`}
                     time={new Date(activity.createdAt).toLocaleDateString()}
                     variant={isWarning ? "error" : isSuccess ? "success" : "default"}
                   />
@@ -927,7 +927,7 @@ function DataPrincipalDashboard() {
                     </div>
                     <div className="flex-1">
                       <p className="font-medium text-sm">{activity.action}</p>
-                      <p className="text-xs text-muted-foreground">{activity.details || "No details available"}</p>
+                      <p className="text-xs text-muted-foreground">{typeof activity.details === 'string' ? activity.details : "No details available"}</p>
                     </div>
                     <span className="text-xs text-muted-foreground">{new Date(activity.createdAt).toLocaleDateString()}</span>
                   </div>

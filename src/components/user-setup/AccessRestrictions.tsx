@@ -39,42 +39,6 @@ import { AccessRule } from "./types";
 import { accessRulesService } from "@/services/userSetupService";
 import { useToast } from "@/hooks/use-toast";
 
-const mockRules: AccessRule[] = [
-  {
-    id: "1",
-    name: "Office IP Whitelist",
-    type: "ip",
-    status: "active",
-    description: "Allow access only from office IP ranges",
-    conditions: { ips: ["192.168.1.0/24", "10.0.0.0/8", "172.16.0.0/16"] },
-  },
-  {
-    id: "2",
-    name: "Business Hours Only",
-    type: "time",
-    status: "active",
-    description: "Restrict access to business hours (9 AM - 6 PM IST)",
-    conditions: { startHour: 9, endHour: 18, timezone: "Asia/Kolkata", days: ["Mon", "Tue", "Wed", "Thu", "Fri"] },
-  },
-  {
-    id: "3",
-    name: "India Region Only",
-    type: "geo",
-    status: "active",
-    description: "Allow access only from India",
-    conditions: { countries: ["IN"] },
-  },
-
-  {
-    id: "5",
-    name: "VPN Required",
-    type: "custom",
-    status: "active",
-    description: "Require VPN connection for external access",
-    conditions: { vpnRequired: true },
-  },
-];
-
 const getRuleTypeIcon = (type: string) => {
   switch (type) {
     case "ip":

@@ -49,6 +49,7 @@ export interface RightsRequest {
   requesterName: string;
   requesterEmail: string;
   requesterPhone?: string;
+  aadhaarNumber?: string;
   isAuthorizedRep: boolean;
   authorizedRepDetails?: {
     name: string;

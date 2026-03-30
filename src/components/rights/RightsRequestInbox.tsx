@@ -98,7 +98,7 @@ export function RightsRequestInbox({ onSelectRequest }: { onSelectRequest?: (req
       try {
         setIsLoading(true);
         const result = await rightsService.getAll();
-        // Handle both mock array and paginated object from real API
+        // Handle both array and paginated API responses
         const data = Array.isArray(result) ? result : (result?.data || []);
         setRequests(data);
       } catch (error) {

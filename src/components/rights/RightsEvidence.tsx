@@ -2,7 +2,6 @@ import { useState, useEffect } from "react";
 import api from "@/lib/api";
 import { rightsService } from "@/services/rightsService";
 import { handleApiError } from "@/lib/errorHandler";
-import { FEATURE_FLAGS } from "@/lib/featureFlags";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -219,44 +218,18 @@ export function RightsEvidence() {
 
     try {
       let addedItem;
-      if (FEATURE_FLAGS.rights) {
-        // Send actual FormData to API
-        // Find actual ID from case number
-        let realId = uploadData.caseNumber;
-        const matchingRequest = evidenceData.find(e => e.caseNumber === uploadData.caseNumber);
-        
-        // If we don't have matching evidence locally, try to find from requests if we had them or let it fail gracefully if ID is really missing.
-        // For testing, let's just make sure we are not using the RR- string directly as ID if the backend expects a UUID.
-        // Actually, looking at rights-requests.service.ts, `findOne(id)` expects the DB primary key `id`, not the `caseNumber`.
-        // The mock evidence uses '1' or '2' for caseId/id but RR-... for caseNumber.
-        
-        // As a fallback for the UI demo if the user types RR-..., let's try to query the backend to find the ID by caseNumber.
-        const res = await api.get('/api/rights/requests', { params: { search: uploadData.caseNumber } });
-        if (res.data?.data && res.data.data.length > 0) {
-          realId = res.data.data[0].id;
-        }
-
-        const formData = new FormData();
-        formData.append('caseNumber', uploadData.caseNumber);
-        formData.append('category', uploadData.category);
-        formData.append('file', selectedFile);
-        
-        addedItem = await rightsService.addEvidence(realId, formData);
-      } else {
-        // Mock fallback if API disabled
-        const extension = selectedFile.name.split('.').pop() || 'pdf';
-        addedItem = {
-          id: `evi-${Date.now()}`,
-          caseNumber: uploadData.caseNumber,
-          fileName: selectedFile.name,
-          fileType: extension,
-          category: uploadData.category,
-          uploadedBy: "Current User",
-          uploadedAt: new Date().toISOString(),
-          size: Math.floor(selectedFile.size / 1024) + " KB",
-          verified: false,
-        };
+      let realId = uploadData.caseNumber;
+      const res = await api.get('/api/v1/rights/requests', { params: { search: uploadData.caseNumber } });
+      if (res.data?.data && res.data.data.length > 0) {
+        realId = res.data.data[0].id;
       }
+
+      const formData = new FormData();
+      formData.append('caseNumber', uploadData.caseNumber);
+      formData.append('category', uploadData.category);
+      formData.append('file', selectedFile);
+      
+      addedItem = await rightsService.addEvidence(realId, formData);
       
       setEvidenceData(prev => [addedItem, ...prev]);
       setIsUploadOpen(false);
@@ -275,15 +248,12 @@ export function RightsEvidence() {
   const handleVerify = async (item: EvidenceItem) => {
     try {
       let realId = item.caseNumber;
-      if (FEATURE_FLAGS.rights) {
-        // Try to find requestId from requests API as fallback since evidence table only has caseNumber
-        const res = await api.get('/api/rights/requests', { params: { search: item.caseNumber } });
-        if (res.data?.data && res.data.data.length > 0) {
-          realId = res.data.data[0].id;
-        }
-
-        await rightsService.verifyEvidence(realId, item.id, !item.verified);
+      const res = await api.get('/api/v1/rights/requests', { params: { search: item.caseNumber } });
+      if (res.data?.data && res.data.data.length > 0) {
+        realId = res.data.data[0].id;
       }
+
+      await rightsService.verifyEvidence(realId, item.id, !item.verified);
 
       setEvidenceData(prev => prev.map(e => 
         e.id === item.id ? { ...e, verified: !e.verified } : e
@@ -615,7 +585,7 @@ export function RightsEvidence() {
               <div className="border rounded-lg p-8 bg-muted/20 flex flex-col items-center justify-center text-center gap-4 min-h-[300px] overflow-hidden relative">
                 {['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(viewingEvidence.fileType.toLowerCase()) && !imageError ? (
                   <img 
-                    src={`${api.defaults.baseURL || 'http://localhost:3001'}/uploads/evidence/${viewingEvidence.fileName}`} 
+                    src={`${api.defaults.baseURL || 'http://localhost:3002'}/uploads/evidence/${viewingEvidence.fileName}`} 
                     alt="Evidence Preview" 
                     className="max-w-full max-h-[400px] object-contain rounded-md"
                     onError={() => setImageError(true)}

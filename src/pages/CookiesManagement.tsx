@@ -82,6 +82,7 @@ import {
   cookieConsentLogsService, 
   cookieComplianceService 
 } from "@/services/cookiesService";
+import { reportsService } from "@/services/reportsLogsSecurityService";
 import { Skeleton } from "@/components/ui/skeleton";
 
 // Map string icons to components
@@ -287,14 +288,27 @@ export default function CookiesManagement() {
   };
 
   const handleGenerateReport = (website: any) => {
-    // Mock report generation
-    import("jspdf").then(({ default: jsPDF }) => {
-      const doc = new jsPDF();
-      doc.text(`Screening Report for ${website.name}`, 10, 10);
-      doc.text(`URL: ${website.url}`, 10, 20);
-      doc.text(`Date: ${new Date().toLocaleString()}`, 10, 30);
-      doc.text("Status: Clean - No critical issues found.", 10, 40);
-      doc.save(`${website.name}_report.pdf`);
+    reportsService.create({
+      name: `Cookie Compliance - ${website.name}`,
+      reportType: "COMPLIANCE",
+      format: "PDF",
+      parameters: {
+        websiteId: website.id,
+        websiteName: website.name,
+        websiteUrl: website.url,
+        module: "COOKIES_MANAGEMENT",
+      },
+    }).then(() => {
+      toast({
+        title: "Report Queued",
+        description: "Cookie compliance report generation has started. Download it from Reports once processing completes.",
+      });
+    }).catch(() => {
+      toast({
+        title: "Error",
+        description: "Failed to queue compliance report.",
+        variant: "destructive",
+      });
     });
   };
 
@@ -910,7 +924,6 @@ export default function CookiesManagement() {
                 </div>
 
                 <div className={`flex-1 bg-muted/20 rounded-lg border-2 border-dashed border-border flex items-end justify-center relative overflow-hidden min-h-[400px] transition-all duration-300 ${previewDevice === 'mobile' ? 'max-w-xs mx-auto' : 'w-full'}`}>
-                  {/* Mock Website Background */}
                   <div className="absolute inset-0 opacity-10 pointer-events-none flex flex-col items-center justify-center">
                     <div className="w-3/4 h-4 bg-foreground/20 rounded mb-4" />
                     <div className="w-1/2 h-4 bg-foreground/20 rounded mb-4" />
@@ -1079,7 +1092,6 @@ export default function CookiesManagement() {
           </div>
         </DialogHeader>
 
-        {/* Mock Browser Header */}
         <div className="bg-muted/50 p-2 flex items-center gap-2 border-b shrink-0">
           <div className="flex gap-1.5 ml-2">
             <div className="w-2.5 h-2.5 rounded-full bg-red-400" />

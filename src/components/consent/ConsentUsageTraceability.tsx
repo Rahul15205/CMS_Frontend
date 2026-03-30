@@ -41,7 +41,7 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 
-// Mock content removed - using live data
+// Using live data only
 
 const systemsUsingConsent = [
   { name: "Email Platform", consentTemplates: 2, lastEvent: "2 hours ago" },

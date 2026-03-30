@@ -1,7 +1,5 @@
 import api from '@/lib/api';
-import { FEATURE_FLAGS } from '@/lib/featureFlags';
 import { ConsentTemplate, TemplateStatus, ConsentVersion, ConsentDeployment, DeploymentLog, ConsentType, ConsentUsageRecord, ApplicationUsage, ConsentAnalyticsData, SystemConfig } from '@/components/consent/types';
-import { mockTemplates } from '@/components/consent/mockData';
 
 // ─── Mappers ──────────────────────────────────────────────────
 
@@ -150,21 +148,7 @@ export const consentService = {
     offset?: number;
     tenantId?: string;
   }): Promise<{ data: ConsentTemplate[]; total: number }> => {
-    if (!FEATURE_FLAGS.consent) {
-      // Mock mode
-      const filtered = mockTemplates.filter(t => {
-        if (params?.status && t.status !== params.status) return false;
-        if (params?.search && !t.name.toLowerCase().includes(params.search.toLowerCase())) return false;
-        return true;
-      });
-      return { 
-        data: filtered.slice(params?.offset || 0, (params?.offset || 0) + (params?.limit || 10)),
-        total: filtered.length
-      };
-    }
-
-    // Real API call
-    const res = await api.get('/api/consent-templates', { params });
+    const res = await api.get('/api/v1/consent-templates', { params });
     const { data, total } = res.data;
     
     return {
@@ -177,13 +161,7 @@ export const consentService = {
    * Get a single template by ID.
    */
   getTemplateById: async (id: string): Promise<ConsentTemplate> => {
-    if (!FEATURE_FLAGS.consent) {
-      const template = mockTemplates.find(t => t.id === id);
-      if (!template) throw new Error('Template not found');
-      return template;
-    }
-
-    const res = await api.get(`/api/consent-templates/${id}`);
+    const res = await api.get(`/api/v1/consent-templates/${id}`);
     return mapBackendTemplate(res.data);
   },
 
@@ -191,10 +169,6 @@ export const consentService = {
    * Publish a new version of a template (creates a snapshot).
    */
   publishVersion: async (templateId: string, wizardFields: any): Promise<ConsentVersion> => {
-    if (!FEATURE_FLAGS.consent) {
-      return { id: 'mock-v-' + Date.now() } as any;
-    }
-
     const payload = {
       templateId,
       content: JSON.stringify(wizardFields),
@@ -202,7 +176,7 @@ export const consentService = {
       effectiveFrom: new Date().toISOString(),
     };
 
-    const res = await api.post('/api/consent-versions', payload);
+    const res = await api.post('/api/v1/consent-versions', payload);
     return res.data;
   },
 
@@ -210,10 +184,6 @@ export const consentService = {
    * Save a template (Create or Update).
    */
   saveTemplate: async (template: Partial<ConsentTemplate>): Promise<ConsentTemplate> => {
-    if (!FEATURE_FLAGS.consent) {
-      return template as ConsentTemplate;
-    }
-
     const status = template.status?.toUpperCase();
     
     // Map enums to UPPERCASE for backend columns
@@ -241,11 +211,11 @@ export const consentService = {
     let result: ConsentTemplate;
     if (template.id && !template.id.startsWith('tpl-')) {
       // Update
-      const res = await api.put(`/api/consent-templates/${template.id}`, payload);
+      const res = await api.put(`/api/v1/consent-templates/${template.id}`, payload);
       result = mapBackendTemplate(res.data);
     } else {
       // Create
-      const res = await api.post('/api/consent-templates', payload);
+      const res = await api.post('/api/v1/consent-templates', payload);
       result = mapBackendTemplate(res.data);
     }
 
@@ -269,8 +239,7 @@ export const consentService = {
    * Delete/Archive a template.
    */
   deleteTemplate: async (id: string): Promise<void> => {
-    if (!FEATURE_FLAGS.consent) return;
-    await api.delete(`/api/consent-templates/${id}`);
+    await api.delete(`/api/v1/consent-templates/${id}`);
   },
 
   /**
@@ -281,12 +250,7 @@ export const consentService = {
     limit?: number;
     offset?: number;
   }): Promise<{ data: ConsentVersion[]; total: number }> => {
-    if (!FEATURE_FLAGS.consent) {
-      // Mock mode fallback logic (simplified)
-      return { data: [], total: 0 };
-    }
-
-    const res = await api.get('/api/consent-versions', { params });
+    const res = await api.get('/api/v1/consent-versions', { params });
     const { data, total } = res.data;
 
     return {
@@ -304,11 +268,7 @@ export const consentService = {
     limit?: number;
     offset?: number;
   }): Promise<{ data: ConsentDeployment[]; total: number }> => {
-    if (!FEATURE_FLAGS.consent) {
-      return { data: [], total: 0 };
-    }
-
-    const res = await api.get('/api/consent-deployments', { params });
+    const res = await api.get('/api/v1/consent-deployments', { params });
     const { data, total } = res.data;
 
     return {
@@ -321,11 +281,7 @@ export const consentService = {
    * Fetch deployment logs for a specific deployment.
    */
   getDeploymentLogs: async (id: string): Promise<DeploymentLog[]> => {
-    if (!FEATURE_FLAGS.consent) {
-      return [];
-    }
-
-    const res = await api.get(`/api/consent-deployments/${id}/logs`);
+    const res = await api.get(`/api/v1/consent-deployments/${id}/logs`);
     return res.data; // Logs usually don't need complex mapping
   },
 
@@ -333,10 +289,6 @@ export const consentService = {
    * Create a new deployment.
    */
   createDeployment: async (data: any): Promise<ConsentDeployment> => {
-    if (!FEATURE_FLAGS.consent) {
-      return data as ConsentDeployment;
-    }
-
     const payload = {
       ...data,
       deploymentMode: data.deploymentMode?.toUpperCase(),
@@ -344,7 +296,7 @@ export const consentService = {
       platform: Array.isArray(data.platform) ? data.platform.map((p: string) => p.trim()) : data.platform,
     };
 
-    const res = await api.post('/api/consent-deployments', payload);
+    const res = await api.post('/api/v1/consent-deployments', payload);
     return mapBackendDeployment(res.data);
   },
 
@@ -352,11 +304,7 @@ export const consentService = {
    * Rollback a deployment.
    */
   rollbackDeployment: async (id: string): Promise<ConsentDeployment> => {
-    if (!FEATURE_FLAGS.consent) {
-      throw new Error('Rollback not supported in mock mode');
-    }
-
-    const res = await api.put(`/api/consent-deployments/${id}/rollback`);
+    const res = await api.put(`/api/v1/consent-deployments/${id}/rollback`);
     return mapBackendDeployment(res.data);
   },
 
@@ -364,19 +312,7 @@ export const consentService = {
    * Fetch aggregate consent analytics.
    */
   getAnalytics: async (): Promise<ConsentAnalyticsData> => {
-    if (!FEATURE_FLAGS.consent) {
-      // Mock data matching the structure
-      return {
-        templates: { total: 0, byStatus: {}, byType: {} },
-        records: { total: 0, byStatus: {} },
-        deployments: { total: 0, byStatus: {} },
-        crossAppUsage: { byApplicationType: {} },
-        reconsentData: [],
-        fatigueIndicators: []
-      };
-    }
-
-    const res = await api.get('/api/consent/analytics');
+    const res = await api.get('/api/v1/consent/analytics');
     return res.data;
   },
 
@@ -390,11 +326,7 @@ export const consentService = {
     limit?: number;
     offset?: number;
   }): Promise<{ data: ConsentUsageRecord[]; total: number }> => {
-    if (!FEATURE_FLAGS.consent) {
-      return { data: [], total: 0 };
-    }
-
-    const res = await api.get('/api/consent/usage-records', { params });
+    const res = await api.get('/api/v1/consent/usage-records', { params });
     const { data, total } = res.data;
 
     return {
@@ -412,11 +344,7 @@ export const consentService = {
     limit?: number;
     offset?: number;
   }): Promise<{ data: ApplicationUsage[]; total: number }> => {
-    if (!FEATURE_FLAGS.consent) {
-      return { data: [], total: 0 };
-    }
-
-    const res = await api.get('/api/consent/cross-app-usage', { params });
+    const res = await api.get('/api/v1/consent/cross-app-usage', { params });
     const { data, total } = res.data;
 
     return {
@@ -429,11 +357,7 @@ export const consentService = {
    * Fetch system configs.
    */
   getSystemConfigs: async (tenantId?: string): Promise<SystemConfig[]> => {
-    if (!FEATURE_FLAGS.consent) {
-      return [];
-    }
-
-    const res = await api.get('/api/consent/system-configs', { params: { tenantId } });
+    const res = await api.get('/api/v1/consent/system-configs', { params: { tenantId } });
     return res.data;
   },
 
@@ -441,11 +365,7 @@ export const consentService = {
    * Create a system config.
    */
   createSystemConfig: async (config: SystemConfig): Promise<SystemConfig> => {
-    if (!FEATURE_FLAGS.consent) {
-      return config;
-    }
-
-    const res = await api.post('/api/consent/system-configs', config);
+    const res = await api.post('/api/v1/consent/system-configs', config);
     return res.data;
   },
 
@@ -453,11 +373,7 @@ export const consentService = {
    * Fetch all managed applications.
    */
   getApplications: async (params?: { limit?: number; offset?: number }): Promise<{ data: any[]; total: number }> => {
-    if (!FEATURE_FLAGS.consent) {
-      return { data: [{ id: 'app-default', name: 'Mock Application' }], total: 1 };
-    }
-
-    const res = await api.get('/api/applications', { params });
+    const res = await api.get('/api/v1/applications', { params });
     return res.data;
   },
 };

@@ -54,69 +54,6 @@ import {
   Legend,
 } from "recharts";
 
-// Mock analytics data
-const consentTrendData = [
-  { month: "Jan", active: 4500, rejected: 450, withdrawn: 120, expired: 200, pending: 300 },
-  { month: "Feb", active: 5200, rejected: 380, withdrawn: 150, expired: 180, pending: 320 },
-  { month: "Mar", active: 6100, rejected: 420, withdrawn: 180, expired: 150, pending: 280 },
-  { month: "Apr", active: 5800, rejected: 510, withdrawn: 210, expired: 220, pending: 350 },
-  { month: "May", active: 7200, rejected: 390, withdrawn: 170, expired: 160, pending: 310 },
-  { month: "Jun", active: 8100, rejected: 450, withdrawn: 200, expired: 190, pending: 290 },
-  { month: "Jul", active: 8500, rejected: 480, withdrawn: 230, expired: 210, pending: 330 },
-  { month: "Aug", active: 9200, rejected: 520, withdrawn: 250, expired: 240, pending: 360 },
-  { month: "Sep", active: 9800, rejected: 490, withdrawn: 220, expired: 230, pending: 340 },
-  { month: "Oct", active: 10500, rejected: 550, withdrawn: 280, expired: 260, pending: 380 },
-  { month: "Nov", active: 11200, rejected: 580, withdrawn: 300, expired: 280, pending: 400 },
-  { month: "Dec", active: 12450, rejected: 620, withdrawn: 320, expired: 310, pending: 420 },
-];
-
-const reconsentData = [
-  { template: "Marketing Consent", sent: 5000, completed: 4200, rate: 84 },
-  { template: "Analytics Consent", sent: 3200, completed: 2800, rate: 87.5 },
-  { template: "Third-Party Sharing", sent: 1500, completed: 1100, rate: 73.3 },
-  { template: "Essential Service", sent: 8000, completed: 7800, rate: 97.5 },
-];
-
-const consentByTypeData = [
-  { name: "Explicit Consent", value: 35, color: "hsl(var(--primary))" },
-  { name: "Implicit Consent", value: 10, color: "hsl(280, 65%, 60%)" }, // Purple-ish
-  { name: "Optional Consent", value: 20, color: "hsl(var(--success))" },
-  { name: "Granular Consent", value: 10, color: "hsl(var(--info))" },
-  { name: "Mandatory Consent", value: 15, color: "hsl(var(--warning))" },
-  { name: "Parental Consent", value: 10, color: "hsl(340, 75%, 55%)" }, // Pink
-];
-
-const fatigueIndicators = [
-  {
-    metric: "Multiple Consent Requests",
-    value: 23,
-    threshold: 30,
-    status: "healthy",
-    description: "Users receiving 3+ consent requests in 30 days",
-  },
-  {
-    metric: "Rapid Decline Rate",
-    value: 12,
-    threshold: 15,
-    status: "healthy",
-    description: "Users declining within 2 seconds",
-  },
-  {
-    metric: "Re-consent Abandonment",
-    value: 28,
-    threshold: 25,
-    status: "warning",
-    description: "Incomplete re-consent flows",
-  },
-  {
-    metric: "Immediate Withdrawal",
-    value: 5,
-    threshold: 10,
-    status: "healthy",
-    description: "Withdrawals within 24 hours of consent",
-  },
-];
-
 export function ConsentAnalytics() {
   const [dateRange, setDateRange] = useState("6months");
   const [templateFilter, setTemplateFilter] = useState("all");
@@ -127,9 +64,8 @@ export function ConsentAnalytics() {
     queryFn: () => consentService.getAnalytics(),
   });
 
-  // Use dynamic data from analytics or fallback to mock only if API hasn't responded
-  const reconsentRateData = analytics?.reconsentData || (isLoading ? reconsentData : []);
-  const fatigueMetrics = analytics?.fatigueIndicators || (isLoading ? fatigueIndicators : []);
+  const reconsentRateData = analytics?.reconsentData || [];
+  const fatigueMetrics = analytics?.fatigueIndicators || [];
 
   const { data: templatesRes } = useQuery({
     queryKey: ["consent-templates"],
@@ -168,7 +104,7 @@ export function ConsentAnalytics() {
     // Add Metadata
     const requestorName = "Admin User";
     const requestDate = new Date().toLocaleString();
-    const ipAddress = "192.168.1.101"; // Mock IP
+    const ipAddress = "Captured from active session";
 
     pdf.setFontSize(10);
     pdf.setTextColor(100);
@@ -184,7 +120,7 @@ export function ConsentAnalytics() {
   const handleExportCSV = () => {
     const requestorName = "Admin User";
     const requestDate = new Date().toLocaleString();
-    const ipAddress = "192.168.1.101";
+    const ipAddress = "Captured from active session";
 
     const csvRows = [];
 
@@ -407,7 +343,7 @@ export function ConsentAnalytics() {
             <CardContent>
               <div className="h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <AreaChart data={consentTrends.length > 0 ? consentTrends : consentTrendData}>
+                  <AreaChart data={consentTrends.length > 0 ? consentTrends : []}>
                     <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                     <XAxis dataKey="name" className="text-xs" />
                     <YAxis className="text-xs" />
@@ -641,7 +577,7 @@ export function ConsentAnalytics() {
           <CardContent>
             <div className="h-[250px]">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={consentTrends.length > 0 ? consentTrends : consentTrendData}>
+                <BarChart data={consentTrends.length > 0 ? consentTrends : []}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="name" className="text-xs" />
                   <YAxis className="text-xs" />

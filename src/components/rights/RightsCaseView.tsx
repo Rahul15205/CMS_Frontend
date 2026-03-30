@@ -47,53 +47,16 @@ import {
   Edit,
   Save,
   RotateCcw,
+  Fingerprint,
 } from "lucide-react";
 import { RightsRequest, RIGHTS_TYPE_INFO, REGULATION_INFO, STATUS_INFO, DEFAULT_WORKFLOW_STEPS, WorkflowStep, CaseNote, AuditEntry } from "./types";
 import { rightsService } from "@/services/rightsService";
 import { handleApiError } from "@/lib/errorHandler";
 
-
-
 interface RightsCaseViewProps {
   request: RightsRequest;
   onBack: () => void;
 }
-
-const notes: CaseNote[] = [
-  {
-    id: "1",
-    caseId: "1",
-    type: "internal",
-    content: "Verified identity using email confirmation. All documents look correct.",
-    createdBy: "Jane Doe",
-    createdAt: "2024-01-18T14:00:00Z",
-  },
-  {
-    id: "2",
-    caseId: "1",
-    type: "external",
-    content: "Dear John, we have received your request and are currently processing it. You will receive a response within 30 days.",
-    createdBy: "Jane Doe",
-    createdAt: "2024-01-19T09:00:00Z",
-  },
-  {
-    id: "3",
-    caseId: "1",
-    type: "internal",
-    content: "Pulling data from CRM and Marketing systems. Need to coordinate with IT team for database exports.",
-    createdBy: "Raj Kumar",
-    createdAt: "2024-01-19T11:30:00Z",
-  },
-];
-
-const auditLog: AuditEntry[] = [
-  { id: "1", caseId: "1", action: "Request Created", performedBy: "System", performedAt: "2024-01-18T10:30:00Z", details: "Request submitted via web form", systemApplication: "Website" },
-  { id: "2", caseId: "1", action: "Identity Verification Started", performedBy: "Jane Doe", performedAt: "2024-01-18T11:00:00Z", details: "Initiated email verification", ipAddress: "192.168.1.100" },
-  { id: "3", caseId: "1", action: "Identity Verified", performedBy: "Jane Doe", performedAt: "2024-01-18T14:00:00Z", details: "Email verified successfully", ipAddress: "192.168.1.100" },
-  { id: "4", caseId: "1", action: "Acknowledgement Sent", performedBy: "Jane Doe", performedAt: "2024-01-19T09:00:00Z", details: "Email acknowledgement sent to requester", ipAddress: "192.168.1.100" },
-  { id: "5", caseId: "1", action: "Status Changed", performedBy: "Jane Doe", performedAt: "2024-01-19T09:05:00Z", details: "Status changed from 'Acknowledged' to 'In Review'", ipAddress: "192.168.1.100" },
-  { id: "6", caseId: "1", action: "Assigned", performedBy: "Jane Doe", performedAt: "2024-01-19T09:10:00Z", details: "Case assigned to Raj Kumar", ipAddress: "192.168.1.100" },
-];
 
 const getStepStatusColor = (status: string) => {
   switch (status) {
@@ -108,15 +71,15 @@ const getStepStatusColor = (status: string) => {
 
 export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
   const [newNote, setNewNote] = useState("");
-
   const [assignee, setAssignee] = useState(request.assignedTo || "");
-
-  // Data states
   const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>([]);
   const [notes, setNotes] = useState<CaseNote[]>([]);
   const [auditLog, setAuditLog] = useState<AuditEntry[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(true);
   const [isAddingNote, setIsAddingNote] = useState(false);
+  const [noteType, setNoteType] = useState<"internal" | "external">("internal");
+  const [showAssignDialog, setShowAssignDialog] = useState(false);
+  const [showEscalateDialog, setShowEscalateDialog] = useState(false);
 
   useEffect(() => {
     const fetchCaseData = async () => {
@@ -162,9 +125,6 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
       handleApiError(error, 'Assigning Request');
     }
   };
-  const [noteType, setNoteType] = useState<"internal" | "external">("internal");
-  const [showAssignDialog, setShowAssignDialog] = useState(false);
-  const [showEscalateDialog, setShowEscalateDialog] = useState(false);
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString("en-US", {
@@ -224,7 +184,7 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
                   Select a team member to assign this case to.
                 </DialogDescription>
               </DialogHeader>
-              <Select>
+              <Select onValueChange={handleAssign}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select assignee" />
                 </SelectTrigger>
@@ -237,7 +197,6 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
               </Select>
               <DialogFooter>
                 <Button variant="outline" onClick={() => setShowAssignDialog(false)}>Cancel</Button>
-                <Button onClick={() => setShowAssignDialog(false)}>Assign</Button>
               </DialogFooter>
             </DialogContent>
           </Dialog>
@@ -346,6 +305,17 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
                     <p className="text-sm text-muted-foreground">Submission Channel</p>
                     <Badge variant="outline" className="capitalize">{request.submissionChannel}</Badge>
                   </div>
+                  
+                  {request.aadhaarNumber && (
+                    <div className="col-span-2">
+                       <p className="text-sm text-muted-foreground">Aadhaar Number (PII)</p>
+                       <div className="flex items-center gap-2 mt-1">
+                         <Fingerprint className="h-4 w-4 text-primary" />
+                         <p className="font-medium">{request.aadhaarNumber}</p>
+                       </div>
+                    </div>
+                  )}
+
                   {request.isAuthorizedRep && request.authorizedRepDetails && (
                     <>
                       <Separator className="col-span-2" />
@@ -522,7 +492,7 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
                       <Paperclip className="h-4 w-4 mr-2" />
                       Attach File
                     </Button>
-                    <Button size="sm">
+                    <Button size="sm" onClick={handleAddNote} disabled={isAddingNote}>
                       <Send className="h-4 w-4 mr-2" />
                       {noteType === "external" ? "Send" : "Add Note"}
                     </Button>

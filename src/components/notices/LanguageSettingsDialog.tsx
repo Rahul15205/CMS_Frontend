@@ -9,13 +9,13 @@ import {
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { NoticeLanguage } from "@/data/mockNotices";
 import { AlertCircle, Trash2 } from "lucide-react";
 import {
     Alert,
     AlertDescription,
     AlertTitle,
 } from "@/components/ui/alert";
+import { NoticeLanguage } from "./types";
 
 interface LanguageSettingsDialogProps {
     open: boolean;

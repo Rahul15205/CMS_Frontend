@@ -170,14 +170,18 @@ export function SLAGrievancesRules() {
 
   const activeRules = rules.filter(r => r.status === "active").length;
   const criticalRules = rules.filter(r => r.priority === "critical").length;
+  const healthMetrics = categories.map(({ value, label }) => {
+    const matchingRules = rules.filter(rule => rule.category === value);
+    const activeCount = matchingRules.filter(rule => rule.status === "active").length;
+    const criticalCount = matchingRules.filter(rule => rule.priority === "critical").length;
 
-  // Mock health metrics
-  const healthMetrics = [
-    { category: "Data Privacy", compliance: 96, breaches: 2 },
-    { category: "Consent Related", compliance: 100, breaches: 0 },
-    { category: "Service Quality", compliance: 89, breaches: 5 },
-    { category: "General Inquiry", compliance: 94, breaches: 3 },
-  ];
+    return {
+      category: label,
+      coverage: matchingRules.length > 0 ? Math.round((activeCount / matchingRules.length) * 100) : 0,
+      ruleCount: matchingRules.length,
+      criticalCount,
+    };
+  }).filter(metric => metric.ruleCount > 0);
 
   return (
     <div className="space-y-6">
@@ -208,31 +212,37 @@ export function SLAGrievancesRules() {
         <CardHeader>
           <CardTitle className="text-base font-bold flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary" />
-            Compliance Heatmap
+            Policy Coverage
           </CardTitle>
-          <CardDescription>Real-time SLA performance audit by grievance category</CardDescription>
+          <CardDescription>Live rule coverage by grievance category</CardDescription>
         </CardHeader>
         <CardContent>
+          {healthMetrics.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border/50 bg-background/20 p-6 text-sm text-muted-foreground">
+              No grievance SLA rules available yet. Coverage metrics will appear after policies are created.
+            </div>
+          ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {healthMetrics.map(metric => (
               <div key={metric.category} className="p-4 border border-border/40 rounded-xl bg-background/30 hover:bg-muted/30 transition-all group">
                 <div className="flex items-center justify-between mb-3">
                   <span className="text-xs font-bold text-muted-foreground uppercase tracking-tight">{metric.category}</span>
-                  <Badge variant="outline" className={`text-[10px] border-0 px-0 ${metric.compliance >= 95 ? "text-success" : "text-warning"}`}>
-                    {metric.compliance}%
+                  <Badge variant="outline" className={`text-[10px] border-0 px-0 ${metric.coverage >= 95 ? "text-success" : metric.coverage > 0 ? "text-warning" : "text-muted-foreground"}`}>
+                    {metric.coverage}%
                   </Badge>
                 </div>
                 <Progress 
-                  value={metric.compliance} 
-                  className={`h-1.5 bg-muted/50 ${metric.compliance >= 95 ? "[&>div]:bg-success" : metric.compliance >= 90 ? "[&>div]:bg-warning" : "[&>div]:bg-destructive"}`}
+                  value={metric.coverage} 
+                  className={`h-1.5 bg-muted/50 ${metric.coverage >= 95 ? "[&>div]:bg-success" : metric.coverage > 0 ? "[&>div]:bg-warning" : "[&>div]:bg-muted-foreground"}`}
                 />
                 <div className="mt-3 flex items-center justify-between text-[10px]">
-                  <span className="text-muted-foreground">Monthly Breaches</span>
-                  <span className={`font-bold ${metric.breaches > 0 ? "text-destructive" : "text-success"}`}>{metric.breaches}</span>
+                  <span className="text-muted-foreground">Critical Rules</span>
+                  <span className={`font-bold ${metric.criticalCount > 0 ? "text-destructive" : "text-success"}`}>{metric.criticalCount}</span>
                 </div>
               </div>
             ))}
           </div>
+          )}
         </CardContent>
       </Card>
 

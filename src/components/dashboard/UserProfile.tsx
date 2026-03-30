@@ -8,16 +8,19 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
-import { Settings, LogOut, User as UserIcon, Building2, Clock, Activity, Shield, Key } from "lucide-react";
+import { Settings, LogOut, User as UserIcon, Building2, Clock, Activity, Shield, Key, ShieldCheck } from "lucide-react";
 import { useDashboard } from "@/contexts/DashboardContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { useNavigate } from "react-router-dom";
+import { AadhaarVerificationModal } from "./AadhaarVerificationModal";
+import { useState } from "react";
 
 export function UserProfile() {
     const { config, roleLabels } = useDashboard();
     const { user, currentRole, logout } = useAuth();
     const navigate = useNavigate();
-
+    const [isAadhaarModalOpen, setIsAadhaarModalOpen] = useState(false);
+ 
     const handleLogout = () => {
         logout();
         navigate("/login");
@@ -73,7 +76,15 @@ export function UserProfile() {
                             </AvatarFallback>
                         </Avatar>
                         <div className="flex flex-col space-y-1">
-                            <p className="font-semibold leading-none">{displayName}</p>
+                            <div className="flex items-center gap-2">
+                                <p className="font-semibold leading-none">{displayName}</p>
+                                {user?.aadhaarVerified && (
+                                    <div className="bg-green-100 text-green-700 text-[10px] px-1.5 py-0.5 rounded-sm font-bold flex items-center gap-0.5">
+                                        <ShieldCheck className="h-2.5 w-2.5" />
+                                        VERIFIED
+                                    </div>
+                                )}
+                            </div>
                             <p className="text-xs text-muted-foreground">{userEmail}</p>
                             <div className={`text-[10px] px-2 py-0.5 rounded-full w-fit mt-1 bg-muted text-muted-foreground border border-border font-medium`}>
                                 {userRole}
@@ -83,6 +94,17 @@ export function UserProfile() {
                 </div>
 
                 <div className="p-4 border-b">
+                    {!user?.aadhaarVerified && (
+                        <Button 
+                            variant="outline" 
+                            size="sm" 
+                            className="w-full mb-4 border-primary/30 bg-primary/5 hover:bg-primary/10 text-primary h-8 text-xs font-semibold gap-2"
+                            onClick={() => setIsAadhaarModalOpen(true)}
+                        >
+                            <ShieldCheck className="h-3.5 w-3.5" />
+                            Verify Aadhaar Identity
+                        </Button>
+                    )}
                     <div className="flex items-center gap-2 text-sm text-foreground mb-3 font-medium">
                         <Building2 className="h-4 w-4 text-muted-foreground" />
                         {tenantName}
@@ -132,6 +154,16 @@ export function UserProfile() {
                     </DropdownMenuItem>
                 </div>
             </DropdownMenuContent>
+
+            <AadhaarVerificationModal 
+                isOpen={isAadhaarModalOpen} 
+                onClose={() => setIsAadhaarModalOpen(false)}
+                onSuccess={() => {
+                    // Refresh profile via authContext if needed, 
+                    // though the user will likely see the change on next refresh 
+                    // or if we update the user object locally.
+                }}
+            />
         </DropdownMenu>
     );
 }

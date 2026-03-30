@@ -65,23 +65,6 @@ import { useToast } from "@/hooks/use-toast";
 import { aadhaarConfigService } from "@/services/configurationsService";
 import { Skeleton } from "@/components/ui/skeleton";
 
-// Mock usage statistics
-const usageStats = {
-  totalVerifications: 1245,
-  successRate: 97.2,
-  failureRate: 2.8,
-  monthlyUsage: [
-    { month: "Jan", count: 320 },
-    { month: "Feb", count: 285 },
-    { month: "Mar", count: 410 },
-    { month: "Apr", count: 230 },
-  ],
-  byPurpose: [
-    { purpose: "Rights Verification", count: 892, percentage: 71.6 },
-    { purpose: "Grievance Verification", count: 353, percentage: 28.4 },
-  ],
-};
-
 const getStatusBadge = (status: LifecycleStatus) => {
   switch (status) {
     case "active":
@@ -173,6 +156,13 @@ export function AadhaarKYCConfig() {
   }
 
   if (!config) return null;
+
+  const monitoringStats = [
+    { title: "Allowed Scopes", value: config.usageScopes.length, color: "text-foreground" },
+    { title: "Retention Days", value: config.consentRetentionDays, color: "text-success" },
+    { title: "Session Timeout", value: `${config.timeoutSeconds}s`, color: "text-destructive" },
+    { title: "Verification Mode", value: config.verificationMode, color: "text-primary" },
+  ];
 
   return (
     <div className="space-y-6">
@@ -570,12 +560,7 @@ export function AadhaarKYCConfig() {
         {/* Monitoring Tab */}
         <TabsContent value="monitoring" className="space-y-6 mt-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            {[
-                { title: "Total Verifications", value: usageStats.totalVerifications.toLocaleString(), color: "text-foreground" },
-                { title: "Success Rate", value: `${usageStats.successRate}%`, color: "text-success" },
-                { title: "Failure Rate", value: `${usageStats.failureRate}%`, color: "text-destructive" },
-                { title: "This Month", value: usageStats.monthlyUsage[usageStats.monthlyUsage.length - 1].count, color: "text-primary" }
-            ].map((stat, i) => (
+            {monitoringStats.map((stat, i) => (
                 <Card key={i} className="border-0 shadow-sm bg-card/60 backdrop-blur-sm overflow-hidden">
                     <CardHeader className="pb-2">
                         <CardTitle className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{stat.title}</CardTitle>
@@ -591,21 +576,24 @@ export function AadhaarKYCConfig() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
                 <Activity className="h-5 w-5 text-primary" />
-                Usage by Purpose
+                Verification Scope
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-6">
-                {usageStats.byPurpose.map(item => (
-                  <div key={item.purpose} className="space-y-2">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-semibold">{item.purpose}</span>
-                      <span className="text-muted-foreground font-mono">{item.count} ({item.percentage}%)</span>
+              {config.usageScopes.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-border/50 bg-background/20 p-6 text-sm text-muted-foreground">
+                  No Aadhaar verification scopes are enabled.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {config.usageScopes.map(scope => (
+                    <div key={scope} className="flex items-center justify-between rounded-xl border border-border/50 bg-background/30 p-4 text-sm">
+                      <span className="font-semibold">{scope}</span>
+                      <Badge variant="outline">Enabled</Badge>
                     </div>
-                    <Progress value={item.percentage} className="h-2.5 bg-muted/50" />
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

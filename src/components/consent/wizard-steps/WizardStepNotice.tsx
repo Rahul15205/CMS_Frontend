@@ -5,6 +5,9 @@ import { Badge } from "@/components/ui/badge";
 import { FileText, Clock, History, Shield, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConsentTemplate } from "../types";
+import { useEffect, useState } from "react";
+import { noticesService } from "@/services/noticesService";
+import { NoticeReference } from "@/components/notices/types";
 
 interface WizardStepNoticeProps {
   data: Partial<ConsentTemplate>;
@@ -19,16 +22,31 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 
-// Mock Active Notices - eventually this will come from an API
-const activeNotices = [
-  { id: "pn-001", name: "General Privacy Policy", version: "v2.0", reference: "PN-2024-001" },
-  { id: "pn-002", name: "Cookie Policy", version: "v1.5", reference: "CP-2024-002" },
-  { id: "pn-003", name: "Employee Privacy Notice", version: "v1.0", reference: "EPN-2024-003" },
-  { id: "pn-004", name: "Mobile App Privacy Policy", version: "v3.1", reference: "MAP-2024-004" },
-  { id: "pn-005", name: "Terms of Service", version: "2024", reference: "TOS-2024-005" },
-];
-
 export function WizardStepNotice({ data, onChange }: WizardStepNoticeProps) {
+  const [activeNotices, setActiveNotices] = useState<NoticeReference[]>([]);
+
+  useEffect(() => {
+    const loadNotices = async () => {
+      try {
+        const response = await noticesService.getAll({ status: "NOTICE_ACTIVE", limit: 100 });
+        const records = Array.isArray(response) ? response : response?.data || [];
+        setActiveNotices(
+          records.map((notice) => ({
+            id: notice.id,
+            name: notice.title,
+            version: `v${notice.version || "1"}`,
+            reference: notice.id,
+          })),
+        );
+      } catch (error) {
+        console.error("Failed to load notice references", error);
+        setActiveNotices([]);
+      }
+    };
+
+    loadNotices();
+  }, []);
+
   return (
     <div className="space-y-8">
       {/* Info Banner */}
@@ -72,6 +90,11 @@ export function WizardStepNotice({ data, onChange }: WizardStepNoticeProps) {
                   <span className="ml-2 text-muted-foreground text-xs">({notice.version})</span>
                 </SelectItem>
               ))}
+              {activeNotices.length === 0 && (
+                <SelectItem value="__no_notices__" disabled>
+                  No active notices found
+                </SelectItem>
+              )}
             </SelectContent>
           </Select>
         </div>

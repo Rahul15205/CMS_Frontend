@@ -47,55 +47,6 @@ import { Invitation, InviteStatus } from "./types";
 import { useToast } from "@/hooks/use-toast";
 import { invitationsService, rolesService } from "@/services/userSetupService";
 
-const mockInvitations: Invitation[] = [
-  {
-    id: "1",
-    email: "new.user@company.com",
-    role: "Operator",
-    status: "pending",
-    invitedBy: "John Smith",
-    invitedAt: "2024-01-18 10:00",
-    expiresAt: "2024-01-25 10:00",
-  },
-  {
-    id: "2",
-    email: "partner@external.com",
-    role: "Viewer",
-    status: "pending",
-    invitedBy: "Sarah Johnson",
-    invitedAt: "2024-01-17 14:30",
-    expiresAt: "2024-01-24 14:30",
-  },
-  {
-    id: "3",
-    email: "emily.brown@company.com",
-    role: "Viewer",
-    status: "accepted",
-    invitedBy: "John Smith",
-    invitedAt: "2024-01-15 09:00",
-    expiresAt: "2024-01-22 09:00",
-    acceptedAt: "2024-01-15 11:30",
-  },
-  {
-    id: "4",
-    email: "old.invite@company.com",
-    role: "Operator",
-    status: "expired",
-    invitedBy: "Mike Wilson",
-    invitedAt: "2024-01-01 10:00",
-    expiresAt: "2024-01-08 10:00",
-  },
-  {
-    id: "5",
-    email: "failed@invalid.com",
-    role: "Viewer",
-    status: "failed",
-    invitedBy: "Sarah Johnson",
-    invitedAt: "2024-01-10 15:00",
-    expiresAt: "2024-01-17 15:00",
-  },
-];
-
 // Available roles loaded dynamically
 
 const getStatusIcon = (status: InviteStatus) => {

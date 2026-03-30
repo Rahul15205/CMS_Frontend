@@ -63,9 +63,15 @@ api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+    const requestUrl = originalRequest?.url || '';
 
     // Only attempt refresh for 401 errors, and only once per request
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    if (
+      error.response?.status === 401 &&
+      !originalRequest._retry &&
+      !requestUrl.includes('/api/v1/auth/login') &&
+      !requestUrl.includes('/api/v1/auth/refresh')
+    ) {
       if (isRefreshing) {
         // Another refresh is already in progress — queue this request
         return new Promise((resolve, reject) => {
@@ -89,7 +95,10 @@ api.interceptors.response.use(
         if (!refreshToken) throw new Error('No refresh token');
 
         // Call refresh endpoint directly (bypasses interceptor)
-        const res = await axios.post(`${API_BASE_URL}/api/auth/refresh`, { refreshToken });
+        const refreshUrl = API_BASE_URL
+          ? `${API_BASE_URL}/api/v1/auth/refresh`
+          : '/api/v1/auth/refresh';
+        const res = await axios.post(refreshUrl, { refreshToken });
 
         const newTokens = {
           accessToken: res.data.accessToken,
@@ -105,10 +114,9 @@ api.interceptors.response.use(
       } catch (refreshError) {
         processQueue(refreshError, null);
 
-        // Refresh failed — clear auth data and redirect to login
+        // Refresh failed — clear auth data and let auth state settle naturally
         localStorage.removeItem('cms_auth_tokens');
         localStorage.removeItem('cms_auth_data');
-        window.location.href = '/';
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;

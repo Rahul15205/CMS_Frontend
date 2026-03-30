@@ -60,91 +60,6 @@ const apiUsageData = [
   { name: "Sun", calls: 600 },
 ];
 
-// ─── Initial mock integrations ──────────────────────────────────
-const initialIntegrations: Integration[] = [
-  {
-    id: 1,
-    name: "Salesforce CRM",
-    type: "CRM",
-    status: "connected",
-    lastSync: "5 min ago",
-    apiCalls: 12450,
-    icon: "🔷",
-  },
-  {
-    id: 2,
-    name: "Google Analytics",
-    type: "Analytics",
-    status: "connected",
-    lastSync: "2 min ago",
-    apiCalls: 45230,
-    icon: "📊",
-  },
-  {
-    id: 3,
-    name: "Mailchimp",
-    type: "Marketing",
-    status: "error",
-    lastSync: "2 hrs ago",
-    apiCalls: 8900,
-    icon: "📧",
-  },
-  {
-    id: 4,
-    name: "Zendesk",
-    type: "Support",
-    status: "connected",
-    lastSync: "10 min ago",
-    apiCalls: 3200,
-    icon: "🎫",
-  },
-  {
-    id: 5,
-    name: "HubSpot",
-    type: "Marketing",
-    status: "disconnected",
-    lastSync: "Never",
-    apiCalls: 0,
-    icon: "🟠",
-  },
-  {
-    id: 6,
-    name: "Segment",
-    type: "Data Platform",
-    status: "connected",
-    lastSync: "1 min ago",
-    apiCalls: 78500,
-    icon: "🟢",
-  },
-  {
-    id: 7,
-    name: "Aadhar eKYC",
-    type: "Identity",
-    status: "disconnected",
-    lastSync: "Never",
-    apiCalls: 0,
-    icon: "🆔",
-  },
-  {
-    id: 8,
-    name: "DigiLocker",
-    type: "Document Verification",
-    status: "disconnected",
-    lastSync: "Never",
-    apiCalls: 0,
-    icon: "📂",
-  },
-  {
-    id: 9,
-    name: "SMS/Email Gateway",
-    type: "Communication",
-    status: "disconnected",
-    lastSync: "Never",
-    apiCalls: 0,
-    icon: "📨",
-  },
-];
-
 // ─── Status badge helper ────────────────────────────────────────
 const getStatusBadge = (status: string) => {
   switch (status) {
@@ -181,7 +96,7 @@ export default function Integrations() {
   const { toast } = useToast();
 
   // ─── State ──────────────────────────────────────────────────
-  const [integrationsList, setIntegrationsList] = useState<Integration[]>(initialIntegrations);
+  const [integrationsList, setIntegrationsList] = useState<Integration[]>([]);
   const [showAddDialog, setShowAddDialog] = useState(false);
   const [configureTarget, setConfigureTarget] = useState<Integration | null>(null);
   const [disconnectTarget, setDisconnectTarget] = useState<Integration | null>(null);
@@ -238,7 +153,6 @@ export default function Integrations() {
       }
     } catch (err) {
       console.error("Failed to fetch integrations:", err);
-      // Fallback to initial bindings if we crash completely / mock fails
     } finally {
       setIsLoading(false);
     }
@@ -470,7 +384,7 @@ export default function Integrations() {
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
             <div className="lg:col-span-3 lg:h-full">
               <TrendLineChart
-                data={metrics?.apiUsageData && metrics.apiUsageData.length > 0 ? metrics.apiUsageData : apiUsageData}
+                data={metrics?.apiUsageData && metrics.apiUsageData.length > 0 ? metrics.apiUsageData : []}
                 lines={[
                   {
                     dataKey: "calls",

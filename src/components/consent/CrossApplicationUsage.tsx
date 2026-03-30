@@ -42,7 +42,7 @@ import {
   Database,
 } from "lucide-react";
 
-// Mock data removed - using live data
+// Using live data only
 
 const getAppTypeIcon = (type: string) => {
   switch (type) {

@@ -38,19 +38,19 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { title: "Dashboard", icon: LayoutDashboard, path: "/", group: "main", permissionKey: "Dashboard" },
-  { title: "Consent Management", icon: FileCheck, path: "/consent", group: "main", permissionKey: "Consent Management" },
-  { title: "Rights Management", icon: Scale, path: "/rights", group: "main", permissionKey: "Rights Management" },
-  { title: "Grievances", icon: MessageSquareWarning, path: "/grievances", group: "main", permissionKey: "Grievances" },
-  { title: "Cookies Management", icon: Cookie, path: "/cookies", group: "operations", permissionKey: "Cookies Management" },
-  { title: "Notices", icon: FileText, path: "/notices", group: "operations", permissionKey: "Notices" },
-  { title: "Configurations", icon: Settings2, path: "/configurations", group: "system", permissionKey: "Configurations" },
-  { title: "Integrations", icon: Plug, path: "/integrations", group: "system", permissionKey: "Integrations" },
-  { title: "Security", icon: Shield, path: "/security", group: "system", permissionKey: "Security" },
-  { title: "Settings", icon: Settings, path: "/settings", group: "admin", permissionKey: "Settings" },
-  { title: "User Setup", icon: Users, path: "/users", group: "admin", permissionKey: "User Setup" },
-  { title: "Reports", icon: BarChart3, path: "/reports", group: "admin", permissionKey: "Reports" },
-  { title: "Logs", icon: ScrollText, path: "/logs", group: "admin", permissionKey: "Logs" },
+  { title: "Dashboard", icon: LayoutDashboard, path: "/", group: "main", permissionKey: "DASHBOARD" },
+  { title: "Consent Management", icon: FileCheck, path: "/consent", group: "main", permissionKey: "CONSENT_MANAGEMENT" },
+  { title: "Rights Management", icon: Scale, path: "/rights", group: "main", permissionKey: "RIGHTS_MANAGEMENT" },
+  { title: "Grievances", icon: MessageSquareWarning, path: "/grievances", group: "main", permissionKey: "GRIEVANCES" },
+  { title: "Cookies Management", icon: Cookie, path: "/cookies", group: "operations", permissionKey: "COOKIES_MANAGEMENT" },
+  { title: "Notices", icon: FileText, path: "/notices", group: "operations", permissionKey: "NOTICES" },
+  { title: "Configurations", icon: Settings2, path: "/configurations", group: "system", permissionKey: "CONFIGURATIONS" },
+  { title: "Integrations", icon: Plug, path: "/integrations", group: "system", permissionKey: "INTEGRATIONS" },
+  { title: "Security", icon: Shield, path: "/security", group: "system", permissionKey: "SECURITY" },
+  { title: "Settings", icon: Settings, path: "/settings", group: "admin", permissionKey: "SETTINGS" },
+  { title: "User Setup", icon: Users, path: "/users", group: "admin", permissionKey: "USER_SETUP" },
+  { title: "Reports", icon: BarChart3, path: "/reports", group: "admin", permissionKey: "REPORTS" },
+  { title: "Logs", icon: ScrollText, path: "/logs", group: "admin", permissionKey: "LOGS" },
 ];
 
 const groupLabels: Record<string, string> = {

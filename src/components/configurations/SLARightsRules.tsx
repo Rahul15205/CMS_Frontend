@@ -153,7 +153,7 @@ export function SLARightsRules() {
   };
 
   const activeRules = rules.filter(r => r.status === "active").length;
-  const slaCompliance = 94; // Mock percentage
+  const slaCompliance = rules.length > 0 ? Math.round((activeRules / rules.length) * 100) : 0;
 
   return (
     <div className="space-y-6">

@@ -12,31 +12,31 @@ import { FEATURE_FLAGS } from '@/lib/featureFlags';
 export const usersService = {
   getAll: async (params?: any) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.get('/api/users', { params });
+    const res = await api.get('/api/v1/users', { params });
     return res.data;
   },
 
   getById: async (id: string) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.get(`/api/users/${id}`);
+    const res = await api.get(`/api/v1/users/${id}`);
     return res.data;
   },
 
   create: async (data: any) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.post('/api/users', data);
+    const res = await api.post('/api/v1/users', data);
     return res.data;
   },
 
   update: async (id: string, data: any) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.put(`/api/users/${id}`, data);
+    const res = await api.put(`/api/v1/users/${id}`, data);
     return res.data;
   },
 
   updateStatus: async (id: string, status: string) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.put(`/api/users/${id}/status`, { status });
+    const res = await api.put(`/api/v1/users/${id}/status`, { status });
     return res.data;
   },
 };
@@ -46,25 +46,25 @@ export const usersService = {
 export const rolesService = {
   getAll: async (params?: any) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.get('/api/roles', { params });
+    const res = await api.get('/api/v1/roles', { params });
     return res.data;
   },
 
   getById: async (id: string) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.get(`/api/roles/${id}`);
+    const res = await api.get(`/api/v1/roles/${id}`);
     return res.data;
   },
 
   create: async (data: any) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.post('/api/roles', data);
+    const res = await api.post('/api/v1/roles', data);
     return res.data;
   },
 
   update: async (id: string, data: any) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.put(`/api/roles/${id}`, data);
+    const res = await api.put(`/api/v1/roles/${id}`, data);
     return res.data;
   },
 };
@@ -74,13 +74,13 @@ export const rolesService = {
 export const invitationsService = {
   getAll: async (params?: any) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.get('/api/invitations', { params });
+    const res = await api.get('/api/v1/invitations', { params });
     return res.data;
   },
 
   create: async (data: any) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.post('/api/invitations', data);
+    const res = await api.post('/api/v1/invitations', data);
     return res.data;
   },
 };
@@ -90,13 +90,13 @@ export const invitationsService = {
 export const sessionsService = {
   getAll: async (params?: any) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.get('/api/sessions', { params });
+    const res = await api.get('/api/v1/sessions', { params });
     return res.data;
   },
 
   delete: async (id: string) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.delete(`/api/sessions/${id}`);
+    const res = await api.delete(`/api/v1/sessions/${id}`);
     return res.data;
   },
 };
@@ -106,7 +106,7 @@ export const sessionsService = {
 export const auditLogsService = {
   getAll: async (params?: any) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.get('/api/audit-logs', { params });
+    const res = await api.get('/api/v1/audit-logs', { params });
     return res.data;
   },
 };
@@ -116,31 +116,31 @@ export const auditLogsService = {
 export const accessRulesService = {
   getAll: async (params?: any) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.get('/api/access-rules', { params });
+    const res = await api.get('/api/v1/access-rules', { params });
     return res.data;
   },
 
   getById: async (id: string) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.get(`/api/access-rules/${id}`);
+    const res = await api.get(`/api/v1/access-rules/${id}`);
     return res.data;
   },
 
   create: async (data: any) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.post('/api/access-rules', data);
+    const res = await api.post('/api/v1/access-rules', data);
     return res.data;
   },
 
   update: async (id: string, data: any) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.put(`/api/access-rules/${id}`, data);
+    const res = await api.put(`/api/v1/access-rules/${id}`, data);
     return res.data;
   },
 
   delete: async (id: string) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.delete(`/api/access-rules/${id}`);
+    const res = await api.delete(`/api/v1/access-rules/${id}`);
     return res.data;
   },
 };

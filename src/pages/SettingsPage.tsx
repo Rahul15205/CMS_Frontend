@@ -61,36 +61,6 @@ import { EscalationRules } from "@/components/configurations/EscalationRules";
 import { LogRetentionRules } from "@/components/configurations/LogRetentionRules";
 import { cn } from "@/lib/utils";
 
-const fallbackPurposes = [
-  { id: 1, name: "Marketing Communications", active: true, consents: 4520 },
-  { id: 2, name: "Analytics & Performance", active: true, consents: 3890 },
-  { id: 3, name: "Personalization", active: true, consents: 2340 },
-  { id: 4, name: "Third-Party Data Sharing", active: true, consents: 1200 },
-  { id: 5, name: "Research & Development", active: false, consents: 0 },
-];
-
-const fallbackTemplates = [
-  { id: 1, name: "Standard Consent", type: "Consent Collection", active: true },
-  { id: 2, name: "Marketing Opt-In", type: "Consent Collection", active: true },
-  { id: 3, name: "Data Access Request", type: "Rights Request", active: true },
-  { id: 4, name: "Data Deletion Request", type: "Rights Request", active: true },
-];
-
-const fallbackWorkflows = [
-  { id: 1, name: "Consent Collection", enabled: true, steps: 4 },
-  { id: 2, name: "Rights Request Processing", enabled: true, steps: 6 },
-  { id: 3, name: "Grievance Handling", enabled: true, steps: 5 },
-  { id: 4, name: "Consent Renewal", enabled: false, steps: 3 },
-];
-
-const fallbackLanguages = [
-  { code: "en", name: "English", enabled: true, primary: true },
-  { code: "hi", name: "Hindi", enabled: true, primary: false },
-  { code: "ta", name: "Tamil", enabled: true, primary: false },
-  { code: "bn", name: "Bengali", enabled: false, primary: false },
-  { code: "te", name: "Telugu", enabled: false, primary: false },
-];
-
 interface SidebarNavProps extends React.HTMLAttributes<HTMLElement> {
   items: {
     href: string;
@@ -135,9 +105,9 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
   
   const [loading, setLoading] = useState(true);
-  const [purposeItems, setPurposeItems] = useState(fallbackPurposes);
-  const [languageItems, setLanguageItems] = useState(fallbackLanguages);
-  const [workflowItems, setWorkflowItems] = useState(fallbackWorkflows);
+  const [purposeItems, setPurposeItems] = useState<any[]>([]);
+  const [languageItems, setLanguageItems] = useState<any[]>([]);
+  const [workflowItems, setWorkflowItems] = useState<any[]>([]);
   const { toast } = useToast();
 
   const fetchSettings = useCallback(async () => {
@@ -153,7 +123,7 @@ export default function SettingsPage() {
        console.error("Failed to default settings api", error);
        toast({
          title: "Warning",
-         description: "Failed to load live settings. Using default fallback cache.",
+         description: "Failed to load live settings.",
          variant: "destructive"
        });
     } finally {
@@ -225,26 +195,16 @@ export default function SettingsPage() {
   };
 
   const handleAddPurpose = () => {
-    const nextId = Math.max(...purposeItems.map((p) => p.id), 0) + 1;
-    setPurposeItems((prev) => [
-      ...prev,
-      { id: nextId, name: `New Purpose ${nextId}`, active: true, consents: 0 },
-    ]);
     toast({
-      title: "Purpose Added",
-      description: `New Purpose ${nextId} created.`,
+      title: "Use Configuration Flow",
+      description: "Create purposes from the consent/configuration APIs instead of local draft data.",
     });
   };
 
   const handleAddLanguage = () => {
-    const draftCode = `lg${languageItems.length + 1}`;
-    setLanguageItems((prev) => [
-      ...prev,
-      { code: draftCode, name: `Language ${languageItems.length + 1}`, enabled: false, primary: false },
-    ]);
     toast({
-      title: "Language Added",
-      description: `Language ${languageItems.length + 1} added as draft.`,
+      title: "Use Localization API",
+      description: "Add languages from the notices localization flow instead of local draft data.",
     });
   };
 
@@ -321,7 +281,7 @@ export default function SettingsPage() {
                    </div>
                 ) : (
                   <div className="grid gap-4">
-                    {purposeItems.map((purpose) => (
+                    {purposeItems.length > 0 ? purposeItems.map((purpose) => (
                     <div key={purpose.id} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center gap-3">
                         <div className={`h-2 w-2 rounded-full ${purpose.active ? "bg-success" : "bg-muted"}`} />
@@ -332,7 +292,9 @@ export default function SettingsPage() {
                       </div>
                       <Switch checked={purpose.active} onCheckedChange={() => handlePurposeToggle(purpose.id)} />
                     </div>
-                  ))}
+                    )) : (
+                      <div className="p-4 border rounded-lg text-sm text-muted-foreground">No purpose data available from the API.</div>
+                    )}
                 </div>
                 )}
               </div>
@@ -354,7 +316,7 @@ export default function SettingsPage() {
                    </div>
                 ) : (
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {languageItems.map((lang) => (
+                    {languageItems.length > 0 ? languageItems.map((lang) => (
                     <div key={lang.code} className="flex items-center justify-between p-4 border rounded-lg">
                       <div className="flex items-center gap-3">
                         <span className="text-xs font-bold uppercase bg-muted px-2 py-1 rounded">{lang.code}</span>
@@ -365,7 +327,9 @@ export default function SettingsPage() {
                       </div>
                       <Switch checked={lang.enabled} onCheckedChange={() => handleLanguageToggle(lang.code)} />
                     </div>
-                  ))}
+                    )) : (
+                      <div className="col-span-full p-4 border rounded-lg text-sm text-muted-foreground">No language data available from the API.</div>
+                    )}
                 </div>
                 )}
               </div>

@@ -32,6 +32,7 @@ import {
   Shield,
   Building,
   AlertCircle,
+  Fingerprint,
 } from "lucide-react";
 import { RIGHTS_TYPE_INFO, REGULATION_INFO, RightsType, Regulation, SubmissionChannel } from "./types";
 
@@ -79,6 +80,7 @@ export function NewRightsRequestDialog({ open, onOpenChange, onSubmit }: NewRigh
     dataCategories: [] as string[],
     applications: [] as string[],
     priority: "normal",
+    aadhaarNumber: "",
   });
 
   const handleSubmit = async () => {
@@ -103,6 +105,7 @@ export function NewRightsRequestDialog({ open, onOpenChange, onSubmit }: NewRigh
         dataCategories: [],
         applications: [],
         priority: "normal",
+        aadhaarNumber: "",
       });
       setCurrentTab("requester");
     } catch (error) {
@@ -214,6 +217,22 @@ export function NewRightsRequestDialog({ open, onOpenChange, onSubmit }: NewRigh
                   />
                 </div>
               </div>
+              <div className="space-y-2">
+                <Label htmlFor="aadhaar">Aadhaar Number (PII)</Label>
+                <div className="relative">
+                  <Fingerprint className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="aadhaar"
+                    placeholder="1234-5678-9012"
+                    className="pl-10"
+                    value={formData.aadhaarNumber}
+                    onChange={(e) => setFormData((prev) => ({ ...prev, aadhaarNumber: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="userId">User/Customer ID</Label>
                 <Input

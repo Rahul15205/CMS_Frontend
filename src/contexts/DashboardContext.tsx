@@ -157,7 +157,7 @@ export function DashboardProvider({ children }: { children: ReactNode }) {
           if (parsed.viewConfigs) {
             setViewConfigs(parsed.viewConfigs);
           } else {
-            // Check if role exists in dynamic configs, else fallback to admin
+            // Use the saved role config when available, otherwise use admin defaults
             const targetConfig = parsed.customRoles?.[parsed.role] || defaultWidgets[parsed.role] || defaultWidgets["admin"];
             setViewConfigs(targetConfig);
           }

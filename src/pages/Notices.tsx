@@ -65,7 +65,14 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { noticesService } from "@/services/noticesService";
-import { NoticeRecord, NoticeType, NoticeLanguage, NoticeHistoryRecord } from "@/data/mockNotices";
+import {
+  NoticeRecord,
+  NoticeType,
+  NoticeLanguage,
+  NoticeHistoryRecord,
+  CreateNoticeTypeInput,
+  CreateNoticeLanguageInput,
+} from "@/components/notices/types";
 
 // Helper function for status badges
 const getStatusBadge = (status: string) => {
@@ -151,7 +158,7 @@ export default function Notices() {
     setShowEditorSheet(true);
   };
 
-  const handleAddNoticeType = async (type: any) => {
+  const handleAddNoticeType = async (type: CreateNoticeTypeInput) => {
     try {
       const newType = await noticesService.createType(type);
       setNoticeTypes((prev) => [...prev, newType]);
@@ -168,17 +175,17 @@ export default function Notices() {
     }
   };
 
-  const handleViewNotice = (notice: any) => {
+  const handleViewNotice = (notice: NoticeRecord) => {
     setSelectedNotice(notice);
     setShowPreviewDialog(true);
   };
 
-  const handleEditNotice = (notice: any) => {
+  const handleEditNotice = (notice: NoticeRecord) => {
     setSelectedNotice(notice);
     setShowEditorSheet(true);
   };
 
-  const handleSaveNotice = async (updatedNotice: any) => {
+  const handleSaveNotice = async (updatedNotice: NoticeRecord) => {
     try {
       if (!updatedNotice.id) {
         // Create new notice
@@ -207,7 +214,7 @@ export default function Notices() {
     }
   };
 
-  const handleAddLanguage = async (lang: { code: string; name: string; isDefault: boolean }) => {
+  const handleAddLanguage = async (lang: CreateNoticeLanguageInput) => {
     try {
       const newLang = await noticesService.createLanguage(lang);
       if (lang.isDefault) {

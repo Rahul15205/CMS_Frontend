@@ -81,17 +81,6 @@ const getRetentionDisplay = (period: number, unit: string) => {
   return `${period} ${unit}`;
 };
 
-// Mock storage usage data
-const storageData = [
-  { type: "Audit Logs", size: 45.2, color: "bg-primary" },
-  { type: "Consent Logs", size: 32.8, color: "bg-success" },
-  { type: "Rights Logs", size: 12.5, color: "bg-warning" },
-  { type: "Security Logs", size: 8.3, color: "bg-destructive" },
-  { type: "System Logs", size: 1.2, color: "bg-muted-foreground" },
-];
-
-const totalStorage = storageData.reduce((acc, item) => acc + item.size, 0);
-
 export function LogRetentionRules() {
   const [rules, setRules] = useState<LogRetentionRule[]>([]);
   const [loading, setLoading] = useState(true);
@@ -150,6 +139,22 @@ export function LogRetentionRules() {
   const complianceIssues = rules.filter(r => 
     r.regulation && r.retentionPeriod < 3 && r.retentionUnit === "years"
   ).length;
+  const distributionData = logTypes
+    .map(type => ({
+      type: type.label,
+      count: rules.filter(rule => rule.logType === type.value).length,
+      color: type.value === "audit"
+        ? "bg-primary"
+        : type.value === "consent"
+          ? "bg-success"
+          : type.value === "rights"
+            ? "bg-warning"
+            : type.value === "security"
+              ? "bg-destructive"
+              : "bg-muted-foreground",
+    }))
+    .filter(item => item.count > 0);
+  const totalPolicies = distributionData.reduce((acc, item) => acc + item.count, 0);
 
   return (
     <div className="space-y-6">
@@ -157,7 +162,7 @@ export function LogRetentionRules() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
             { title: "Lifecycle Rules", value: loading ? "..." : rules.length, icon: Vault, color: "text-foreground" },
-            { title: "Storage Index", value: `${totalStorage.toFixed(1)}GB`, icon: HardDrive, color: "text-primary" },
+            { title: "Tracked Log Types", value: loading ? "..." : new Set(rules.map(r => r.logType)).size, icon: HardDrive, color: "text-primary" },
             { title: "Legal Hold", value: loading ? "..." : rules.filter(r => r.legalHoldOverride).length, icon: Lock, color: "text-warning" },
             { title: "System Health", value: complianceIssues === 0 ? "Normal" : "Warning", icon: Shield, color: complianceIssues === 0 ? "text-success" : "text-destructive" }
         ].map((stat, i) => (
@@ -180,24 +185,29 @@ export function LogRetentionRules() {
         <CardHeader>
           <CardTitle className="text-base font-bold flex items-center gap-2">
             <Database className="h-5 w-5 text-primary" />
-            Archive Volume Distribution
+            Retention Policy Distribution
           </CardTitle>
-          <CardDescription>Cold vs Warm storage utilization by data class</CardDescription>
+          <CardDescription>Live policy coverage by log class</CardDescription>
         </CardHeader>
         <CardContent>
+          {distributionData.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border/50 bg-background/20 p-6 text-sm text-muted-foreground">
+              No retention policies available yet. Distribution will appear after policies are added.
+            </div>
+          ) : (
           <div className="space-y-6">
             <div className="flex items-center gap-1.5 h-3 w-full rounded-full overflow-hidden bg-muted/40">
-                {storageData.map((item, i) => (
+                {distributionData.map((item, i) => (
                     <div 
                         key={i} 
                         className={`${item.color} h-full transition-all hover:brightness-110`} 
-                        style={{ width: `${(item.size / totalStorage) * 100}%` }}
-                        title={`${item.type}: ${item.size}GB`}
+                        style={{ width: `${(item.count / totalPolicies) * 100}%` }}
+                        title={`${item.type}: ${item.count} policies`}
                     />
                 ))}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-                {storageData.map(item => (
+                {distributionData.map(item => (
                 <div key={item.type} className="p-3 border border-border/40 rounded-xl bg-background/30">
                     <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
@@ -205,15 +215,16 @@ export function LogRetentionRules() {
                         <span className="text-[10px] font-bold text-muted-foreground uppercase">{item.type}</span>
                     </div>
                     </div>
-                    <div className="text-lg font-black">{item.size}GB</div>
+                    <div className="text-lg font-black">{item.count}</div>
                     <Progress 
-                    value={(item.size / totalStorage) * 100} 
+                    value={(item.count / totalPolicies) * 100} 
                     className={`h-1 mt-2 bg-muted/30 [&>div]:${item.color}`}
                     />
                 </div>
                 ))}
             </div>
           </div>
+          )}
         </CardContent>
       </Card>
 

@@ -78,7 +78,7 @@ interface ConsentVersion {
   createdBy: string;
 }
 
-// Removed mockVersions - now handled by consentService fallback and service layer mapping
+// Version history is loaded from the service layer
 
 const getStatusBadge = (status: string) => {
   switch (status.toLowerCase()) {

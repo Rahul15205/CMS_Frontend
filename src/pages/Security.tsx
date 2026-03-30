@@ -35,7 +35,6 @@ import { securityService } from "@/services/reportsLogsSecurityService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useToast } from "@/hooks/use-toast";
 import { formatDistanceToNow } from "date-fns";
-import { USE_REAL_API } from "@/lib/featureFlags";
 
 export default function Security() {
   const { toast } = useToast();
@@ -95,61 +94,11 @@ export default function Security() {
     fetchData();
   }, [fetchData]);
 
-  // Fallback mocks mapping in case APIs return completely different formats or empty
-  const displaySecurityData = securityData.length > 0 || USE_REAL_API ? securityData : [
-    { name: "Mon", logins: 245, failed: 12 },
-    { name: "Tue", logins: 312, failed: 8 },
-    { name: "Wed", logins: 289, failed: 15 },
-    { name: "Thu", logins: 356, failed: 6 },
-    { name: "Fri", logins: 298, failed: 22 },
-    { name: "Sat", logins: 145, failed: 4 },
-    { name: "Sun", logins: 98, failed: 2 },
-  ];
-
-  const displaySessions = activeSessions.length > 0 || USE_REAL_API ? activeSessions : [
-    {
-      id: 1,
-      user: "admin@company.com",
-      role: "Admin",
-      device: "Chrome on Windows",
-      location: "Mumbai, IN",
-      ip: "203.192.xxx.xxx",
-      lastActive: "Active now",
-      deviceType: "desktop",
-    },
-    {
-      id: 2,
-      user: "dpo@company.com",
-      role: "DPO",
-      device: "Safari on MacOS",
-      location: "Delhi, IN",
-      ip: "182.156.xxx.xxx",
-      lastActive: "5 min ago",
-      deviceType: "desktop",
-    }
-  ];
-
-  const displayEvents = securityEvents.length > 0 || USE_REAL_API ? securityEvents : [
-    {
-      id: 1,
-      event: "Failed login attempt",
-      user: "unknown@domain.com",
-      time: "10 min ago",
-      severity: "warning",
-      ip: "Unknown IP",
-    },
-    {
-      id: 2,
-      event: "Password changed",
-      user: "admin@company.com",
-      time: "1 hr ago",
-      severity: "info",
-      ip: "203.192.xxx.xxx",
-    }
-  ];
-
-  const displayLoginAttempts = loginAttempts !== "0" || USE_REAL_API ? loginAttempts : "1,743";
-  const displayFailedLogins = failedLogins !== "0" || USE_REAL_API ? failedLogins : "69";
+  const displaySecurityData = securityData;
+  const displaySessions = activeSessions;
+  const displayEvents = securityEvents;
+  const displayLoginAttempts = loginAttempts;
+  const displayFailedLogins = failedLogins;
 
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -248,7 +197,7 @@ export default function Security() {
               <Skeleton className="h-[400px] w-full rounded-xl" />
             ) : (
               <TrendLineChart
-                data={displaySecurityData}
+                data={displaySecurityData.length > 0 ? displaySecurityData : [{ name: "No Data", logins: 0, failed: 0 }]}
                 lines={[
                   { dataKey: "logins", color: "hsl(142, 76%, 36%)", label: "Successful Logins" },
                   { dataKey: "failed", color: "hsl(0, 72%, 51%)", label: "Failed Attempts" },
@@ -308,7 +257,7 @@ export default function Security() {
             {loading ? (
                Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-20 w-full rounded-lg" />)
             ) : (
-              filteredSessions.map((session: any) => (
+              filteredSessions.length > 0 ? filteredSessions.map((session: any) => (
               <div
                 key={session.id}
                 className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30"
@@ -337,7 +286,9 @@ export default function Security() {
                   </p>
                 </div>
               </div>
-              ))
+              )) : (
+                <div className="text-sm text-muted-foreground p-3">No active sessions returned by the API.</div>
+              )
             )}
           </div>
         </div>
@@ -354,7 +305,7 @@ export default function Security() {
             {loading ? (
               Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
             ) : (
-              filteredEvents.map((event: any) => (
+              filteredEvents.length > 0 ? filteredEvents.map((event: any) => (
               <div
                 key={event.id}
                 className="flex items-start gap-3 p-3 rounded-lg border border-border hover:bg-muted/30"
@@ -378,7 +329,9 @@ export default function Security() {
                   {event.createdAt ? formatDistanceToNow(new Date(event.createdAt), { addSuffix: true }) : event.time}
                 </span>
               </div>
-              ))
+              )) : (
+                <div className="text-sm text-muted-foreground p-3">No security events returned by the API.</div>
+              )
             )}
           </div>
         </div>
