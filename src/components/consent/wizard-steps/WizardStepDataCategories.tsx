@@ -33,7 +33,8 @@ import {
   Settings,
   Info,
   Plus,
-  X
+  X,
+  Pencil
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ConsentTemplate, DataCategory, DataCategoryConfig, DATA_CATEGORY_OPTIONS } from "../types";
@@ -81,6 +82,7 @@ const countryOptions = [
 export function WizardStepDataCategories({ data, onChange }: WizardStepDataCategoriesProps) {
   const categories = data.dataCategories || [];
   const [isAddAttributeOpen, setIsAddAttributeOpen] = useState(false);
+  const [editingAttribute, setEditingAttribute] = useState<DataCategoryConfig | null>(null);
   const [newAttrName, setNewAttrName] = useState("");
   const [newAttrDesc, setNewAttrDesc] = useState("");
   const [newAttrCountry, setNewAttrCountry] = useState("");
@@ -129,7 +131,59 @@ export function WizardStepDataCategories({ data, onChange }: WizardStepDataCateg
     setNewAttrName("");
     setNewAttrDesc("");
     setNewAttrCountry("");
+    setEditingAttribute(null);
     setIsAddAttributeOpen(false);
+  };
+
+  const handleEditAttribute = (cat: DataCategoryConfig) => {
+    setEditingAttribute(cat);
+    setNewAttrName(cat.label);
+    setNewAttrDesc(cat.description || "");
+    setNewAttrCountry(cat.country || "");
+    setIsAddAttributeOpen(true);
+  };
+
+  const handleSaveAttribute = () => {
+    if (!newAttrName.trim()) return;
+
+    if (editingAttribute) {
+      // Update existing custom attribute
+      const updatedCategories = categories.map((c) =>
+        c.category === editingAttribute.category
+          ? {
+              ...c,
+              label: newAttrName,
+              description: newAttrDesc,
+              country: newAttrCountry,
+            }
+          : c
+      );
+      onChange({ dataCategories: updatedCategories });
+    } else {
+      handleAddAttribute();
+      return;
+    }
+
+    // Reset and close
+    setNewAttrName("");
+    setNewAttrDesc("");
+    setNewAttrCountry("");
+    setEditingAttribute(null);
+    setIsAddAttributeOpen(false);
+  };
+
+  const handleDeleteAttribute = (category: DataCategory) => {
+    onChange({
+      dataCategories: categories.filter((c) => c.category !== category),
+    });
+  };
+
+  const openNewAttributeSheet = () => {
+    setEditingAttribute(null);
+    setNewAttrName("");
+    setNewAttrDesc("");
+    setNewAttrCountry("");
+    setIsAddAttributeOpen(true);
   };
 
   const updateCategory = (category: DataCategory, updates: Partial<DataCategoryConfig>) => {
@@ -168,7 +222,7 @@ export function WizardStepDataCategories({ data, onChange }: WizardStepDataCateg
           <Label className="text-sm font-medium">
             Data Attributes Collected <span className="text-destructive">*</span>
           </Label>
-          <Button variant="outline" size="sm" onClick={() => setIsAddAttributeOpen(true)}>
+          <Button variant="outline" size="sm" onClick={openNewAttributeSheet}>
             <Plus className="h-4 w-4 mr-2" />
             New Data Attribute
           </Button>
@@ -276,12 +330,20 @@ export function WizardStepDataCategories({ data, onChange }: WizardStepDataCateg
       </div>
 
       {/* New Data Attribute Sheet */}
-      <Sheet open={isAddAttributeOpen} onOpenChange={setIsAddAttributeOpen}>
+      <Sheet open={isAddAttributeOpen} onOpenChange={(open) => {
+        if (!open) {
+          setEditingAttribute(null);
+          setNewAttrName("");
+          setNewAttrDesc("");
+          setNewAttrCountry("");
+        }
+        setIsAddAttributeOpen(open);
+      }}>
         <SheetContent>
           <SheetHeader>
-            <SheetTitle>New Data Attribute</SheetTitle>
+            <SheetTitle>{editingAttribute ? "Edit Data Attribute" : "New Data Attribute"}</SheetTitle>
             <SheetDescription>
-              Define a custom data attribute to be collected.
+              {editingAttribute ? "Update the custom data attribute details." : "Define a custom data attribute to be collected."}
             </SheetDescription>
           </SheetHeader>
 
@@ -333,8 +395,8 @@ export function WizardStepDataCategories({ data, onChange }: WizardStepDataCateg
             <SheetClose asChild>
               <Button variant="outline">Close</Button>
             </SheetClose>
-            <Button onClick={handleAddAttribute} disabled={!newAttrName || !newAttrDesc || !newAttrCountry}>
-              Save
+            <Button onClick={handleSaveAttribute} disabled={!newAttrName || !newAttrDesc || !newAttrCountry}>
+              {editingAttribute ? "Update" : "Save"}
             </Button>
           </SheetFooter>
         </SheetContent>
@@ -345,31 +407,44 @@ export function WizardStepDataCategories({ data, onChange }: WizardStepDataCateg
         <div className="p-4 rounded-lg bg-muted/50 border">
           <Label className="text-sm font-medium mb-3 block">Selected Categories Summary</Label>
           <div className="flex flex-wrap gap-2">
-            {categories.map((cat) => (
-              <Badge
-                key={cat.category}
-                variant="secondary"
-                className={cn(
-                  "pr-1.5",
-                  sensitiveCategories.includes(cat.category) && "border-warning/50"
-                )}
-              >
-                {cat.label}
-                <span className="ml-1.5 opacity-70">
-                  ({cat.mandatory ? "Required" : "Optional"} | {cat.source})
-                  {cat.country && ` [${cat.country}]`}
-                </span>
-                {/* Allow removing custom categories (not in standard options) */}
-                {!DATA_CATEGORY_OPTIONS.some(opt => opt.value === cat.category) && (
-                  <button
-                    onClick={() => toggleCategory(cat.category)}
-                    className="ml-2 hover:bg-destructive/10 rounded-full p-0.5 transition-colors"
-                  >
-                    <X className="h-3 w-3" />
-                  </button>
-                )}
-              </Badge>
-            ))}
+            {categories.map((cat) => {
+              const isCustom = !DATA_CATEGORY_OPTIONS.some(opt => opt.value === cat.category);
+              return (
+                <Badge
+                  key={cat.category}
+                  variant="secondary"
+                  className={cn(
+                    "pr-1.5",
+                    sensitiveCategories.includes(cat.category) && "border-warning/50"
+                  )}
+                >
+                  {cat.label}
+                  <span className="ml-1.5 opacity-70">
+                    ({cat.mandatory ? "Required" : "Optional"} | {cat.source})
+                    {cat.country && ` [${cat.country}]`}
+                  </span>
+                  {/* Edit/Delete buttons for custom attributes - Bug Fix 6 */}
+                  {isCustom && (
+                    <>
+                      <button
+                        onClick={() => handleEditAttribute(cat)}
+                        className="ml-1.5 hover:bg-primary/10 rounded-full p-0.5 transition-colors"
+                        title="Edit attribute"
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteAttribute(cat.category)}
+                        className="ml-0.5 hover:bg-destructive/10 rounded-full p-0.5 transition-colors"
+                        title="Delete attribute"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </>
+                  )}
+                </Badge>
+              );
+            })}
           </div>
         </div>
       )}

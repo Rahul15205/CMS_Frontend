@@ -12,6 +12,7 @@ import {
   Activity,
   History,
   Layers,
+  AlertCircle,
 } from "lucide-react";
 import {
   Select,
@@ -20,13 +21,24 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // Import new consent components
 import { ConsentAnalytics } from "@/components/consent/ConsentAnalytics";
 import { ConsentTemplateList } from "@/components/consent/ConsentTemplateList";
 import { ConsentDeployment } from "@/components/consent/ConsentDeployment";
 import { ConsentTemplateWizard } from "@/components/consent/ConsentTemplateWizard";
-import { ConsentTemplate } from "@/components/consent/types";
+import { TemplatePreviewDialog } from "@/components/consent/TemplatePreviewDialog";
+import { ConsentTemplate, DEFAULT_TEMPLATE } from "@/components/consent/types";
 import { ConsentUsageTraceability } from "@/components/consent/ConsentUsageTraceability";
 import { ConsentVersionHistory } from "@/components/consent/ConsentVersionHistory";
 import { CrossApplicationUsage } from "@/components/consent/CrossApplicationUsage";
@@ -41,6 +53,8 @@ export default function ConsentManagement() {
   const [activeTab, setActiveTab] = useState("analytics");
   const [isWizardOpen, setIsWizardOpen] = useState(false);
   const [editingTemplate, setEditingTemplate] = useState<ConsentTemplate | undefined>(undefined);
+  const [viewingTemplate, setViewingTemplate] = useState<ConsentTemplate | undefined>(undefined);
+  const [archiveTarget, setArchiveTarget] = useState<ConsentTemplate | undefined>(undefined);
   
   const { setView } = useDashboard();
 
@@ -73,6 +87,27 @@ export default function ConsentManagement() {
     },
   });
 
+  // Mutation for archiving
+  const archiveMutation = useMutation({
+    mutationFn: (id: string) => consentService.deleteTemplate(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['consent-templates'] });
+      toast({
+        title: "Template Archived",
+        description: "The template has been archived successfully.",
+      });
+      setArchiveTarget(undefined);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to archive template",
+        variant: "destructive",
+      });
+      setArchiveTarget(undefined);
+    },
+  });
+
   useEffect(() => {
     if (activeTab === "analytics") {
       setView("analytics");
@@ -89,6 +124,44 @@ export default function ConsentManagement() {
   const handleEdit = (template: ConsentTemplate) => {
     setEditingTemplate(template);
     setIsWizardOpen(true);
+  };
+
+  // Bug Fix 1: View Details opens as read-only preview dialog
+  const handleView = (template: ConsentTemplate) => {
+    setViewingTemplate(template);
+  };
+
+  // Bug Fix 2: Clone template
+  const handleClone = (template: ConsentTemplate) => {
+    const cloned: Partial<ConsentTemplate> = {
+      ...template,
+      id: undefined as any, // Remove id to create a new template
+      name: `Copy of ${template.name}`,
+      status: "draft",
+      version: "1.0",
+      createdAt: undefined as any,
+      updatedAt: undefined as any,
+      createdBy: undefined as any,
+      updatedBy: undefined as any,
+      latestVersionId: undefined,
+    };
+    setEditingTemplate(cloned as ConsentTemplate);
+    setIsWizardOpen(true);
+    toast({
+      title: "Template Cloned",
+      description: `Editing cloned copy of "${template.name}". Save to create the new template.`,
+    });
+  };
+
+  // Bug Fix 3: Archive template
+  const handleArchive = (template: ConsentTemplate) => {
+    setArchiveTarget(template);
+  };
+
+  const confirmArchive = () => {
+    if (archiveTarget?.id) {
+      archiveMutation.mutate(archiveTarget.id);
+    }
   };
 
   const handleSave = (template: Partial<ConsentTemplate>) => {
@@ -195,11 +268,44 @@ export default function ConsentManagement() {
               isLoading={isLoading}
               onCreateNew={handleCreateNew}
               onEdit={handleEdit}
-              onView={handleEdit}
+              onView={handleView}
+              onClone={handleClone}
+              onArchive={handleArchive}
               onRefresh={refetch}
             />
           )}
         </TabsContent>
+
+        {/* View Details Read-Only Preview Dialog */}
+        <TemplatePreviewDialog
+          template={viewingTemplate}
+          open={!!viewingTemplate}
+          onClose={() => setViewingTemplate(undefined)}
+        />
+
+        {/* Archive Confirmation Dialog */}
+        <AlertDialog open={!!archiveTarget} onOpenChange={(open) => !open && setArchiveTarget(undefined)}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle className="flex items-center gap-2">
+                <AlertCircle className="h-5 w-5 text-warning" />
+                Archive Template?
+              </AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to archive <strong>"{archiveTarget?.name}"</strong>? Archived templates will no longer be active but can be restored later.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={confirmArchive}
+                className="bg-warning text-warning-foreground hover:bg-warning/90"
+              >
+                Archive
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
 
         <TabsContent value="deployment" className="m-0 focus-visible:ring-0">
           <ConsentDeployment templates={templates} />

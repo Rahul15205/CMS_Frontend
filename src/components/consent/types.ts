@@ -117,6 +117,7 @@ export interface ConsentTemplate {
   lawfulBasis?: string;
 
   regulations: Regulation[];
+  customRegulationName?: string;
   purposes: Purpose[];
   status: TemplateStatus;
   version: string;
@@ -388,7 +389,6 @@ export const DATA_CATEGORY_OPTIONS: { value: DataCategory; label: string }[] = [
   { value: "biometric", label: "Biometric Data" },
   { value: "behavioral", label: "Behavioral Data" },
   { value: "location", label: "Location Data" },
-  { value: "custom", label: "Custom Categories" },
 ];
 
 export const DEFAULT_TEMPLATE: Partial<ConsentTemplate> = {

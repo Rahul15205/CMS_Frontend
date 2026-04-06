@@ -1,9 +1,11 @@
+import { useState } from "react";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Clock, Trash2, Info, AlertTriangle, AlertCircle } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { ConsentTemplate } from "../types";
 
@@ -15,12 +17,59 @@ interface WizardStepRetentionProps {
 const retentionPeriods = [
   "6 months",
   "1 year",
+  "1.5 years",
   "2 years",
   "3 years",
+  "4 years",
   "5 years",
+  "6 years",
+  "7 years",
+  "10 years",
   "Duration of service",
   "As required by law"
 ];
+
+// Custom Retention Period Input component (Bug Fix 7)
+function CustomRetentionInput({ value, onChange }: { value: string; onChange: (val: string) => void }) {
+  const [customNumber, setCustomNumber] = useState("");
+  const [customUnit, setCustomUnit] = useState("years");
+
+  const isCustomActive = value && !retentionPeriods.includes(value);
+
+  const handleCustomChange = (num: string, unit: string) => {
+    setCustomNumber(num);
+    setCustomUnit(unit);
+    if (num && Number(num) > 0) {
+      const label = Number(num) === 1 ? unit.replace(/s$/, "") : unit;
+      onChange(`${num} ${label}`);
+    }
+  };
+
+  return (
+    <div className="mt-3 p-3 rounded-lg border bg-muted/30">
+      <Label className="text-xs text-muted-foreground mb-2 block">Or enter a custom retention duration:</Label>
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          min="0.5"
+          step="0.5"
+          placeholder="e.g., 1.5"
+          value={isCustomActive ? (customNumber || value.split(" ")[0]) : customNumber}
+          onChange={(e) => handleCustomChange(e.target.value, customUnit)}
+          className="w-28 h-8"
+        />
+        <select
+          value={isCustomActive ? (customUnit || value.split(" ").slice(1).join(" ")) : customUnit}
+          onChange={(e) => handleCustomChange(customNumber, e.target.value)}
+          className="h-8 rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="months">Months</option>
+          <option value="years">Years</option>
+        </select>
+      </div>
+    </div>
+  );
+}
 
 export function WizardStepRetention({ data, onChange }: WizardStepRetentionProps) {
   const retention = data.retention || {
@@ -81,9 +130,15 @@ export function WizardStepRetention({ data, onChange }: WizardStepRetentionProps
         </div>
         {!retention.period && (
           <p className="text-xs text-destructive">
-            Please select a retention period.
+            Please select a retention period or enter a custom duration.
           </p>
         )}
+
+        {/* Custom Retention Period Input - Bug Fix 7 */}
+        <CustomRetentionInput
+          value={retention.period}
+          onChange={(val) => updateRetention({ period: val })}
+        />
       </div>
 
       {/* Consent Expiry on Retention End */}

@@ -86,6 +86,8 @@ interface ConsentTemplateListProps {
   onCreateNew: () => void;
   onEdit: (template: ConsentTemplate) => void;
   onView: (template: ConsentTemplate) => void;
+  onClone: (template: ConsentTemplate) => void;
+  onArchive: (template: ConsentTemplate) => void;
   onRefresh?: () => void;
 }
 
@@ -95,6 +97,8 @@ export function ConsentTemplateList({
   onCreateNew, 
   onEdit, 
   onView,
+  onClone,
+  onArchive,
   onRefresh
 }: ConsentTemplateListProps) {
   const [searchQuery, setSearchQuery] = useState("");
@@ -281,12 +285,12 @@ export function ConsentTemplateList({
                           <Edit className="h-4 w-4 mr-2" />
                           Edit Template
                         </DropdownMenuItem>
-                        <DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => onClone(template)}>
                           <Copy className="h-4 w-4 mr-2" />
                           Clone Template
                         </DropdownMenuItem>
                         <DropdownMenuSeparator />
-                        <DropdownMenuItem className="text-warning">
+                        <DropdownMenuItem className="text-warning" onClick={() => onArchive(template)}>
                           <Archive className="h-4 w-4 mr-2" />
                           Archive
                         </DropdownMenuItem>

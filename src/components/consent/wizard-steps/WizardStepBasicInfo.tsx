@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -36,6 +37,57 @@ const getConsentTypeIcon = (type: ConsentType) => {
     default: return <Eye className="h-5 w-5" />;
   }
 };
+
+// Custom Validity Period Input component (Bug Fix 5)
+function CustomValidityInput({ value, onChange, disabled }: { value: string; onChange: (val: string) => void; disabled: boolean }) {
+  const [customNumber, setCustomNumber] = useState("");
+  const [customUnit, setCustomUnit] = useState("days");
+
+  const predefinedValues = [
+    "1 day", "3 days", "5 days", "7 days", "15 days", "30 days",
+    "60 days", "90 days", "120 days", "1 year", "3 years", "5 years",
+    "7 years", "10 Years", "20 years", "30 years", "40 years",
+    "50 years", "end of the human life"
+  ];
+
+  const isCustomActive = value && !predefinedValues.includes(value);
+
+  const handleCustomChange = (num: string, unit: string) => {
+    setCustomNumber(num);
+    setCustomUnit(unit);
+    if (num && Number(num) > 0) {
+      const label = Number(num) === 1 ? unit.replace(/s$/, "") : unit;
+      onChange(`${num} ${label}`);
+    }
+  };
+
+  return (
+    <div className="mt-3 p-3 rounded-lg border bg-muted/30">
+      <Label className="text-xs text-muted-foreground mb-2 block">Or enter a custom duration:</Label>
+      <div className="flex items-center gap-2">
+        <Input
+          type="number"
+          min="1"
+          placeholder="e.g., 45"
+          value={isCustomActive ? (customNumber || value.split(" ")[0]) : customNumber}
+          onChange={(e) => handleCustomChange(e.target.value, customUnit)}
+          disabled={disabled}
+          className="w-28 h-8"
+        />
+        <select
+          value={isCustomActive ? (customUnit || value.split(" ").slice(1).join(" ")) : customUnit}
+          onChange={(e) => handleCustomChange(customNumber, e.target.value)}
+          disabled={disabled}
+          className="h-8 rounded-md border border-input bg-background px-3 text-sm"
+        >
+          <option value="days">Days</option>
+          <option value="months">Months</option>
+          <option value="years">Years</option>
+        </select>
+      </div>
+    </div>
+  );
+}
 
 export function WizardStepBasicInfo({ data, onChange }: WizardStepBasicInfoProps) {
   const toggleRegulation = (reg: Regulation) => {
@@ -155,6 +207,24 @@ export function WizardStepBasicInfo({ data, onChange }: WizardStepBasicInfoProps
             </Label>
           ))}
         </div>
+        {/* Custom Regulation Input - Bug Fix 4 */}
+        {data.regulations?.includes("Custom") && (
+          <div className="mt-3 max-w-xl">
+            <Label htmlFor="customRegulationName" className="text-sm font-medium">
+              Custom Regulation Name <span className="text-destructive">*</span>
+            </Label>
+            <Input
+              id="customRegulationName"
+              placeholder="e.g., LGPD, POPIA, CCPA, or your organization-specific regulation"
+              value={data.customRegulationName || ""}
+              onChange={(e) => onChange({ customRegulationName: e.target.value })}
+              className="mt-1.5"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Enter the name of your custom or organization-specific regulation.
+            </p>
+          </div>
+        )}
         {!data.type && (
           <p className="text-xs text-muted-foreground">Select a consent type to see regulations.</p>
         )}
@@ -204,9 +274,17 @@ export function WizardStepBasicInfo({ data, onChange }: WizardStepBasicInfoProps
                 </Button>
               ))}
             </div>
+
+            {/* Custom Validity Period Input - Bug Fix 5 */}
+            <CustomValidityInput
+              value={data.validityDuration || ""}
+              onChange={(val) => onChange({ validityDuration: val })}
+              disabled={!data.regulations || data.regulations.length === 0}
+            />
+
             {!data.validityDuration && (
               <p className="text-xs text-destructive">
-                Please select a validity period.
+                Please select a validity period or enter a custom duration.
               </p>
             )}
           </div>
