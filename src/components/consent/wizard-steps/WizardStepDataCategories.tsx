@@ -86,6 +86,8 @@ export function WizardStepDataCategories({ data, onChange }: WizardStepDataCateg
   const [newAttrName, setNewAttrName] = useState("");
   const [newAttrDesc, setNewAttrDesc] = useState("");
   const [newAttrCountry, setNewAttrCountry] = useState("");
+  const [newAttrMandatory, setNewAttrMandatory] = useState(false);
+  const [newAttrSource, setNewAttrSource] = useState<"direct" | "derived" | "third-party">("direct");
 
   const toggleCategory = (category: DataCategory) => {
     const exists = categories.find((c) => c.category === category);
@@ -119,8 +121,8 @@ export function WizardStepDataCategories({ data, onChange }: WizardStepDataCateg
     const newCategory: DataCategoryConfig = {
       category: categoryValue,
       label: newAttrName,
-      mandatory: false,
-      source: "direct", // Default
+      mandatory: newAttrMandatory,
+      source: newAttrSource,
       description: newAttrDesc,
       country: newAttrCountry
     };
@@ -131,6 +133,8 @@ export function WizardStepDataCategories({ data, onChange }: WizardStepDataCateg
     setNewAttrName("");
     setNewAttrDesc("");
     setNewAttrCountry("");
+    setNewAttrMandatory(false);
+    setNewAttrSource("direct");
     setEditingAttribute(null);
     setIsAddAttributeOpen(false);
   };
@@ -140,6 +144,8 @@ export function WizardStepDataCategories({ data, onChange }: WizardStepDataCateg
     setNewAttrName(cat.label);
     setNewAttrDesc(cat.description || "");
     setNewAttrCountry(cat.country || "");
+    setNewAttrMandatory(cat.mandatory || false);
+    setNewAttrSource(cat.source || "direct");
     setIsAddAttributeOpen(true);
   };
 
@@ -155,6 +161,8 @@ export function WizardStepDataCategories({ data, onChange }: WizardStepDataCateg
               label: newAttrName,
               description: newAttrDesc,
               country: newAttrCountry,
+              mandatory: newAttrMandatory,
+              source: newAttrSource,
             }
           : c
       );
@@ -168,6 +176,8 @@ export function WizardStepDataCategories({ data, onChange }: WizardStepDataCateg
     setNewAttrName("");
     setNewAttrDesc("");
     setNewAttrCountry("");
+    setNewAttrMandatory(false);
+    setNewAttrSource("direct");
     setEditingAttribute(null);
     setIsAddAttributeOpen(false);
   };
@@ -183,6 +193,8 @@ export function WizardStepDataCategories({ data, onChange }: WizardStepDataCateg
     setNewAttrName("");
     setNewAttrDesc("");
     setNewAttrCountry("");
+    setNewAttrMandatory(false);
+    setNewAttrSource("direct");
     setIsAddAttributeOpen(true);
   };
 
@@ -336,6 +348,8 @@ export function WizardStepDataCategories({ data, onChange }: WizardStepDataCateg
           setNewAttrName("");
           setNewAttrDesc("");
           setNewAttrCountry("");
+          setNewAttrMandatory(false);
+          setNewAttrSource("direct");
         }
         setIsAddAttributeOpen(open);
       }}>
@@ -388,6 +402,41 @@ export function WizardStepDataCategories({ data, onChange }: WizardStepDataCateg
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Collection Type</Label>
+              <RadioGroup
+                value={newAttrMandatory ? "mandatory" : "optional"}
+                onValueChange={(v) => setNewAttrMandatory(v === "mandatory")}
+                className="flex gap-4"
+              >
+                <Label className="flex items-center gap-2 font-normal cursor-pointer text-sm">
+                  <RadioGroupItem value="optional" /> Optional
+                </Label>
+                <Label className="flex items-center gap-2 font-normal cursor-pointer text-sm">
+                  <RadioGroupItem value="mandatory" /> Mandatory
+                </Label>
+              </RadioGroup>
+            </div>
+
+            <div className="space-y-3">
+              <Label>Source of Data</Label>
+              <RadioGroup
+                value={newAttrSource}
+                onValueChange={(v) => setNewAttrSource(v as "direct" | "derived" | "third-party")}
+                className="flex gap-4 flex-wrap"
+              >
+                <Label className="flex items-center gap-2 font-normal cursor-pointer text-sm">
+                  <RadioGroupItem value="direct" /> Direct (from User)
+                </Label>
+                <Label className="flex items-center gap-2 font-normal cursor-pointer text-sm">
+                  <RadioGroupItem value="derived" /> Derived (System generated)
+                </Label>
+                <Label className="flex items-center gap-2 font-normal cursor-pointer text-sm">
+                  <RadioGroupItem value="third-party" /> Third-Party
+                </Label>
+              </RadioGroup>
             </div>
           </div>
 

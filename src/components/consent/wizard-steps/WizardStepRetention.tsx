@@ -42,6 +42,17 @@ function CustomRetentionInput({ value, onChange }: { value: string; onChange: (v
     if (num && Number(num) > 0) {
       const label = Number(num) === 1 ? unit.replace(/s$/, "") : unit;
       onChange(`${num} ${label}`);
+    } else {
+      onChange("");
+    }
+  };
+
+  const handleUnitChange = (newUnit: string) => {
+    if (newUnit !== customUnit) {
+      // Bug 4.1: Reset number when unit changes
+      setCustomNumber("");
+      setCustomUnit(newUnit);
+      onChange("");
     }
   };
 
@@ -60,7 +71,7 @@ function CustomRetentionInput({ value, onChange }: { value: string; onChange: (v
         />
         <select
           value={isCustomActive ? (customUnit || value.split(" ").slice(1).join(" ")) : customUnit}
-          onChange={(e) => handleCustomChange(customNumber, e.target.value)}
+          onChange={(e) => handleUnitChange(e.target.value)}
           className="h-8 rounded-md border border-input bg-background px-3 text-sm"
         >
           <option value="months">Months</option>

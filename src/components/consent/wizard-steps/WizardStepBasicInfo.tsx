@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -38,11 +38,8 @@ const getConsentTypeIcon = (type: ConsentType) => {
   }
 };
 
-// Custom Validity Period Input component (Bug Fix 5)
+// Custom Validity Period Input component (Bug Fix 2.1, 2.2, 2.3)
 function CustomValidityInput({ value, onChange, disabled }: { value: string; onChange: (val: string) => void; disabled: boolean }) {
-  const [customNumber, setCustomNumber] = useState("");
-  const [customUnit, setCustomUnit] = useState("days");
-
   const predefinedValues = [
     "1 day", "3 days", "5 days", "7 days", "15 days", "30 days",
     "60 days", "90 days", "120 days", "1 year", "3 years", "5 years",
@@ -52,38 +49,92 @@ function CustomValidityInput({ value, onChange, disabled }: { value: string; onC
 
   const isCustomActive = value && !predefinedValues.includes(value);
 
-  const handleCustomChange = (num: string, unit: string) => {
-    setCustomNumber(num);
-    setCustomUnit(unit);
-    if (num && Number(num) > 0) {
-      const label = Number(num) === 1 ? unit.replace(/s$/, "") : unit;
-      onChange(`${num} ${label}`);
+  const [years, setYears] = useState("");
+  const [months, setMonths] = useState("");
+  const [days, setDays] = useState("");
+
+  // Sync internal state with external value
+  useEffect(() => {
+    if (isCustomActive && value) {
+      const yMatch = value.match(/(\d+)\s*year/i);
+      const mMatch = value.match(/(\d+)\s*month/i);
+      const dMatch = value.match(/(\d+)\s*day/i);
+      
+      setYears(yMatch ? yMatch[1] : "");
+      setMonths(mMatch ? mMatch[1] : "");
+      setDays(dMatch ? dMatch[1] : "");
+    } else if (!isCustomActive) {
+      setYears("");
+      setMonths("");
+      setDays("");
     }
+  }, [value, isCustomActive]);
+
+  const handleChange = (type: "years" | "months" | "days", val: string) => {
+    // Only allow digits
+    const numericStr = val.replace(/\D/g, "");
+    let numVal = parseInt(numericStr || "0", 10);
+    
+    // Apply common sense limits
+    if (type === "years" && numVal > 99) numVal = 99;
+    if (type === "months" && numVal > 11) numVal = 11;
+    if (type === "days" && numVal > 30) numVal = 30;
+
+    const finalVal = numericStr === "" ? "" : numVal.toString();
+
+    const newYears = type === "years" ? finalVal : years;
+    const newMonths = type === "months" ? finalVal : months;
+    const newDays = type === "days" ? finalVal : days;
+
+    setYears(type === "years" ? finalVal : years);
+    setMonths(type === "months" ? finalVal : months);
+    setDays(type === "days" ? finalVal : days);
+
+    const parts = [];
+    if (newYears) parts.push(`${newYears} ${parseInt(newYears, 10) === 1 ? "year" : "years"}`);
+    if (newMonths) parts.push(`${newMonths} ${parseInt(newMonths, 10) === 1 ? "month" : "months"}`);
+    if (newDays) parts.push(`${newDays} ${parseInt(newDays, 10) === 1 ? "day" : "days"}`);
+
+    onChange(parts.join(" "));
   };
 
   return (
-    <div className="mt-3 p-3 rounded-lg border bg-muted/30">
-      <Label className="text-xs text-muted-foreground mb-2 block">Or enter a custom duration:</Label>
-      <div className="flex items-center gap-2">
-        <Input
-          type="number"
-          min="1"
-          placeholder="e.g., 45"
-          value={isCustomActive ? (customNumber || value.split(" ")[0]) : customNumber}
-          onChange={(e) => handleCustomChange(e.target.value, customUnit)}
-          disabled={disabled}
-          className="w-28 h-8"
-        />
-        <select
-          value={isCustomActive ? (customUnit || value.split(" ").slice(1).join(" ")) : customUnit}
-          onChange={(e) => handleCustomChange(customNumber, e.target.value)}
-          disabled={disabled}
-          className="h-8 rounded-md border border-input bg-background px-3 text-sm"
-        >
-          <option value="days">Days</option>
-          <option value="months">Months</option>
-          <option value="years">Years</option>
-        </select>
+    <div className="mt-3 p-4 rounded-lg border bg-muted/30">
+      <Label className="text-xs font-semibold text-muted-foreground mb-3 block">Or enter a custom combined duration:</Label>
+      <div className="flex flex-wrap items-center gap-4">
+        <div className="flex items-center gap-2">
+          <Input
+            type="text"
+            placeholder="0"
+            value={years}
+            onChange={(e) => handleChange("years", e.target.value)}
+            disabled={disabled}
+            className="w-16 h-8 text-center"
+          />
+          <span className="text-sm font-medium">Years</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="text"
+            placeholder="0"
+            value={months}
+            onChange={(e) => handleChange("months", e.target.value)}
+            disabled={disabled}
+            className="w-16 h-8 text-center"
+          />
+          <span className="text-sm font-medium">Months</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Input
+            type="text"
+            placeholder="0"
+            value={days}
+            onChange={(e) => handleChange("days", e.target.value)}
+            disabled={disabled}
+            className="w-16 h-8 text-center"
+          />
+          <span className="text-sm font-medium">Days</span>
+        </div>
       </div>
     </div>
   );

@@ -52,7 +52,7 @@ export interface DataCategoryConfig {
   category: DataCategory;
   label: string;
   mandatory: boolean;
-  source: "direct" | "third-party";
+  source: "direct" | "derived" | "third-party";
   description?: string;
   country?: string;
 }
