@@ -143,8 +143,9 @@ function CustomValidityInput({ value, onChange, disabled }: { value: string; onC
 export function WizardStepBasicInfo({ data, onChange }: WizardStepBasicInfoProps) {
   const toggleRegulation = (reg: Regulation) => {
     const current = data.regulations || [];
-    const updated = current.includes(reg)
-      ? current.filter((r) => r !== reg)
+    const isIncluded = current.some(r => r.toUpperCase() === reg.toUpperCase());
+    const updated = isIncluded
+      ? current.filter((r) => r.toUpperCase() !== reg.toUpperCase())
       : [...current, reg];
     onChange({ regulations: updated });
   };

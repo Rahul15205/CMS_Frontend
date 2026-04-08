@@ -41,8 +41,9 @@ export function WizardStepDataPrincipal({ data, onChange }: WizardStepDataPrinci
 
   const toggleUserCategory = (category: UserCategory) => {
     const current = data.targetUserCategory || [];
-    const updated = current.includes(category)
-      ? current.filter((c) => c !== category)
+    const isIncluded = current.some(c => c.toUpperCase() === category.toUpperCase());
+    const updated = isIncluded
+      ? current.filter((c) => c.toUpperCase() !== category.toUpperCase())
       : [...current, category];
     onChange({ targetUserCategory: updated });
   };

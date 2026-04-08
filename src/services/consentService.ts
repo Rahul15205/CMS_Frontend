@@ -32,9 +32,9 @@ function mapBackendTemplate(backendTemplate: any): ConsentTemplate {
     updatedAt: backendTemplate.updatedAt,
     latestVersionId: backendTemplate.versions?.[0]?.id,
     createdBy: backendTemplate.creator?.name || backendTemplate.createdBy || 'System',
-    // Ensure arrays exist and are mapped to lowercase
-    regulations: (backendTemplate.regulations || wizardFields.regulations || []).map((r: string) => r.toLowerCase() as any),
-    targetUserCategory: (backendTemplate.targetUserCategory || wizardFields.targetUserCategory || []).map((c: string) => c.toLowerCase()),
+    // Ensure arrays exist and are mapped to uppercase to stay consistent with Enums and Wizard state
+    regulations: (backendTemplate.regulations || wizardFields.regulations || []).map((r: string) => r.toUpperCase() as any),
+    targetUserCategory: (backendTemplate.targetUserCategory || wizardFields.targetUserCategory || []).map((c: string) => c.toUpperCase()),
     purposes: wizardFields.purposes || [],
     dataCategories: wizardFields.dataCategories || [],
     thirdParties: wizardFields.thirdParties || [],

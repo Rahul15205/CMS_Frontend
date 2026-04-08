@@ -77,6 +77,10 @@ const getStatusBadge = (status: TemplateStatus) => {
       return <Badge className="bg-warning/10 text-warning border-warning/20">Draft</Badge>;
     case "archived":
       return <Badge variant="secondary">Archived</Badge>;
+    case "deprecated":
+      return <Badge variant="destructive">Deprecated</Badge>;
+    case "published":
+      return <Badge className="bg-success/10 text-success border-success/20">Published</Badge>;
   }
 };
 
@@ -242,13 +246,13 @@ export function ConsentTemplateList({
                   </TableCell>
                   <TableCell>
                     <div className="flex flex-wrap gap-1">
-                      {template.regulations.map((reg) => (
+                      {Array.from(new Set(template.regulations.map(r => r.toUpperCase()))).map((reg) => (
                         <Badge 
                           key={reg} 
                           variant="outline" 
-                          className={REGULATION_INFO[reg.toUpperCase() as keyof typeof REGULATION_INFO]?.color || ""}
+                          className={REGULATION_INFO[reg as keyof typeof REGULATION_INFO]?.color || ""}
                         >
-                          {reg.toUpperCase()}
+                          {reg}
                         </Badge>
                       ))}
                     </div>
