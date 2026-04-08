@@ -83,6 +83,55 @@ export function DashboardLayout({
     fetchNotifications();
   }, []);
 
+  const getFriendlyActionTitle = (action: string) => {
+    if (!action) return "System Activity";
+    
+    // Exact matches
+    const exactMappings: Record<string, string> = {
+      "LOGIN": "Account login detected",
+      "LOGOUT": "Account logout",
+      "CREATE_TENANT": "New tenant registration",
+      "UPDATE_TENANT": "Tenant configuration updated",
+      "DELETE_TENANT": "Tenant account removed",
+    };
+    
+    if (exactMappings[action]) return exactMappings[action];
+    
+    // Path matches
+    if (action.includes("/api/v1/auth/refresh")) return "Session security check";
+    if (action.includes("/api/v1/consent-templates")) return "Consent template activity";
+    if (action.includes("/api/v1/rights-requests")) return "New data rights request";
+    if (action.includes("/api/v1/grievances")) return "Grievance module activity";
+    if (action.includes("/api/v1/reports")) return "System report generated";
+    if (action.includes("/api/v1/logs")) return "Log export activity";
+    if (action.includes("/api/v1/settings")) return "System settings modified";
+    
+    // Clean up generic API strings
+    if (action.startsWith("/api/")) {
+      return action.split("/").pop()?.replace(/-/g, " ") || action;
+    }
+    
+    return action;
+  };
+
+  const handleNotificationClick = (item: any) => {
+    const action = item.action || "";
+    
+    if (action.includes("/api/v1/consent-templates")) {
+      navigate("/consent/management");
+    } else if (action.includes("/api/v1/rights-requests")) {
+      navigate("/consent/rights");
+    } else if (action.includes("/api/v1/grievances")) {
+      navigate("/consent/grievances");
+    } else if (action.includes("/api/v1/reports")) {
+      navigate("/reports");
+    } else if (action.includes("auth") || action === "LOGIN" || action === "LOGOUT") {
+      navigate("/security");
+    } else {
+      navigate("/logs");
+    }
+  };
+
   return (
     <main
       className={cn(
@@ -190,15 +239,30 @@ export function DashboardLayout({
                     <div className="p-4 text-center text-sm text-muted-foreground">No new notifications</div>
                   ) : (
                     notifications.map((item) => (
-                      <DropdownMenuItem key={item.id} className="flex flex-col items-start gap-1 p-3 border-b border-border/50 cursor-pointer">
-                        <div className="flex items-center gap-2">
-                           <span className={cn("h-2 w-2 rounded-full", item.severity === 'CRITICAL' ? "bg-destructive" : item.severity === 'WARNING' ? "bg-warning" : "bg-blue-500")} />
-                           <span className="font-medium text-xs truncate max-w-[240px]">{item.action}</span>
+                      <DropdownMenuItem 
+                        key={item.id} 
+                        className="flex flex-col items-start gap-1 p-3 border-b border-border/50 cursor-pointer hover:bg-muted/50 transition-colors"
+                        onClick={() => handleNotificationClick(item)}
+                      >
+                        <div className="flex items-center gap-2 w-full">
+                           <span className={cn(
+                             "h-2 w-2 rounded-full shrink-0", 
+                             item.severity === 'CRITICAL' ? "bg-destructive" : 
+                             item.severity === 'WARNING' ? "bg-warning" : "bg-blue-500"
+                           )} />
+                           <span className="font-medium text-xs truncate flex-1">
+                             {getFriendlyActionTitle(item.action)}
+                           </span>
                         </div>
-                        <p className="text-xs text-muted-foreground truncate max-w-full">{item.user?.email || "System"}</p>
-                        <span className="text-[10px] text-muted-foreground">
-                          {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
-                        </span>
+                        <p className="text-xs text-muted-foreground truncate w-full pl-4">
+                          {item.user?.email || "System"}
+                        </p>
+                        <div className="flex items-center justify-between w-full pl-4 mt-0.5">
+                          <span className="text-[10px] text-muted-foreground">
+                            {formatDistanceToNow(new Date(item.createdAt), { addSuffix: true })}
+                          </span>
+                          <span className="text-[9px] font-medium text-primary uppercase">Click to view</span>
+                        </div>
                       </DropdownMenuItem>
                     ))
                   )}

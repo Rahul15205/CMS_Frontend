@@ -240,6 +240,8 @@ export default function Grievances() {
       <NewRightsRequestDialog
         open={isNewRequestOpen}
         onOpenChange={setIsNewRequestOpen}
+        title="Log New Grievance"
+        description="Manually log a grievance received via email, phone, or in-person."
       />
 
       <CommentDialog

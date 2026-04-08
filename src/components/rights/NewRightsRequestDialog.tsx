@@ -40,6 +40,8 @@ interface NewRightsRequestDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSubmit?: (data: any) => void;
+  title?: string;
+  description?: string;
 }
 
 const DATA_CATEGORIES = [
@@ -62,7 +64,13 @@ const APPLICATIONS = [
   { id: "marketing", label: "Marketing Platform" },
 ];
 
-export function NewRightsRequestDialog({ open, onOpenChange, onSubmit }: NewRightsRequestDialogProps) {
+export function NewRightsRequestDialog({ 
+  open, 
+  onOpenChange, 
+  onSubmit,
+  title = "Log New Rights Request",
+  description = "Manually log a rights request received via email, phone, or in-person."
+}: NewRightsRequestDialogProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [currentTab, setCurrentTab] = useState("requester");
   const [formData, setFormData] = useState({
@@ -150,9 +158,9 @@ export function NewRightsRequestDialog({ open, onOpenChange, onSubmit }: NewRigh
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Log New Rights Request</DialogTitle>
+          <DialogTitle>{title}</DialogTitle>
           <DialogDescription>
-            Manually log a rights request received via email, phone, or in-person.
+            {description}
           </DialogDescription>
         </DialogHeader>
 
