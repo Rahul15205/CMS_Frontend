@@ -69,14 +69,24 @@ export default function ConsentManagement() {
   // Mutation for saving (Create/Update)
   const saveMutation = useMutation({
     mutationFn: (template: Partial<ConsentTemplate>) => consentService.saveTemplate(template),
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: ['consent-templates'] });
+      const isPublish = variables.status === "active";
+      
       toast({
-        title: "Success",
-        description: editingTemplate ? "Template updated successfully" : "Template created successfully",
+        title: isPublish ? "Template Published" : "Draft Saved",
+        description: isPublish ? "Your template is now active." : "Your changes have been saved to draft.",
       });
-      setIsWizardOpen(false);
-      setEditingTemplate(undefined);
+
+      if (isPublish) {
+        setIsWizardOpen(false);
+        setEditingTemplate(undefined);
+      } else {
+        // Keep wizard open for draft saves and update editing template with returned data (including ID)
+        if (data) {
+          setEditingTemplate(data);
+        }
+      }
     },
     onError: (error: any) => {
       toast({

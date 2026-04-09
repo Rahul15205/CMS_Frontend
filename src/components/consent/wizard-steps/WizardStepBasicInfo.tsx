@@ -236,13 +236,13 @@ export function WizardStepBasicInfo({ data, onChange }: WizardStepBasicInfoProps
               key={reg}
               className={cn(
                 "flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
-                data.regulations?.includes(reg)
+                data.regulations?.some(r => r.toUpperCase() === reg.toUpperCase())
                   ? "border-primary bg-primary/5"
                   : "border-border hover:border-primary/50"
               )}
             >
               <Checkbox
-                checked={data.regulations?.includes(reg)}
+                checked={data.regulations?.some(r => r.toUpperCase() === reg.toUpperCase())}
                 onCheckedChange={() => toggleRegulation(reg)}
                 disabled={!data.type}
               />
@@ -260,7 +260,7 @@ export function WizardStepBasicInfo({ data, onChange }: WizardStepBasicInfoProps
           ))}
         </div>
         {/* Custom Regulation Input - Bug Fix 4 */}
-        {data.regulations?.includes("Custom") && (
+        {data.regulations?.some(r => r.toUpperCase() === "CUSTOM") && (
           <div className="mt-3 max-w-xl">
             <Label htmlFor="customRegulationName" className="text-sm font-medium">
               Custom Regulation Name <span className="text-destructive">*</span>
