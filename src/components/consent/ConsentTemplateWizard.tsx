@@ -71,6 +71,16 @@ export function ConsentTemplateWizard({ template, onSave, onCancel }: ConsentTem
           return false;
         }
         return true;
+      case 2:
+        if (!formData.targetUserCategory || formData.targetUserCategory.length === 0) {
+          toast({
+            title: "Required Fields Missing",
+            description: "Please select at least one Target User Category before proceeding.",
+            variant: "destructive",
+          });
+          return false;
+        }
+        return true;
       case 3:
         if (!formData.purposes || formData.purposes.length === 0) {
           toast({

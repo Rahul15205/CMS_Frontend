@@ -34,7 +34,22 @@ const initialUserCategories: { value: UserCategory; label: string; icon: React.R
 ];
 
 export function WizardStepDataPrincipal({ data, onChange }: WizardStepDataPrincipalProps) {
-  const [availableCategories, setAvailableCategories] = useState(initialUserCategories);
+  const [availableCategories, setAvailableCategories] = useState(() => {
+    const categories = [...initialUserCategories];
+    if (data.targetUserCategory) {
+      data.targetUserCategory.forEach(catValue => {
+        if (!categories.some(c => c.value === catValue)) {
+          categories.push({
+            value: catValue,
+            label: catValue.charAt(0).toUpperCase() + catValue.slice(1).replace(/-/g, ' '),
+            icon: <Users className="h-4 w-4" />,
+            description: "Saved user category"
+          });
+        }
+      });
+    }
+    return categories;
+  });
   const [isAddCategoryOpen, setIsAddCategoryOpen] = useState(false);
   const [newCategoryName, setNewCategoryName] = useState("");
   const [newCategoryDesc, setNewCategoryDesc] = useState("");
@@ -234,7 +249,7 @@ export function WizardStepDataPrincipal({ data, onChange }: WizardStepDataPrinci
           <Label
             className={cn(
               "flex items-start gap-3 p-4 rounded-lg border-2 cursor-pointer transition-all",
-              data.consentGivenBy === "self"
+              (data.consentGivenBy || "self") === "self"
                 ? "border-primary bg-primary/5"
                 : "border-border hover:border-primary/50"
             )}
