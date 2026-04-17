@@ -9,7 +9,7 @@
     "moduleResolution": "bundler",
     "allowImportingTsExtensions": true,
     "moduleDetection": "force",
-    "noEmit": false,
+    "emitDeclarationOnly": true,
     "composite": true,
 
     /* Linting */
