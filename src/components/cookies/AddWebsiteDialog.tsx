@@ -35,8 +35,8 @@ export function AddWebsiteDialog({
     const [formData, setFormData] = useState({
         url: "",
         name: "",
-        frequency: "weekly",
-        depth: "standard",
+        frequency: "WEEKLY",
+        depth: "STANDARD",
         email: "",
         autoCategorize: true,
         scanBehindLogin: false,
@@ -49,8 +49,8 @@ export function AddWebsiteDialog({
             setFormData({
                 url: "",
                 name: "",
-                frequency: "weekly",
-                depth: "standard",
+                frequency: "WEEKLY",
+                depth: "STANDARD",
                 email: "",
                 autoCategorize: true,
                 scanBehindLogin: false,
@@ -109,9 +109,9 @@ export function AddWebsiteDialog({
                                         <SelectValue placeholder="Select frequency" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="daily">Daily</SelectItem>
-                                        <SelectItem value="weekly">Weekly</SelectItem>
-                                        <SelectItem value="monthly">Monthly</SelectItem>
+                                        <SelectItem value="DAILY">Daily</SelectItem>
+                                        <SelectItem value="WEEKLY">Weekly</SelectItem>
+                                        <SelectItem value="MONTHLY">Monthly</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
@@ -125,8 +125,8 @@ export function AddWebsiteDialog({
                                         <SelectValue placeholder="Select depth" />
                                     </SelectTrigger>
                                     <SelectContent>
-                                        <SelectItem value="standard">Standard (Up to 100 pages)</SelectItem>
-                                        <SelectItem value="deep">Deep (Unlimited)</SelectItem>
+                                        <SelectItem value="STANDARD">Standard (Up to 100 pages)</SelectItem>
+                                        <SelectItem value="DEEP">Deep (Unlimited)</SelectItem>
                                     </SelectContent>
                                 </Select>
                             </div>
