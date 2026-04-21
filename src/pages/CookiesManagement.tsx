@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { DashboardLayout, PageSection, SectionTitle } from "@/components/layout/DashboardLayout";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { ConsentDonutChart } from "@/components/charts/ConsentDonutChart";
@@ -66,6 +66,8 @@ import {
   Languages,
   Download,
   PieChart,
+  Copy,
+  FileText,
 } from "lucide-react";
 import {
   Tooltip,
@@ -73,7 +75,6 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 import { Badge } from "@/components/ui/badge";
-import { useEffect, useCallback } from "react";
 import { 
   cookieCategoriesService, 
   cookieInventoryService, 
@@ -98,7 +99,6 @@ import { AddCookieDialog } from "@/components/cookies/AddCookieDialog";
 import { CreateBannerDialog } from "@/components/cookies/CreateBannerDialog";
 
 import { AddWebsiteDialog } from "@/components/cookies/AddWebsiteDialog";
-import { FileText } from "lucide-react";
 
 export default function CookiesManagement() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -1142,6 +1142,66 @@ export default function CookiesManagement() {
             </div>
           </PageSection>
 
+          <PageSection>
+            <div className="dashboard-card">
+              <div className="mb-6">
+                <SectionTitle>Banner Installation</SectionTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Copy and paste this script into your website's <code className="bg-muted px-1 rounded">&lt;head&gt;</code> section to activate the banner.
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label>1. Select Website</Label>
+                  <Select value={selectedWebsiteId} onValueChange={setSelectedWebsiteId}>
+                    <SelectTrigger className="w-full md:w-[400px]">
+                      <SelectValue placeholder="Choose a website to get its script" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Global Template (General)</SelectItem>
+                      {websites.map(site => (
+                        <SelectItem key={site.id} value={site.id}>{site.name} ({site.url})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-3">
+                  <Label>2. Copy & Paste Script</Label>
+                  <div className="relative">
+                    <div className="bg-slate-950 text-slate-50 p-4 rounded-xl font-mono text-sm border shadow-xl overflow-x-auto pr-12">
+                      <pre>
+                        {`<script 
+  src="${window.location.origin}/api/v1/public/cookies/banner-script/${selectedWebsiteId !== 'all' ? selectedWebsiteId : 'GLOBAL_ID'}" 
+  defer
+></script>`}
+                      </pre>
+                    </div>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="absolute top-3 right-3 text-slate-400 hover:text-white hover:bg-white/10"
+                      onClick={() => {
+                        const script = `<script src="${window.location.origin}/api/v1/public/cookies/banner-script/${selectedWebsiteId !== 'all' ? selectedWebsiteId : 'GLOBAL_ID'}" defer></script>`;
+                        navigator.clipboard.writeText(script);
+                        toast({
+                          title: "Script Copied",
+                          description: "The integration script has been copied to your clipboard.",
+                        });
+                      }}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground italic">
+                    Note: Changes saved in the "Banner Customization" tab will reflect automatically on your website after adding this script.
+                  </p>
+                </div>
+              </div>
+            </div>
+          </PageSection>
+
           <AddWebsiteDialog
             open={isAddWebsiteOpen}
             onOpenChange={setIsAddWebsiteOpen}
@@ -1157,7 +1217,7 @@ export default function CookiesManagement() {
         />
       </Tabs>
     </DashboardLayout>
-    
+
     <Dialog open={isPreviewDialogOpen} onOpenChange={setIsPreviewDialogOpen}>
       <DialogContent className="max-w-[90vw] w-[1200px] h-[85vh] p-0 overflow-hidden bg-slate-50 dark:bg-slate-950 flex flex-col">
         <DialogHeader className="p-4 border-b bg-background shrink-0">
