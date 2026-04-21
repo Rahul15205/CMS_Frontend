@@ -128,6 +128,8 @@ export default function CookiesManagement() {
   const [bannerDescription, setBannerDescription] = useState("We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic.");
   const [previewDevice, setPreviewDevice] = useState("desktop");
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
+  const [selectedWebsiteId, setSelectedWebsiteId] = useState<string>("all");
+  const [isSavingBanner, setIsSavingBanner] = useState(false);
 
   const { toast } = useToast();
 
@@ -340,6 +342,68 @@ export default function CookiesManagement() {
     }
   };
 
+  const handleWebsiteChange = (siteId: string) => {
+    setSelectedWebsiteId(siteId);
+    if (siteId === "all") return;
+
+    // Check if there's already a banner for this website
+    const siteBanner = banners.find(b => b.websiteId === siteId);
+    if (siteBanner) {
+      handleLoadBanner(siteBanner);
+    } else {
+      // Reset to defaults for new website
+      setBannerHeading(languageContent.en.heading);
+      setBannerDescription(languageContent.en.description);
+      setBannerTheme("#10b981");
+      setBannerPosition("BOTTOM");
+      setBannerLang("en");
+    }
+  };
+
+  const handleSaveBannerSettings = async () => {
+    setIsSavingBanner(true);
+    try {
+      const bannerData = {
+        name: selectedWebsiteId !== "all" 
+          ? `Banner - ${websites.find(w => w.id === selectedWebsiteId)?.name}`
+          : "Global Banner",
+        heading: bannerHeading,
+        description: bannerDescription,
+        themeColor: bannerTheme,
+        theme: "custom", // Placeholder for CSS class if needed
+        position: bannerPosition,
+        language: bannerLang,
+        websiteId: selectedWebsiteId !== "all" ? selectedWebsiteId : null,
+        status: "ACTIVE"
+      };
+
+      // If we are editing an existing banner for this site
+      const existingBanner = banners.find(b => b.websiteId === (selectedWebsiteId !== "all" ? selectedWebsiteId : null));
+      
+      let result;
+      if (existingBanner) {
+        result = await cookieBannersService.update(existingBanner.id, bannerData);
+        setBanners(banners.map(b => b.id === existingBanner.id ? result : b));
+      } else {
+        result = await cookieBannersService.create(bannerData);
+        setBanners([result, ...banners]);
+      }
+
+      toast({
+        title: "Settings Saved",
+        description: "Banner configuration has been updated successfully.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to save banner settings.",
+        variant: "destructive"
+      });
+    } finally {
+      setIsSavingBanner(false);
+    }
+  };
+
   const handleLoadBanner = (banner: any) => {
     // Mapping for class-based themes to hex colors used in the editor
     const themeMap: Record<string, string> = {
@@ -368,6 +432,7 @@ export default function CookiesManagement() {
     setBannerHeading(banner.heading || "We value your privacy");
     setBannerDescription(banner.description || "We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic.");
     setBannerLang(banner.language || "en");
+    setSelectedWebsiteId(banner.websiteId || "all");
     
     setActiveTab("banner");
     
@@ -767,11 +832,45 @@ export default function CookiesManagement() {
 
         {/* BANNER TAB */}
         <TabsContent value="banner" className="space-y-6">
+          <PageSection>
+            <div className="dashboard-card mb-6">
+              <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+                <div>
+                  <SectionTitle>Banner Configuration</SectionTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Select a website to customize its cookie consent banner.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 w-full md:w-auto">
+                  <Select value={selectedWebsiteId} onValueChange={handleWebsiteChange}>
+                    <SelectTrigger className="w-full md:w-[250px]">
+                      <Globe className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="Select Website" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Global (All Websites)</SelectItem>
+                      {websites.map(site => (
+                        <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button 
+                    onClick={handleSaveBannerSettings} 
+                    disabled={isSavingBanner}
+                    className="shrink-0"
+                  >
+                    {isSavingBanner ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
+                    Save Changes
+                  </Button>
+                </div>
+              </div>
+            </div>
+          </PageSection>
           {/* Saved Banners List */}
           <PageSection>
             <div className="dashboard-card mb-6">
               <div className="flex items-center justify-between mb-4">
-                <SectionTitle>Customized Banners</SectionTitle>
+                <SectionTitle>Saved Templates</SectionTitle>
                 <Button size="sm" onClick={() => setIsCreateBannerOpen(true)}>
                   <Plus className="h-4 w-4 mr-2" />
                   Create New
