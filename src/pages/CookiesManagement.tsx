@@ -68,6 +68,7 @@ import {
   PieChart,
   Copy,
   FileText,
+  Trash2,
 } from "lucide-react";
 import {
   Tooltip,
@@ -287,6 +288,25 @@ export default function CookiesManagement() {
   const openAddWebsiteDialog = () => {
     setEditingWebsite(null);
     setIsAddWebsiteOpen(true);
+  };
+
+  const handleDeleteWebsite = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this website? This will also remove any associated banners.")) return;
+    
+    try {
+      await cookieWebsitesService.delete(id);
+      setWebsites(websites.filter(w => w.id !== id));
+      toast({
+        title: "Website Deleted",
+        description: "The website has been removed from your configuration.",
+      });
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete website.",
+        variant: "destructive"
+      });
+    }
   };
 
   const handleGenerateReport = (website: any) => {
@@ -1126,6 +1146,19 @@ export default function CookiesManagement() {
                                   </Button>
                                 </TooltipTrigger>
                                 <TooltipContent>Settings</TooltipContent>
+                              </Tooltip>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon" 
+                                    className="text-destructive hover:bg-destructive/10"
+                                    onClick={() => handleDeleteWebsite(site.id)}
+                                  >
+                                    <Trash2 className="h-4 w-4" />
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Delete Website</TooltipContent>
                               </Tooltip>
                             </div>
                           </TableCell>
