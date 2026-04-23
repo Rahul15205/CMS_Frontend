@@ -224,7 +224,8 @@ export default function CookiesManagement() {
         const updated = await cookieConsentLogsService.record({ 
           userId: log?.userId || id, 
           status: "WITHDRAWN",
-          categories: log?.categories || [] 
+          categories: log?.categories || [],
+          websiteId: log?.websiteId
         });
         
         if (updated) {
