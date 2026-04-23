@@ -518,7 +518,7 @@ export default function CookiesManagement() {
     setBannerBlur(banner.backdropBlur ?? 0);
     setBannerOpacity(banner.backdropOpacity ?? 100);
     
-    setActiveTab("banner");
+    setActiveTab("config");
     
     toast({
       title: "Configuration Loaded",
@@ -1385,6 +1385,39 @@ export default function CookiesManagement() {
                             <span className="font-mono">{bannerBorderRadius}px</span>
                           </div>
                           <Slider value={[bannerBorderRadius]} min={0} max={40} step={2} onValueChange={([val]) => setBannerBorderRadius(val)} />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center text-xs">
+                              <Label>Font Size</Label>
+                              <span className="font-mono">{bannerFontSize}px</span>
+                            </div>
+                            <Slider value={[bannerFontSize]} min={10} max={20} step={1} onValueChange={([val]) => setBannerFontSize(val)} />
+                          </div>
+                          <div className="space-y-3">
+                            <div className="flex justify-between items-center text-xs">
+                              <Label>Padding</Label>
+                              <span className="font-mono">{bannerPadding}px</span>
+                            </div>
+                            <Slider value={[bannerPadding]} min={12} max={48} step={4} onValueChange={([val]) => setBannerPadding(val)} />
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center text-xs">
+                            <Label>Backdrop Blur</Label>
+                            <span className="font-mono">{bannerBlur}px</span>
+                          </div>
+                          <Slider value={[bannerBlur]} min={0} max={20} step={1} onValueChange={([val]) => setBannerBlur(val)} />
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center text-xs">
+                            <Label>Backdrop Opacity</Label>
+                            <span className="font-mono">{bannerOpacity}%</span>
+                          </div>
+                          <Slider value={[bannerOpacity]} min={0} max={100} step={5} onValueChange={([val]) => setBannerOpacity(val)} />
                         </div>
                       </div>
                     </div>
