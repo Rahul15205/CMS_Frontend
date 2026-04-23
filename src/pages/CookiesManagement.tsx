@@ -147,8 +147,8 @@ export default function CookiesManagement() {
 
   const { toast } = useToast();
 
-  const fetchData = useCallback(async () => {
-    setLoading(true);
+  const fetchData = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     try {
       const [cats, inv, sites, logs, bans, met] = await Promise.all([
         cookieCategoriesService.getAll(),
@@ -167,19 +167,38 @@ export default function CookiesManagement() {
       setMetrics(met);
     } catch (error) {
       console.error("Failed to fetch cookies data:", error);
-      toast({
-        title: "Error",
-        description: "Failed to load cookie management data.",
-        variant: "destructive"
-      });
+      if (!silent) {
+        toast({
+          title: "Error",
+          description: "Failed to load cookie management data.",
+          variant: "destructive"
+        });
+      }
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [toast]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
+
+  // Background Polling for status updates (Silent Refresh)
+  useEffect(() => {
+    // Poll every 5 seconds if there are websites being scanned or processed
+    // Otherwise poll every 30 seconds for general updates
+    const hasActiveProcesses = websites.some(s => 
+      ['Scanning', 'In Progress', 'Pending', 'Processing'].includes(s.status)
+    ) || scanning;
+
+    const intervalTime = hasActiveProcesses ? 5000 : 30000;
+    
+    const interval = setInterval(() => {
+      fetchData(true);
+    }, intervalTime);
+
+    return () => clearInterval(interval);
+  }, [fetchData, websites, scanning]);
 
   const toggleCategory = async (id: string) => {
     const category = categories.find(c => c.id === id);
@@ -680,10 +699,10 @@ export default function CookiesManagement() {
                     <span>Cookie Inventory</span>
                   </div>
                 </SelectItem>
-                <SelectItem value="banner">
+                <SelectItem value="consents">
                   <div className="flex items-center gap-2">
-                    <Layout className="h-4 w-4" />
-                    <span>Banner Customization</span>
+                    <CheckCircle className="h-4 w-4" />
+                    <span>Cookie Consents</span>
                   </div>
                 </SelectItem>
                 <SelectItem value="config">
@@ -706,9 +725,9 @@ export default function CookiesManagement() {
               <Cookie className="h-4 w-4" />
               <span className="hidden sm:inline">Cookie Inventory</span>
             </TabsTrigger>
-            <TabsTrigger value="banner" className="flex items-center gap-2 py-2.5">
-              <Layout className="h-4 w-4" />
-              <span className="hidden sm:inline">Banner Customization</span>
+            <TabsTrigger value="consents" className="flex items-center gap-2 py-2.5">
+              <CheckCircle className="h-4 w-4" />
+              <span className="hidden sm:inline">Cookie Consents</span>
             </TabsTrigger>
             <TabsTrigger value="config" className="flex items-center gap-2 py-2.5">
               <Settings className="h-4 w-4" />
@@ -826,9 +845,29 @@ export default function CookiesManagement() {
             </div>
           </TabsContent>
 
-          {/* INVENTORY TAB */}
           <TabsContent value="inventory" className="space-y-6">
             <PageSection>
+              <div className="dashboard-card mb-6">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+                  <div>
+                    <SectionTitle>Inventory Filter</SectionTitle>
+                    <p className="text-sm text-muted-foreground">Select a website to view its specific cookies.</p>
+                  </div>
+                  <Select value={selectedWebsiteId} onValueChange={setSelectedWebsiteId}>
+                    <SelectTrigger className="w-full md:w-[300px]">
+                      <Globe className="h-4 w-4 mr-2 text-muted-foreground" />
+                      <SelectValue placeholder="All Websites" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Global Inventory (All Sites)</SelectItem>
+                      {websites.map(site => (
+                        <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
               <div className="dashboard-card">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
                   <SectionTitle>Detected Cookies</SectionTitle>
@@ -871,20 +910,33 @@ export default function CookiesManagement() {
                             <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
                           </TableRow>
                         ))
-                      ) : inventory.length > 0 ? (
-                        inventory.map((cookie) => (
-                          <TableRow key={cookie.id}>
-                            <TableCell className="font-medium">{cookie.name}</TableCell>
-                            <TableCell className="text-muted-foreground">{cookie.domain}</TableCell>
-                            <TableCell>
-                              <Badge variant="outline" className="capitalize">
-                                {cookie.category?.name || categories.find(c => c.id === (cookie.categoryId || cookie.category))?.name || "Uncategorized"}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>{cookie.expiration}</TableCell>
-                            <TableCell className="max-w-[300px] truncate text-muted-foreground" title={cookie.description}>
-                              {cookie.description}
-                            </TableCell>
+                      ) : inventory.filter(c => {
+                        if (selectedWebsiteId === 'all') return true;
+                        const selectedSite = websites.find(w => w.id === selectedWebsiteId);
+                        if (!selectedSite) return true;
+                        // Match domain or URL
+                        return c.domain.includes(new URL(selectedSite.url).hostname) || c.domain.includes(selectedSite.url);
+                      }).length > 0 ? (
+                        inventory
+                          .filter(c => {
+                            if (selectedWebsiteId === 'all') return true;
+                            const selectedSite = websites.find(w => w.id === selectedWebsiteId);
+                            if (!selectedSite) return true;
+                            return c.domain.includes(new URL(selectedSite.url).hostname) || c.domain.includes(selectedSite.url);
+                          })
+                          .map((cookie) => (
+                            <TableRow key={cookie.id}>
+                              <TableCell className="font-medium">{cookie.name}</TableCell>
+                              <TableCell className="text-muted-foreground">{cookie.domain}</TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="capitalize">
+                                  {cookie.category?.name || categories.find(c => c.id === (cookie.categoryId || cookie.category))?.name || "Uncategorized"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>{cookie.expiration}</TableCell>
+                              <TableCell className="max-w-[300px] truncate text-muted-foreground" title={cookie.description}>
+                                {cookie.description}
+                              </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-2">
                                 <Tooltip>
@@ -932,319 +984,108 @@ export default function CookiesManagement() {
             />
           </TabsContent>
 
-          {/* BANNER TAB */}
-          <TabsContent value="banner" className="space-y-6">
+          {/* COOKIE CONSENTS TAB */}
+          <TabsContent value="consents" className="space-y-6">
             <PageSection>
               <div className="dashboard-card mb-6">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                   <div>
-                    <SectionTitle>Banner Configuration</SectionTitle>
+                    <SectionTitle>Consent Records</SectionTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Select a website to customize its cookie consent banner.
+                      View and manage user cookie consent logs for your integrated websites.
                     </p>
                   </div>
                   <div className="flex items-center gap-3 w-full md:w-auto">
-                    <Select value={selectedWebsiteId} onValueChange={handleWebsiteChange}>
+                    <Select value={selectedWebsiteId} onValueChange={setSelectedWebsiteId}>
                       <SelectTrigger className="w-full md:w-[250px]">
                         <Globe className="h-4 w-4 mr-2 text-muted-foreground" />
-                        <SelectValue placeholder="Select Website" />
+                        <SelectValue placeholder="All Websites" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="all">Global (All Websites)</SelectItem>
+                        <SelectItem value="all">Global Logs (All Websites)</SelectItem>
                         {websites.map(site => (
                           <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <Button 
-                      onClick={handleSaveBannerSettings} 
-                      disabled={isSavingBanner}
-                      className="shrink-0"
-                    >
-                      {isSavingBanner ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
-                      Save Changes
-                    </Button>
                   </div>
                 </div>
               </div>
             </PageSection>
             
-            {/* Saved Banners List */}
             <PageSection>
-              <div className="dashboard-card mb-6">
-                <div className="flex items-center justify-between mb-4">
-                  <SectionTitle>Saved Templates</SectionTitle>
-                  <Button size="sm" onClick={() => setIsCreateBannerOpen(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Create New
-                  </Button>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {loading ? (
-                    Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-lg" />)
-                  ) : banners.length > 0 ? (
-                    banners.map((banner) => (
-                      <div key={banner.id} className="border rounded-lg p-4 hover:border-primary cursor-pointer transition-colors relative group">
-                        <div className="flex items-start justify-between mb-2">
-                          <div className="flex items-center gap-2">
-                            <div className={`h-3 w-3 rounded-full ${banner.theme}`} />
-                            <span className="font-medium text-sm">{banner.name}</span>
-                          </div>
-                          <Badge variant={['ACTIVE', 'Active'].includes(banner.status) ? 'default' : 'secondary'} className="text-xs">
-                            {banner.status}
-                          </Badge>
-                        </div>
-                        <p className="text-xs text-muted-foreground">Last modified: {banner.lastModified}</p>
-    
-                        <div className="absolute inset-0 bg-background/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity rounded-lg backdrop-blur-[2px]">
-                          <Button 
-                            size="sm" 
-                            variant="secondary" 
-                            className="shadow-sm"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleLoadBanner(banner);
-                            }}
-                          >
-                            Load Configuration
-                          </Button>
-                        </div>
-                      </div>
-                    ))
-                  ) : (
-                    <div className="col-span-3 text-center py-4 text-muted-foreground">No banners created yet</div>
-                  )}
+              <div className="dashboard-card">
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow className="bg-muted/50">
+                        <TableHead>User Identifier</TableHead>
+                        <TableHead>Website</TableHead>
+                        <TableHead>Consent Date</TableHead>
+                        <TableHead>Categories</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {loading ? (
+                        Array(5).fill(0).map((_, i) => (
+                          <TableRow key={i}>
+                            <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
+                          </TableRow>
+                        ))
+                      ) : consentLogs.filter(log => {
+                        if (selectedWebsiteId === 'all') return true;
+                        return log.websiteId === selectedWebsiteId;
+                      }).length > 0 ? (
+                        consentLogs
+                          .filter(log => selectedWebsiteId === 'all' || log.websiteId === selectedWebsiteId)
+                          .map((log) => (
+                            <TableRow key={log.id}>
+                              <TableCell className="font-mono text-[10px]">{log.userId || log.id.substring(0, 13)}...</TableCell>
+                              <TableCell className="text-xs">
+                                {websites.find(w => w.id === log.websiteId)?.name || "External Site"}
+                              </TableCell>
+                              <TableCell className="text-xs">{new Date(log.createdAt || Date.now()).toLocaleString()}</TableCell>
+                              <TableCell>
+                                <div className="flex gap-1 flex-wrap">
+                                  {log.categories?.map((cat: string) => (
+                                    <Badge key={cat} variant="secondary" className="text-[10px] py-0">{cat}</Badge>
+                                  ))}
+                                </div>
+                              </TableCell>
+                              <TableCell>
+                                <Badge 
+                                  variant={['Active', 'accepted', 'GRANTED', 'Active'].includes(log.status) ? 'default' : 'secondary'} 
+                                  className={`text-[10px] ${['Active', 'accepted', 'GRANTED', 'Active'].includes(log.status) ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                                >
+                                  {log.status}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right">
+                                <Button 
+                                  variant="ghost" 
+                                  size="sm" 
+                                  className="text-destructive h-7 text-xs"
+                                  onClick={() => handleWithdrawConsent(log.id)}
+                                >
+                                  Withdraw
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-10 text-muted-foreground italic">
+                            No consent logs found for this website.
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
                 </div>
               </div>
             </PageSection>
-
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-1 space-y-6">
-                <div className="dashboard-card">
-                  <SectionTitle className="mb-4">Appearance</SectionTitle>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Banner Position</Label>
-                      <Select value={bannerPosition} onValueChange={setBannerPosition}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="BOTTOM">Bottom Bar</SelectItem>
-                          <SelectItem value="TOP">Top Bar</SelectItem>
-                          <SelectItem value="CENTER">Center Modal</SelectItem>
-                          <SelectItem value="CORNER">Bottom Corner (L/R)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Theme Color</Label>
-                      <div className="flex flex-wrap gap-2 items-center">
-                        {[
-                          { name: "Green", color: "#10b981" },
-                          { name: "Blue", color: "#2563eb" },
-                          { name: "Purple", color: "#8b5cf6" },
-                          { name: "Dark", color: "#18181b" }
-                        ].map((t) => (
-                          <div
-                            key={t.color}
-                            onClick={() => setBannerTheme(t.color)}
-                            className={`h-8 w-8 rounded-full cursor-pointer border-2 transition-all ${
-                              bannerTheme === t.color ? "border-primary scale-110 shadow-md" : "border-transparent hover:scale-105"
-                            }`}
-                            style={{ backgroundColor: t.color }}
-                            title={t.name}
-                          />
-                        ))}
-                        <div className="h-6 w-[1px] bg-border mx-1" />
-                        <div className="flex gap-2 items-center">
-                          <Input 
-                            type="color" 
-                            value={bannerTheme} 
-                            onChange={(e) => setBannerTheme(e.target.value)} 
-                            className="w-8 h-8 p-0.5 rounded-full cursor-pointer border-2 border-muted" 
-                          />
-                          <Input 
-                            value={bannerTheme} 
-                            onChange={(e) => setBannerTheme(e.target.value)} 
-                            className="text-[10px] h-7 w-20 px-2 uppercase font-mono" 
-                            placeholder="#HEX"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="dashboard-card">
-                  <SectionTitle className="mb-4">Content & Language</SectionTitle>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Language</Label>
-                      <Select value={bannerLang} onValueChange={handleLanguageChange}>
-                        <SelectTrigger>
-                          <Globe className="h-4 w-4 mr-2 text-muted-foreground" />
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="en">English (Default)</SelectItem>
-                          <SelectItem value="es">Spanish</SelectItem>
-                          <SelectItem value="fr">French</SelectItem>
-                          <SelectItem value="de">German</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Heading</Label>
-                      <Input 
-                        value={bannerHeading} 
-                        onChange={(e) => setBannerHeading(e.target.value)} 
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Description</Label>
-                      <Textarea 
-                        className="h-20" 
-                        value={bannerDescription} 
-                        onChange={(e) => setBannerDescription(e.target.value)} 
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="dashboard-card">
-                  <SectionTitle className="mb-4">Advanced Styling</SectionTitle>
-                  <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label>Background Color</Label>
-                        <div className="flex gap-2 items-center">
-                          <Input type="color" value={bannerBgColor} onChange={(e) => setBannerBgColor(e.target.value)} className="w-10 h-10 p-1 rounded cursor-pointer" />
-                          <Input value={bannerBgColor} onChange={(e) => setBannerBgColor(e.target.value)} className="text-xs h-8" />
-                        </div>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Text Color</Label>
-                        <div className="flex gap-2 items-center">
-                          <Input type="color" value={bannerTextColor} onChange={(e) => setBannerTextColor(e.target.value)} className="w-10 h-10 p-1 rounded cursor-pointer" />
-                          <Input value={bannerTextColor} onChange={(e) => setBannerTextColor(e.target.value)} className="text-xs h-8" />
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <Label>Max Width (px)</Label>
-                        <span className="text-xs font-mono">{bannerMaxWidth}px</span>
-                      </div>
-                      <Slider value={[bannerMaxWidth]} min={400} max={1600} step={50} onValueChange={([val]) => setBannerMaxWidth(val)} />
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <Label>Border Radius (px)</Label>
-                        <span className="text-xs font-mono">{bannerBorderRadius}px</span>
-                      </div>
-                      <Slider value={[bannerBorderRadius]} min={0} max={40} step={2} onValueChange={([val]) => setBannerBorderRadius(val)} />
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <Label>Padding (px)</Label>
-                        <span className="text-xs font-mono">{bannerPadding}px</span>
-                      </div>
-                      <Slider value={[bannerPadding]} min={8} max={64} step={4} onValueChange={([val]) => setBannerPadding(val)} />
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <Label>Font Size (px)</Label>
-                        <span className="text-xs font-mono">{bannerFontSize}px</span>
-                      </div>
-                      <Slider value={[bannerFontSize]} min={12} max={20} step={1} onValueChange={([val]) => setBannerFontSize(val)} />
-                    </div>
-
-                    <div className="space-y-3">
-                      <div className="flex justify-between items-center">
-                        <Label>Backdrop Opacity (%)</Label>
-                        <span className="text-xs font-mono">{bannerOpacity}%</span>
-                      </div>
-                      <Slider value={[bannerOpacity]} min={0} max={100} step={5} onValueChange={([val]) => setBannerOpacity(val)} />
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="lg:col-span-2">
-                <div className="dashboard-card h-full flex flex-col">
-                  <div className="flex items-center justify-between mb-6 border-b pb-4">
-                    <div className="flex items-center gap-2">
-                      <Layout className="h-5 w-5 text-primary" />
-                      <h3 className="font-medium">Live Preview</h3>
-                    </div>
-                    <div className="flex items-center bg-muted rounded-lg p-1">
-                      <Button
-                        variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        onClick={() => setPreviewDevice('desktop')}
-                        className="h-7 px-3"
-                      >
-                        <Monitor className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant={previewDevice === 'mobile' ? 'secondary' : 'ghost'}
-                        size="sm"
-                        onClick={() => setPreviewDevice('mobile')}
-                        className="h-7 px-3"
-                      >
-                        <Smartphone className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  <div 
-                    className={`flex-1 rounded-lg border-2 border-dashed border-border flex items-end justify-center relative overflow-hidden min-h-[400px] transition-all duration-300 ${previewDevice === 'mobile' ? 'max-w-xs mx-auto' : 'w-full'}`}
-                    style={{ 
-                      backgroundColor: ['CENTER', 'center'].includes(bannerPosition) ? `rgba(0,0,0,${bannerOpacity/100})` : 'hsl(var(--muted) / 0.2)'
-                    }}
-                  >
-                    <div className="absolute inset-0 opacity-10 pointer-events-none flex flex-col items-center justify-center">
-                      <div className="w-3/4 h-4 bg-foreground/20 rounded mb-4" />
-                      <div className="w-1/2 h-4 bg-foreground/20 rounded mb-4" />
-                      <div className="w-full h-32 bg-foreground/10 rounded mb-4" />
-                    </div>
-
-                    {/* Banner Preview */}
-                    <div 
-                      className={`shadow-lg transition-all duration-300 w-full m-4 border
-                        ${['CENTER', 'center'].includes(bannerPosition) ? 'mb-auto mt-auto' : ''} 
-                        ${['TOP', 'top'].includes(bannerPosition) ? 'mb-auto mt-4' : ''} 
-                        ${['BOTTOM', 'bottom'].includes(bannerPosition) ? 'mb-4 mt-auto' : ''} 
-                      `}
-                      style={{
-                        backgroundColor: bannerBgColor,
-                        color: bannerTextColor,
-                        width: '90%',
-                        maxWidth: previewDevice === 'mobile' ? '320px' : (bannerMaxWidth ? `${bannerMaxWidth}px` : '100%'),
-                        borderRadius: `${bannerBorderRadius}px`,
-                        padding: `${bannerPadding}px`,
-                        fontSize: `${bannerFontSize}px`
-                      }}
-                    >
-                      <h4 className="font-semibold text-lg mb-2" style={{ color: 'inherit' }}>{bannerHeading}</h4>
-                      <p className="text-sm mb-4 opacity-90" style={{ color: 'inherit' }}>
-                        {bannerDescription}
-                      </p>
-                      <div className={`flex gap-2 ${previewDevice === 'mobile' ? 'flex-col' : 'sm:flex-row'}`}>
-                        <Button className="flex-1" style={{ backgroundColor: bannerTheme }}>Accept All</Button>
-                        <Button variant="outline" className="flex-1" style={{ borderColor: `${bannerTheme}50` }}>Reject All</Button>
-                        <Button variant="ghost" className="flex-1">Preferences</Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
           </TabsContent>
 
           {/* CONFIG TAB */}
@@ -1362,7 +1203,7 @@ export default function CookiesManagement() {
                 <div className="space-y-6">
                   <div className="space-y-2">
                     <Label>1. Select Website</Label>
-                    <Select value={selectedWebsiteId} onValueChange={setSelectedWebsiteId}>
+                    <Select value={selectedWebsiteId} onValueChange={handleWebsiteChange}>
                       <SelectTrigger className="w-full md:w-[400px]">
                         <SelectValue placeholder="Choose a website to get its script" />
                       </SelectTrigger>
@@ -1402,13 +1243,220 @@ export default function CookiesManagement() {
                         <Copy className="h-4 w-4" />
                       </Button>
                     </div>
-                    <p className="text-xs text-muted-foreground italic">
-                      Note: Changes saved in the "Banner Customization" tab will reflect automatically on your website after adding this script.
-                    </p>
                   </div>
                 </div>
               </div>
             </PageSection>
+
+            {/* MOVED BANNER CUSTOMIZATION SECTION */}
+            <PageSection>
+              <div className="dashboard-card mb-6">
+                <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+                  <div>
+                    <SectionTitle>Banner Customization</SectionTitle>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      Customize how the banner looks on your website.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      onClick={handleSaveBannerSettings} 
+                      disabled={isSavingBanner}
+                      className="shrink-0"
+                    >
+                      {isSavingBanner ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
+                      Save Customization
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  <div className="lg:col-span-1 space-y-6">
+                    <div className="border rounded-xl p-4 bg-muted/30">
+                      <SectionTitle className="mb-4 text-base">Appearance</SectionTitle>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Banner Position</Label>
+                          <Select value={bannerPosition} onValueChange={setBannerPosition}>
+                            <SelectTrigger className="bg-background">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="BOTTOM">Bottom Bar</SelectItem>
+                              <SelectItem value="TOP">Top Bar</SelectItem>
+                              <SelectItem value="CENTER">Center Modal</SelectItem>
+                              <SelectItem value="CORNER">Bottom Corner (L/R)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Theme Color</Label>
+                          <div className="flex flex-wrap gap-2 items-center">
+                            {[
+                              { name: "Green", color: "#10b981" },
+                              { name: "Blue", color: "#2563eb" },
+                              { name: "Purple", color: "#8b5cf6" },
+                              { name: "Dark", color: "#18181b" }
+                            ].map((t) => (
+                              <div
+                                key={t.color}
+                                onClick={() => setBannerTheme(t.color)}
+                                className={`h-8 w-8 rounded-full cursor-pointer border-2 transition-all ${
+                                  bannerTheme === t.color ? "border-primary scale-110 shadow-md" : "border-transparent hover:scale-105"
+                                }`}
+                                style={{ backgroundColor: t.color }}
+                                title={t.name}
+                              />
+                            ))}
+                            <div className="h-6 w-[1px] bg-border mx-1" />
+                            <div className="flex gap-2 items-center">
+                              <Input 
+                                type="color" 
+                                value={bannerTheme} 
+                                onChange={(e) => setBannerTheme(e.target.value)} 
+                                className="w-8 h-8 p-0.5 rounded-full cursor-pointer border-2 border-muted" 
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border rounded-xl p-4 bg-muted/30">
+                      <SectionTitle className="mb-4 text-base">Content</SectionTitle>
+                      <div className="space-y-4">
+                        <div className="space-y-2">
+                          <Label>Heading</Label>
+                          <Input 
+                            className="bg-background"
+                            value={bannerHeading} 
+                            onChange={(e) => setBannerHeading(e.target.value)} 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Description</Label>
+                          <Textarea 
+                            className="h-20 bg-background" 
+                            value={bannerDescription} 
+                            onChange={(e) => setBannerDescription(e.target.value)} 
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="border rounded-xl p-4 bg-muted/30">
+                      <SectionTitle className="mb-4 text-base">Styling</SectionTitle>
+                      <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label className="text-xs">Background</Label>
+                            <div className="flex gap-2 items-center">
+                              <Input type="color" value={bannerBgColor} onChange={(e) => setBannerBgColor(e.target.value)} className="w-8 h-8 p-1 rounded cursor-pointer" />
+                              <Input value={bannerBgColor} onChange={(e) => setBannerBgColor(e.target.value)} className="text-[10px] h-7 px-1 uppercase" />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">Text</Label>
+                            <div className="flex gap-2 items-center">
+                              <Input type="color" value={bannerTextColor} onChange={(e) => setBannerTextColor(e.target.value)} className="w-8 h-8 p-1 rounded cursor-pointer" />
+                              <Input value={bannerTextColor} onChange={(e) => setBannerTextColor(e.target.value)} className="text-[10px] h-7 px-1 uppercase" />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center text-xs">
+                            <Label>Max Width</Label>
+                            <span className="font-mono">{bannerMaxWidth}px</span>
+                          </div>
+                          <Slider value={[bannerMaxWidth]} min={400} max={1600} step={50} onValueChange={([val]) => setBannerMaxWidth(val)} />
+                        </div>
+
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-center text-xs">
+                            <Label>Border Radius</Label>
+                            <span className="font-mono">{bannerBorderRadius}px</span>
+                          </div>
+                          <Slider value={[bannerBorderRadius]} min={0} max={40} step={2} onValueChange={([val]) => setBannerBorderRadius(val)} />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-2">
+                    <div className="border rounded-xl p-6 bg-muted/10 h-full flex flex-col min-h-[500px]">
+                      <div className="flex items-center justify-between mb-6 border-b pb-4">
+                        <div className="flex items-center gap-2">
+                          <Layout className="h-5 w-5 text-primary" />
+                          <h3 className="font-medium">Live Preview</h3>
+                        </div>
+                        <div className="flex items-center bg-muted rounded-lg p-1">
+                          <Button
+                            variant={previewDevice === 'desktop' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            onClick={() => setPreviewDevice('desktop')}
+                            className="h-7 px-3"
+                          >
+                            <Monitor className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant={previewDevice === 'mobile' ? 'secondary' : 'ghost'}
+                            size="sm"
+                            onClick={() => setPreviewDevice('mobile')}
+                            className="h-7 px-3"
+                          >
+                            <Smartphone className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div 
+                        className={`flex-1 rounded-lg border-2 border-dashed border-border flex items-end justify-center relative overflow-hidden transition-all duration-300 ${previewDevice === 'mobile' ? 'max-w-xs mx-auto' : 'w-full'}`}
+                        style={{ 
+                          backgroundColor: ['CENTER', 'center'].includes(bannerPosition) ? `rgba(0,0,0,${bannerOpacity/100})` : 'hsl(var(--muted) / 0.2)'
+                        }}
+                      >
+                        <div className="absolute inset-0 opacity-10 pointer-events-none flex flex-col items-center justify-center">
+                          <div className="w-3/4 h-4 bg-foreground/20 rounded mb-4" />
+                          <div className="w-1/2 h-4 bg-foreground/20 rounded mb-4" />
+                          <div className="w-full h-32 bg-foreground/10 rounded mb-4" />
+                        </div>
+
+                        {/* Banner Preview */}
+                        <div 
+                          className={`shadow-lg transition-all duration-300 border
+                            ${['CENTER', 'center'].includes(bannerPosition) ? 'mb-auto mt-auto' : ''} 
+                            ${['TOP', 'top'].includes(bannerPosition) ? 'mb-auto mt-4' : ''} 
+                            ${['BOTTOM', 'bottom'].includes(bannerPosition) ? 'mb-4 mt-auto' : ''} 
+                          `}
+                          style={{
+                            backgroundColor: bannerBgColor,
+                            color: bannerTextColor,
+                            width: '90%',
+                            maxWidth: previewDevice === 'mobile' ? '320px' : (bannerMaxWidth ? `${bannerMaxWidth}px` : '100%'),
+                            borderRadius: `${bannerBorderRadius}px`,
+                            padding: `${bannerPadding}px`,
+                            fontSize: `${bannerFontSize}px`
+                          }}
+                        >
+                          <h4 className="font-semibold text-lg mb-2" style={{ color: 'inherit' }}>{bannerHeading}</h4>
+                          <p className="text-sm opacity-90 mb-6" style={{ color: 'inherit' }}>{bannerDescription}</p>
+                          <div className={`flex gap-3 ${previewDevice === 'mobile' ? 'flex-col' : 'flex-row justify-end'}`}>
+                            <Button variant="outline" size="sm" className="bg-transparent border-current hover:bg-current/10" style={{ color: 'inherit' }}>
+                              Preferences
+                            </Button>
+                            <Button size="sm" style={{ backgroundColor: bannerTheme, color: bannerBtnTextColor }}>
+                              Accept All
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </PageSection>
+
 
             <AddWebsiteDialog
               open={isAddWebsiteOpen}
