@@ -793,19 +793,13 @@ export default function CookiesManagement() {
 
                   <div className="lg:col-span-2">
                     <TrendLineChart
-                      data={[
-                        { name: "Mon", count: 12 },
-                        { name: "Tue", count: 15 },
-                        { name: "Wed", count: 14 },
-                        { name: "Thu", count: 18 },
-                        { name: "Fri", count: 22 },
-                        { name: "Sat", count: 20 },
-                        { name: "Sun", count: 25 },
-                      ]}
+                      data={metrics?.trends || []}
                       lines={[
-                        { dataKey: "count", color: "#10b981", label: "Cookies Detected" }
+                        { dataKey: "accepted", color: "#10b981", label: "Accepted" },
+                        { dataKey: "rejected", color: "#f59e0b", label: "Rejected" },
+                        { dataKey: "withdrawn", color: "#ef4444", label: "Withdrawn" },
                       ]}
-                      title="Cookie Detection Trend"
+                      title="Consent Activity Trend (Last 7 Days)"
                     />
                   </div>
                 </>
