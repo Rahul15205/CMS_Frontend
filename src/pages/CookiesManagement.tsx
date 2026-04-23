@@ -1186,7 +1186,8 @@ export default function CookiesManagement() {
                       style={{
                         backgroundColor: bannerBgColor,
                         color: bannerTextColor,
-                        maxWidth: previewDevice === 'mobile' ? '280px' : (bannerMaxWidth ? `${bannerMaxWidth}px` : '100%'),
+                        width: '90%',
+                        maxWidth: previewDevice === 'mobile' ? '320px' : (bannerMaxWidth ? `${bannerMaxWidth}px` : '100%'),
                         borderRadius: `${bannerBorderRadius}px`,
                         padding: `${bannerPadding}px`,
                         fontSize: `${bannerFontSize}px`
@@ -1497,6 +1498,8 @@ export default function CookiesManagement() {
                     style={{
                       backgroundColor: bannerBgColor,
                       color: bannerTextColor,
+                      width: '90%',
+                      maxWidth: previewDevice === 'mobile' ? '320px' : (bannerMaxWidth ? `${bannerMaxWidth}px` : '100%'),
                       borderRadius: `${bannerBorderRadius}px`,
                       fontSize: `${bannerFontSize}px`
                     }}
