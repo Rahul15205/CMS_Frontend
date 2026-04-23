@@ -1001,7 +1001,7 @@ export default function CookiesManagement() {
                     </div>
                     <div className="space-y-2">
                       <Label>Theme Color</Label>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap gap-2 items-center">
                         {[
                           { name: "Green", color: "#10b981" },
                           { name: "Blue", color: "#2563eb" },
@@ -1018,6 +1018,21 @@ export default function CookiesManagement() {
                             title={t.name}
                           />
                         ))}
+                        <div className="h-6 w-[1px] bg-border mx-1" />
+                        <div className="flex gap-2 items-center">
+                          <Input 
+                            type="color" 
+                            value={bannerTheme} 
+                            onChange={(e) => setBannerTheme(e.target.value)} 
+                            className="w-8 h-8 p-0.5 rounded-full cursor-pointer border-2 border-muted" 
+                          />
+                          <Input 
+                            value={bannerTheme} 
+                            onChange={(e) => setBannerTheme(e.target.value)} 
+                            className="text-[10px] h-7 w-20 px-2 uppercase font-mono" 
+                            placeholder="#HEX"
+                          />
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -1149,7 +1164,12 @@ export default function CookiesManagement() {
                     </div>
                   </div>
 
-                  <div className={`flex-1 bg-muted/20 rounded-lg border-2 border-dashed border-border flex items-end justify-center relative overflow-hidden min-h-[400px] transition-all duration-300 ${previewDevice === 'mobile' ? 'max-w-xs mx-auto' : 'w-full'}`}>
+                  <div 
+                    className={`flex-1 rounded-lg border-2 border-dashed border-border flex items-end justify-center relative overflow-hidden min-h-[400px] transition-all duration-300 ${previewDevice === 'mobile' ? 'max-w-xs mx-auto' : 'w-full'}`}
+                    style={{ 
+                      backgroundColor: ['CENTER', 'center'].includes(bannerPosition) ? `rgba(0,0,0,${bannerOpacity/100})` : 'hsl(var(--muted) / 0.2)'
+                    }}
+                  >
                     <div className="absolute inset-0 opacity-10 pointer-events-none flex flex-col items-center justify-center">
                       <div className="w-3/4 h-4 bg-foreground/20 rounded mb-4" />
                       <div className="w-1/2 h-4 bg-foreground/20 rounded mb-4" />
@@ -1157,19 +1177,28 @@ export default function CookiesManagement() {
                     </div>
 
                     {/* Banner Preview */}
-                    <div className={`p-6 bg-card border shadow-lg transition-all duration-300 w-full rounded-lg m-4
-                        ${previewDevice === 'mobile' ? 'max-w-[280px]' : 'max-w-lg'}
+                    <div 
+                      className={`shadow-lg transition-all duration-300 w-full m-4 border
                         ${['CENTER', 'center'].includes(bannerPosition) ? 'mb-auto mt-auto' : ''} 
                         ${['TOP', 'top'].includes(bannerPosition) ? 'mb-auto mt-4' : ''} 
                         ${['BOTTOM', 'bottom'].includes(bannerPosition) ? 'mb-4 mt-auto' : ''} 
-                    `}>
-                      <h4 className="font-semibold text-lg mb-2">{bannerHeading}</h4>
-                      <p className="text-sm text-muted-foreground mb-4">
+                      `}
+                      style={{
+                        backgroundColor: bannerBgColor,
+                        color: bannerTextColor,
+                        maxWidth: previewDevice === 'mobile' ? '280px' : (bannerMaxWidth ? `${bannerMaxWidth}px` : '100%'),
+                        borderRadius: `${bannerBorderRadius}px`,
+                        padding: `${bannerPadding}px`,
+                        fontSize: `${bannerFontSize}px`
+                      }}
+                    >
+                      <h4 className="font-semibold text-lg mb-2" style={{ color: 'inherit' }}>{bannerHeading}</h4>
+                      <p className="text-sm mb-4 opacity-90" style={{ color: 'inherit' }}>
                         {bannerDescription}
                       </p>
                       <div className={`flex gap-2 ${previewDevice === 'mobile' ? 'flex-col' : 'sm:flex-row'}`}>
                         <Button className="flex-1" style={{ backgroundColor: bannerTheme }}>Accept All</Button>
-                        <Button variant="outline" className="flex-1">Reject All</Button>
+                        <Button variant="outline" className="flex-1" style={{ borderColor: `${bannerTheme}50` }}>Reject All</Button>
                         <Button variant="ghost" className="flex-1">Preferences</Button>
                       </div>
                     </div>
@@ -1442,12 +1471,17 @@ export default function CookiesManagement() {
                 </div>
               </div>
 
-              <div className={`absolute inset-0 p-4 md:p-8 pointer-events-none flex z-[100]
-                ${(!bannerPosition || ['BOTTOM', 'bottom'].includes(bannerPosition)) ? 'items-end justify-center' : ''}
-                ${['TOP', 'top'].includes(bannerPosition) ? 'items-start justify-center' : ''}
-                ${['CENTER', 'center'].includes(bannerPosition) ? 'items-center justify-center bg-black/20 pointer-events-auto' : ''}
-                ${['CORNER', 'corner'].includes(bannerPosition) ? 'items-end justify-end' : ''}
-              `}>
+              <div 
+                className={`absolute inset-0 p-4 md:p-8 pointer-events-none flex z-[100] transition-all duration-300
+                  ${(!bannerPosition || ['BOTTOM', 'bottom'].includes(bannerPosition)) ? 'items-end justify-center' : ''}
+                  ${['TOP', 'top'].includes(bannerPosition) ? 'items-start justify-center' : ''}
+                  ${['CENTER', 'center'].includes(bannerPosition) ? 'items-center justify-center pointer-events-auto' : ''}
+                  ${['CORNER', 'corner'].includes(bannerPosition) ? 'items-end justify-end' : ''}
+                `}
+                style={{
+                  backgroundColor: ['CENTER', 'center'].includes(bannerPosition) ? `rgba(0,0,0,${bannerOpacity/100})` : 'transparent'
+                }}
+              >
                 <div className={`w-full transition-all duration-300 flex
                   ${(!bannerPosition || ['BOTTOM', 'bottom'].includes(bannerPosition)) ? 'items-end justify-center' : ''}
                   ${['TOP', 'top'].includes(bannerPosition) ? 'items-start justify-center' : ''}
@@ -1455,18 +1489,26 @@ export default function CookiesManagement() {
                   ${['CORNER', 'corner'].includes(bannerPosition) ? 'items-end justify-end' : ''}
                   ${previewDevice === 'mobile' ? 'max-w-[375px]' : 'max-w-full'}
                 `}>
-                  <div className={`pointer-events-auto bg-card border shadow-2xl transition-all duration-300 w-full rounded-xl overflow-hidden
-                    ${(!bannerPosition || ['TOP', 'bottom', 'BOTTOM', 'top'].includes(bannerPosition)) ? 'max-w-4xl' : 'max-w-md'}
-                    ${previewDevice === 'mobile' ? 'mx-4' : ''}
-                  `}>
-                    <div className={previewDevice === 'mobile' ? 'p-4' : 'p-6'}>
+                  <div 
+                    className={`pointer-events-auto shadow-2xl transition-all duration-300 w-full overflow-hidden border
+                      ${(!bannerPosition || ['TOP', 'bottom', 'BOTTOM', 'top'].includes(bannerPosition)) ? 'max-w-4xl' : 'max-w-md'}
+                      ${previewDevice === 'mobile' ? 'mx-4' : ''}
+                    `}
+                    style={{
+                      backgroundColor: bannerBgColor,
+                      color: bannerTextColor,
+                      borderRadius: `${bannerBorderRadius}px`,
+                      fontSize: `${bannerFontSize}px`
+                    }}
+                  >
+                    <div className={previewDevice === 'mobile' ? 'p-4' : 'p-6'} style={{ padding: `${bannerPadding}px` }}>
                       <div className={`flex gap-4 ${previewDevice === 'mobile' ? 'flex-col items-center text-center' : 'items-start'}`}>
                         <div className={`p-2 rounded-lg shrink-0 ${previewDevice === 'mobile' ? 'w-fit' : ''}`} style={{ backgroundColor: `${bannerTheme}15` }}>
                           <Cookie className={previewDevice === 'mobile' ? 'h-5 w-5' : 'h-6 w-6'} style={{ color: bannerTheme }} />
                         </div>
                         <div className="flex-1">
-                          <h4 className={`font-semibold mb-1 ${previewDevice === 'mobile' ? 'text-base' : 'text-lg'}`}>{bannerHeading}</h4>
-                          <p className={`text-muted-foreground mb-4 leading-relaxed ${previewDevice === 'mobile' ? 'text-xs' : 'text-sm'}`}>
+                          <h4 className={`font-semibold mb-1 ${previewDevice === 'mobile' ? 'text-base' : 'text-lg'}`} style={{ color: 'inherit' }}>{bannerHeading}</h4>
+                          <p className={`mb-4 leading-relaxed opacity-90 ${previewDevice === 'mobile' ? 'text-xs' : 'text-sm'}`} style={{ color: 'inherit' }}>
                             {bannerDescription}
                           </p>
                           <div className={`flex gap-2 ${previewDevice === 'mobile' ? 'flex-col w-full' : 'items-center gap-3'}`}>
@@ -1478,7 +1520,7 @@ export default function CookiesManagement() {
                               Accept All
                             </Button>
                             <div className={`flex gap-2 ${previewDevice === 'mobile' ? 'w-full' : ''}`}>
-                              <Button size="sm" variant="outline" className={previewDevice === 'mobile' ? 'flex-1 h-9' : 'px-6'}>Reject All</Button>
+                              <Button size="sm" variant="outline" className={previewDevice === 'mobile' ? 'flex-1 h-9' : 'px-6'} style={{ borderColor: `${bannerTheme}50` }}>Reject All</Button>
                               <Button size="sm" variant="ghost" className={previewDevice === 'mobile' ? 'flex-1 h-9 text-[10px]' : 'text-xs'}>Customize</Button>
                             </div>
                           </div>
