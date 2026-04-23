@@ -104,8 +104,10 @@ export const cookieConsentLogsService = {
 };
 
 export const cookieComplianceService = {
-  getMetrics: async () => {
-    const res = await api.get('/api/v1/cookies/compliance');
+  getMetrics: async (websiteId?: string) => {
+    const res = await api.get('/api/v1/cookies/compliance', {
+      params: { websiteId }
+    });
     return res.data;
   },
 };

@@ -156,7 +156,7 @@ export default function CookiesManagement() {
         cookieWebsitesService.getAll(),
         cookieConsentLogsService.getAll(),
         cookieBannersService.getAll(),
-        cookieComplianceService.getMetrics()
+        cookieComplianceService.getMetrics(selectedWebsiteId)
       ]);
 
       setCategories(cats || []);
@@ -177,7 +177,7 @@ export default function CookiesManagement() {
     } finally {
       if (!silent) setLoading(false);
     }
-  }, [toast]);
+  }, [toast, selectedWebsiteId]);
 
   useEffect(() => {
     fetchData();
