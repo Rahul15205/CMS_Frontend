@@ -219,11 +219,17 @@ export default function CookiesManagement() {
   const handleWithdrawConsent = async (id: string) => {
     if (confirm("Are you sure you want to withdraw consent for this user? This action cannot be undone.")) {
       try {
-        // In a real scenario, we'd have a specific withdrawal endpoint
-        const updated = await cookieConsentLogsService.record({ id, userId: id, status: "Withdrawn" });
+        const log = consentLogs.find(l => l.id === id);
+        // We'll create a new record with WITHDRAWN status or update if the API supports it
+        const updated = await cookieConsentLogsService.record({ 
+          userId: log?.userId || id, 
+          status: "WITHDRAWN",
+          categories: log?.categories || [] 
+        });
+        
         if (updated) {
           setConsentLogs(consentLogs.map(log =>
-            log.id === id ? { ...log, status: "Withdrawn" } : log
+            log.id === id ? { ...log, status: "WITHDRAWN" } : log
           ));
           toast({
             title: "Consent Withdrawn",
