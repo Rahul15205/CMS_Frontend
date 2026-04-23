@@ -29,7 +29,7 @@ export function AddCookieDialog({ open, onOpenChange, onSave, initialData, categ
             setFormData({
                 name: initialData.name || "",
                 domain: initialData.domain || "",
-                categoryId: initialData.categoryId || initialData.category || "functional",
+                categoryId: initialData.categoryId || (typeof initialData.category === 'object' ? initialData.category.id : initialData.category) || "functional",
                 expiration: initialData.expiration || "",
                 description: initialData.description || ""
             });

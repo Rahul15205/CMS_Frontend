@@ -12,6 +12,7 @@ import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { TrendLineChart } from "@/components/charts/TrendLineChart";
 import {
   Card,
   CardContent,
@@ -790,66 +791,90 @@ export default function CookiesManagement() {
                     className="lg:col-span-1"
                   />
 
-                  <Card className="lg:col-span-2">
-                    <CardHeader>
-                      <CardTitle>Recent Consent Activity</CardTitle>
-                      <CardDescription>Latest user preferences and updates</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead>User ID</TableHead>
-                              <TableHead>Region</TableHead>
-                              <TableHead>Categories</TableHead>
-                              <TableHead>Status</TableHead>
-                              <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {consentLogs.length > 0 ? (
-                              consentLogs.map((log) => (
-                                <TableRow key={log.id}>
-                                  <TableCell className="font-medium text-xs">{log.userId}</TableCell>
-                                  <TableCell className="text-xs">{log.region}</TableCell>
-                                  <TableCell>
-                                    <div className="flex gap-1 flex-wrap">
-                                      {log.categories.map((cat: string) => (
-                                        <Badge key={cat} variant="secondary" className="text-[10px]">{cat}</Badge>
-                                      ))}
-                                    </div>
-                                  </TableCell>
-                                  <TableCell>
-                                    <Badge variant={log.status === "Active" ? "default" : "secondary"} className="text-[10px]">
-                                      {log.status}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    {['Active', 'accepted', 'GRANTED', 'ACCEPTED'].includes(log.status) && (
-                                      <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="text-destructive hover:text-destructive text-xs h-7"
-                                        onClick={() => handleWithdrawConsent(log.id)}
-                                      >
-                                        Withdraw
-                                      </Button>
-                                    )}
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            ) : (
-                              <TableRow>
-                                <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">No recent activity</TableCell>
-                              </TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  <div className="lg:col-span-2">
+                    <TrendLineChart
+                      data={[
+                        { name: "Mon", count: 12 },
+                        { name: "Tue", count: 15 },
+                        { name: "Wed", count: 14 },
+                        { name: "Thu", count: 18 },
+                        { name: "Fri", count: 22 },
+                        { name: "Sat", count: 20 },
+                        { name: "Sun", count: 25 },
+                      ]}
+                      lines={[
+                        { dataKey: "count", color: "#10b981", label: "Cookies Detected" }
+                      ]}
+                      title="Cookie Detection Trend"
+                    />
+                  </div>
                 </>
+              )}
+            </div>
+
+            <div className="mt-6">
+              {loading ? (
+                <Skeleton className="h-[400px] w-full rounded-xl" />
+              ) : (
+                <Card className="w-full">
+                  <CardHeader>
+                    <CardTitle>Recent Consent Activity</CardTitle>
+                    <CardDescription>Latest user preferences and updates</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>User ID</TableHead>
+                            <TableHead>Region</TableHead>
+                            <TableHead>Categories</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {consentLogs.length > 0 ? (
+                            consentLogs.map((log) => (
+                              <TableRow key={log.id}>
+                                <TableCell className="font-medium text-xs">{log.userId}</TableCell>
+                                <TableCell className="text-xs">{log.region}</TableCell>
+                                <TableCell>
+                                  <div className="flex gap-1 flex-wrap">
+                                    {log.categories.map((cat: string) => (
+                                      <Badge key={cat} variant="secondary" className="text-[10px]">{cat}</Badge>
+                                    ))}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge variant={log.status === "Active" ? "default" : "secondary"} className="text-[10px]">
+                                    {log.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {['Active', 'accepted', 'GRANTED', 'ACCEPTED'].includes(log.status) && (
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="text-destructive hover:text-destructive text-xs h-7"
+                                      onClick={() => handleWithdrawConsent(log.id)}
+                                    >
+                                      Withdraw
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            <TableRow>
+                              <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">No recent activity</TableCell>
+                            </TableRow>
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </CardContent>
+                </Card>
               )}
             </div>
           </TabsContent>
@@ -1145,7 +1170,9 @@ export default function CookiesManagement() {
                               <a href={site.url} target="_blank" rel="noopener noreferrer">{site.url}</a>
                             </TableCell>
                             <TableCell className="capitalize">{site.frequency}</TableCell>
-                            <TableCell>{site.lastScan}</TableCell>
+                            <TableCell className="text-xs">
+                              {site.lastScan ? new Date(site.lastScan).toLocaleString() : "Never"}
+                            </TableCell>
                             <TableCell>
                               <Badge
                                 variant={site.status === 'Active' ? 'outline' : 'destructive'}
