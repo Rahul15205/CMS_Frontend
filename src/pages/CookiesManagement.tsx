@@ -796,55 +796,57 @@ export default function CookiesManagement() {
                       <CardDescription>Latest user preferences and updates</CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <Table>
-                        <TableHeader>
-                          <TableRow>
-                            <TableHead>User ID</TableHead>
-                            <TableHead>Region</TableHead>
-                            <TableHead>Categories</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                          </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                          {consentLogs.length > 0 ? (
-                            consentLogs.map((log) => (
-                              <TableRow key={log.id}>
-                                <TableCell className="font-medium text-xs">{log.userId}</TableCell>
-                                <TableCell className="text-xs">{log.region}</TableCell>
-                                <TableCell>
-                                  <div className="flex gap-1 flex-wrap">
-                                    {log.categories.map((cat: string) => (
-                                      <Badge key={cat} variant="secondary" className="text-[10px]">{cat}</Badge>
-                                    ))}
-                                  </div>
-                                </TableCell>
-                                <TableCell>
-                                  <Badge variant={log.status === "Active" ? "default" : "secondary"} className="text-[10px]">
-                                    {log.status}
-                                  </Badge>
-                                </TableCell>
-                                <TableCell className="text-right">
-                                  {log.status === "Active" && (
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      className="text-destructive hover:text-destructive text-xs h-7"
-                                      onClick={() => handleWithdrawConsent(log.id)}
-                                    >
-                                      Withdraw
-                                    </Button>
-                                  )}
-                                </TableCell>
-                              </TableRow>
-                            ))
-                          ) : (
+                      <div className="max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
+                        <Table>
+                          <TableHeader>
                             <TableRow>
-                              <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">No recent activity</TableCell>
+                              <TableHead>User ID</TableHead>
+                              <TableHead>Region</TableHead>
+                              <TableHead>Categories</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
-                          )}
-                        </TableBody>
-                      </Table>
+                          </TableHeader>
+                          <TableBody>
+                            {consentLogs.length > 0 ? (
+                              consentLogs.map((log) => (
+                                <TableRow key={log.id}>
+                                  <TableCell className="font-medium text-xs">{log.userId}</TableCell>
+                                  <TableCell className="text-xs">{log.region}</TableCell>
+                                  <TableCell>
+                                    <div className="flex gap-1 flex-wrap">
+                                      {log.categories.map((cat: string) => (
+                                        <Badge key={cat} variant="secondary" className="text-[10px]">{cat}</Badge>
+                                      ))}
+                                    </div>
+                                  </TableCell>
+                                  <TableCell>
+                                    <Badge variant={log.status === "Active" ? "default" : "secondary"} className="text-[10px]">
+                                      {log.status}
+                                    </Badge>
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                    {['Active', 'accepted', 'GRANTED', 'ACCEPTED'].includes(log.status) && (
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="text-destructive hover:text-destructive text-xs h-7"
+                                        onClick={() => handleWithdrawConsent(log.id)}
+                                      >
+                                        Withdraw
+                                      </Button>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))
+                            ) : (
+                              <TableRow>
+                                <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">No recent activity</TableCell>
+                              </TableRow>
+                            )}
+                          </TableBody>
+                        </Table>
+                      </div>
                     </CardContent>
                   </Card>
                 </>
@@ -1023,73 +1025,77 @@ export default function CookiesManagement() {
             <PageSection>
               <div className="dashboard-card">
                 <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead>User Identifier</TableHead>
-                        <TableHead>Website</TableHead>
-                        <TableHead>Consent Date</TableHead>
-                        <TableHead>Categories</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {loading ? (
-                        Array(5).fill(0).map((_, i) => (
-                          <TableRow key={i}>
-                            <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
-                          </TableRow>
-                        ))
-                      ) : consentLogs.filter(log => {
-                        if (selectedWebsiteId === 'all') return true;
-                        return log.websiteId === selectedWebsiteId;
-                      }).length > 0 ? (
-                        consentLogs
-                          .filter(log => selectedWebsiteId === 'all' || log.websiteId === selectedWebsiteId)
-                          .map((log) => (
-                            <TableRow key={log.id}>
-                              <TableCell className="font-mono text-[10px]">{log.userId || log.id.substring(0, 13)}...</TableCell>
-                              <TableCell className="text-xs">
-                                {websites.find(w => w.id === log.websiteId)?.name || "External Site"}
-                              </TableCell>
-                              <TableCell className="text-xs">{new Date(log.createdAt || Date.now()).toLocaleString()}</TableCell>
-                              <TableCell>
-                                <div className="flex gap-1 flex-wrap">
-                                  {log.categories?.map((cat: string) => (
-                                    <Badge key={cat} variant="secondary" className="text-[10px] py-0">{cat}</Badge>
-                                  ))}
-                                </div>
-                              </TableCell>
-                              <TableCell>
-                                <Badge 
-                                  variant={['Active', 'accepted', 'GRANTED', 'Active'].includes(log.status) ? 'default' : 'secondary'} 
-                                  className={`text-[10px] ${['Active', 'accepted', 'GRANTED', 'Active'].includes(log.status) ? 'bg-green-500 hover:bg-green-600' : ''}`}
-                                >
-                                  {log.status}
-                                </Badge>
-                              </TableCell>
-                              <TableCell className="text-right">
-                                <Button 
-                                  variant="ghost" 
-                                  size="sm" 
-                                  className="text-destructive h-7 text-xs"
-                                  onClick={() => handleWithdrawConsent(log.id)}
-                                >
-                                  Withdraw
-                                </Button>
-                              </TableCell>
+                  <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
+                    <Table>
+                      <TableHeader className="sticky top-0 bg-background z-10">
+                        <TableRow className="bg-muted/50 shadow-sm">
+                          <TableHead>User Identifier</TableHead>
+                          <TableHead>Website</TableHead>
+                          <TableHead>Consent Date</TableHead>
+                          <TableHead>Categories</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {loading ? (
+                          Array(5).fill(0).map((_, i) => (
+                            <TableRow key={i}>
+                              <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
                             </TableRow>
                           ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center py-10 text-muted-foreground italic">
-                            No consent logs found for this website.
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
+                        ) : consentLogs.filter(log => {
+                          if (selectedWebsiteId === 'all') return true;
+                          return log.websiteId === selectedWebsiteId;
+                        }).length > 0 ? (
+                          consentLogs
+                            .filter(log => selectedWebsiteId === 'all' || log.websiteId === selectedWebsiteId)
+                            .map((log) => (
+                              <TableRow key={log.id}>
+                                <TableCell className="font-mono text-[10px]">{log.userId || log.id.substring(0, 13)}...</TableCell>
+                                <TableCell className="text-xs">
+                                  {websites.find(w => w.id === log.websiteId)?.name || "External Site"}
+                                </TableCell>
+                                <TableCell className="text-xs">{new Date(log.createdAt || Date.now()).toLocaleString()}</TableCell>
+                                <TableCell>
+                                  <div className="flex gap-1 flex-wrap">
+                                    {log.categories?.map((cat: string) => (
+                                      <Badge key={cat} variant="secondary" className="text-[10px] py-0">{cat}</Badge>
+                                    ))}
+                                  </div>
+                                </TableCell>
+                                <TableCell>
+                                  <Badge 
+                                    variant={['Active', 'accepted', 'GRANTED', 'ACCEPTED'].includes(log.status) ? 'default' : 'secondary'} 
+                                    className={`text-[10px] ${['Active', 'accepted', 'GRANTED', 'ACCEPTED'].includes(log.status) ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                                  >
+                                    {log.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  {['Active', 'accepted', 'GRANTED', 'ACCEPTED'].includes(log.status) && (
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      className="text-destructive h-7 text-xs"
+                                      onClick={() => handleWithdrawConsent(log.id)}
+                                    >
+                                      Withdraw
+                                    </Button>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))
+                        ) : (
+                          <TableRow>
+                            <TableCell colSpan={6} className="text-center py-10 text-muted-foreground italic">
+                              No consent logs found for this website.
+                            </TableCell>
+                          </TableRow>
+                        )}
+                      </TableBody>
+                    </Table>
+                  </div>
                 </div>
               </div>
             </PageSection>
