@@ -359,6 +359,7 @@ export default function CookiesManagement() {
         websiteName: website.name,
         websiteUrl: website.url,
         module: "COOKIES_MANAGEMENT",
+        email: website.email,
       },
     }).then(() => {
       toast({
