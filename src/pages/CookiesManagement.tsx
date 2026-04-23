@@ -588,6 +588,24 @@ export default function CookiesManagement() {
     }
   };
 
+  const handleDeleteCookie = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this cookie definition?")) return;
+    try {
+      await cookieInventoryService.delete(id);
+      setInventory(inventory.filter(c => c.id !== id));
+      toast({ 
+        title: "Cookie Deleted", 
+        description: "The cookie has been removed from your inventory." 
+      });
+    } catch (error) {
+      toast({ 
+        title: "Error", 
+        description: "Failed to delete cookie definition.", 
+        variant: "destructive" 
+      });
+    }
+  };
+
   const openEditDialog = (cookie: any) => {
     setEditingCookie(cookie);
     setIsAddCookieOpen(true);
@@ -868,9 +886,29 @@ export default function CookiesManagement() {
                               {cookie.description}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Button variant="ghost" size="icon" onClick={() => openEditDialog(cookie)}>
-                                <Settings className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center justify-end gap-2">
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button variant="ghost" size="icon" onClick={() => openEditDialog(cookie)}>
+                                      <Settings className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Edit Cookie</TooltipContent>
+                                </Tooltip>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <Button 
+                                      variant="ghost" 
+                                      size="icon" 
+                                      className="text-destructive hover:bg-destructive/10"
+                                      onClick={() => handleDeleteCookie(cookie.id)}
+                                    >
+                                      <Trash2 className="h-4 w-4" />
+                                    </Button>
+                                  </TooltipTrigger>
+                                  <TooltipContent>Delete Cookie</TooltipContent>
+                                </Tooltip>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))
