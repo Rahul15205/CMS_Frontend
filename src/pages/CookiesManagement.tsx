@@ -1362,6 +1362,13 @@ export default function CookiesManagement() {
                               <Input value={bannerTextColor} onChange={(e) => setBannerTextColor(e.target.value)} className="text-[10px] h-7 px-1 uppercase" />
                             </div>
                           </div>
+                          <div className="space-y-2">
+                            <Label className="text-xs">Button Text</Label>
+                            <div className="flex gap-2 items-center">
+                              <Input type="color" value={bannerBtnTextColor} onChange={(e) => setBannerBtnTextColor(e.target.value)} className="w-8 h-8 p-1 rounded cursor-pointer" />
+                              <Input value={bannerBtnTextColor} onChange={(e) => setBannerBtnTextColor(e.target.value)} className="text-[10px] h-7 px-1 uppercase" />
+                            </div>
+                          </div>
                         </div>
 
                         <div className="space-y-3">
@@ -1441,9 +1448,12 @@ export default function CookiesManagement() {
                         >
                           <h4 className="font-semibold text-lg mb-2" style={{ color: 'inherit' }}>{bannerHeading}</h4>
                           <p className="text-sm opacity-90 mb-6" style={{ color: 'inherit' }}>{bannerDescription}</p>
-                          <div className={`flex gap-3 ${previewDevice === 'mobile' ? 'flex-col' : 'flex-row justify-end'}`}>
-                            <Button variant="outline" size="sm" className="bg-transparent border-current hover:bg-current/10" style={{ color: 'inherit' }}>
+                          <div className={`flex gap-3 flex-wrap ${previewDevice === 'mobile' ? 'flex-col' : 'flex-row justify-end'}`}>
+                            <Button variant="outline" size="sm" className="bg-transparent border-current hover:bg-current/10" style={{ color: 'inherit', borderColor: `${bannerTextColor}33` }}>
                               Preferences
+                            </Button>
+                            <Button variant="ghost" size="sm" className="hover:bg-current/10" style={{ backgroundColor: `${bannerTextColor}11`, color: 'inherit' }}>
+                              Reject All
                             </Button>
                             <Button size="sm" style={{ backgroundColor: bannerTheme, color: bannerBtnTextColor }}>
                               Accept All
@@ -1601,17 +1611,19 @@ export default function CookiesManagement() {
                             {bannerDescription}
                           </p>
                           <div className={`flex gap-2 ${previewDevice === 'mobile' ? 'flex-col w-full' : 'items-center gap-3'}`}>
+                            <Button variant="outline" size="sm" className="bg-transparent border-current hover:bg-current/10" style={{ color: 'inherit', borderColor: `${bannerTextColor}33` }}>
+                              Preferences
+                            </Button>
+                            <Button variant="ghost" size="sm" className="hover:bg-current/10" style={{ backgroundColor: `${bannerTextColor}11`, color: 'inherit' }}>
+                              Reject All
+                            </Button>
                             <Button 
                               size="sm"
                               className={previewDevice === 'mobile' ? 'w-full py-2 h-9' : 'px-6'}
-                              style={{ backgroundColor: bannerTheme }}
+                              style={{ backgroundColor: bannerTheme, color: bannerBtnTextColor }}
                             >
                               Accept All
                             </Button>
-                            <div className={`flex gap-2 ${previewDevice === 'mobile' ? 'w-full' : ''}`}>
-                              <Button size="sm" variant="outline" className={previewDevice === 'mobile' ? 'flex-1 h-9' : 'px-6'} style={{ borderColor: `${bannerTheme}50` }}>Reject All</Button>
-                              <Button size="sm" variant="ghost" className={previewDevice === 'mobile' ? 'flex-1 h-9 text-[10px]' : 'text-xs'}>Customize</Button>
-                            </div>
                           </div>
                         </div>
                       </div>
