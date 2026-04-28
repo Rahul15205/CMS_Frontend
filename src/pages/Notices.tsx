@@ -37,6 +37,7 @@ import {
   Search,
   Trash2,
   ExternalLink,
+  Shield,
 } from "lucide-react";
 import {
   Tooltip,
