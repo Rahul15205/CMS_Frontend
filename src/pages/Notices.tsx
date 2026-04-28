@@ -328,7 +328,7 @@ export default function Notices() {
         </div>
 
         {/* Desktop Navigation */}
-        <TabsList className="hidden md:grid w-full grid-cols-4 lg:w-auto bg-muted/50 p-1">
+        <TabsList className="hidden md:grid w-full grid-cols-5 lg:w-auto bg-muted/50 p-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="notices">All Notices</TabsTrigger>
           <TabsTrigger value="localization">Localization</TabsTrigger>
@@ -752,82 +752,127 @@ export default function Notices() {
         {/* SETTINGS TAB */}
         <TabsContent value="settings" className="space-y-6">
           <PageSection>
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <div className="dashboard-card">
-                <div className="flex items-center justify-between mb-4">
-                  <SectionTitle>Notice Configuration</SectionTitle>
-                  <Button variant="ghost" size="sm" onClick={() => setShowAddNoticeTypeDialog(true)}>
-                    <Plus className="h-4 w-4" />
-                  </Button>
-                </div>
-                <div className="space-y-4">
-                  {loading ? (
-                    Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
-                  ) : noticeTypes.length > 0 ? (
-                    noticeTypes.map((type) => (
-                      <div key={type.id} className="flex items-start justify-between p-3 border rounded-lg bg-card">
-                        <div className="flex gap-3">
-                          <div className="p-2 bg-muted rounded-md">
-                            <BookOpen className="h-4 w-4 text-foreground" />
+            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
+              {/* Left Column: Notice Types */}
+              <div className="xl:col-span-2 space-y-6">
+                <div className="dashboard-card">
+                  <div className="flex items-center justify-between mb-6">
+                    <div>
+                      <SectionTitle>Notice Types</SectionTitle>
+                      <p className="text-sm text-muted-foreground mt-1">Define categories for your privacy notices and documents.</p>
+                    </div>
+                    <Button variant="outline" size="sm" onClick={() => setShowAddNoticeTypeDialog(true)}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Type
+                    </Button>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {loading ? (
+                      Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)
+                    ) : noticeTypes.length > 0 ? (
+                      noticeTypes.map((type) => (
+                        <div key={type.id} className="group flex flex-col p-4 border rounded-xl bg-card hover:border-primary/30 transition-all hover:shadow-md">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="p-2 bg-primary/5 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-colors">
+                              <BookOpen className="h-4 w-4" />
+                            </div>
+                            {type.required && (
+                              <Badge variant="secondary" className="text-[10px] bg-red-500/10 text-red-600 border-red-500/20">
+                                Required
+                              </Badge>
+                            )}
                           </div>
-                          <div>
-                            <h5 className="font-medium text-sm">{type.name}</h5>
-                            <p className="text-xs text-muted-foreground">{type.description}</p>
-                          </div>
+                          <h5 className="font-semibold text-sm mb-1">{type.name}</h5>
+                          <p className="text-xs text-muted-foreground line-clamp-2">{type.description}</p>
                         </div>
-                        {type.required && <Badge variant="outline" className="text-[10px]">Required</Badge>}
+                      ))
+                    ) : (
+                      <div className="col-span-full py-8 text-center border-2 border-dashed rounded-xl">
+                        <BookOpen className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-20" />
+                        <p className="text-sm text-muted-foreground">No notice types defined</p>
                       </div>
-                    ))
-                  ) : (
-                    <p className="text-sm text-center py-4 text-muted-foreground">No notice types defined</p>
-                  )}
+                    )}
+                  </div>
+                </div>
+
+                <div className="dashboard-card border-l-4 border-l-primary">
+                  <div className="flex items-start gap-4">
+                    <div className="p-3 bg-primary/10 rounded-xl text-primary">
+                      <Shield className="h-6 w-6" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold">Compliance Enforcement</h4>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Configure how notices are enforced across your applications. Major version updates can be set to require re-acknowledgement from all users.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </div>
 
+              {/* Right Column: General Settings & Controls */}
               <div className="space-y-6">
                 <div className="dashboard-card">
-                  <SectionTitle className="mb-4">Versioning & Archival</SectionTitle>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Auto-Archive Old Versions</Label>
-                        <div className="text-sm text-muted-foreground">Automatically archive versions when a new one is published</div>
-                      </div>
-                      <Switch defaultChecked />
+                  <SectionTitle className="mb-6 flex items-center gap-2">
+                    <Settings className="h-4 w-4 text-primary" />
+                    General Settings
+                  </SectionTitle>
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Default Language</Label>
+                      <Select defaultValue="en">
+                        <SelectTrigger className="bg-muted/30">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="en">English (Global)</SelectItem>
+                          <SelectItem value="es">Spanish</SelectItem>
+                          <SelectItem value="fr">French</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <p className="text-[10px] text-muted-foreground">Fallback language if translation is missing.</p>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <div className="space-y-0.5">
-                        <Label>Require Major Version Review</Label>
-                        <div className="text-sm text-muted-foreground">Force manual approval for major version increments (e.g., 1.x to 2.0)</div>
+
+                    <div className="pt-4 border-t space-y-4">
+                      <div className="flex items-center justify-between group">
+                        <div className="space-y-0.5">
+                          <Label className="cursor-pointer group-hover:text-primary transition-colors">Enforce Acknowledgement</Label>
+                          <p className="text-[11px] text-muted-foreground leading-tight">Block access until critical notices are accepted</p>
+                        </div>
+                        <Switch />
                       </div>
-                      <Switch defaultChecked />
+
+                      <div className="flex items-center justify-between group">
+                        <div className="space-y-0.5">
+                          <Label className="cursor-pointer group-hover:text-primary transition-colors">Auto-Archive Old Versions</Label>
+                          <p className="text-[11px] text-muted-foreground leading-tight">Hide previous versions from public API</p>
+                        </div>
+                        <Switch defaultChecked />
+                      </div>
+
+                      <div className="flex items-center justify-between group">
+                        <div className="space-y-0.5">
+                          <Label className="cursor-pointer group-hover:text-primary transition-colors">Audit Logging</Label>
+                          <p className="text-[11px] text-muted-foreground leading-tight">Track all administrative changes to notices</p>
+                        </div>
+                        <Switch defaultChecked />
+                      </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="dashboard-card">
-                  <SectionTitle className="mb-4">Notice Settings</SectionTitle>
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label>Default Language</Label>
-                      <Select defaultValue="en">
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="en">English</SelectItem>
-                          <SelectItem value="es">Spanish</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="flex items-center justify-between pt-2">
-                      <div className="space-y-0.5">
-                        <Label>Enforce Acknowledgement</Label>
-                        <div className="text-sm text-muted-foreground">Block app access until critical notices are accepted</div>
-                      </div>
-                      <Switch />
-                    </div>
-                  </div>
+                <div className="dashboard-card bg-slate-900 text-white border-none shadow-2xl">
+                  <h4 className="font-bold flex items-center gap-2 mb-2">
+                    <ShieldAlert className="h-4 w-4 text-yellow-400" />
+                    Security Notice
+                  </h4>
+                  <p className="text-xs text-slate-400 mb-4">
+                    Deleting a notice type will also remove all associated notices. This action cannot be undone.
+                  </p>
+                  <Button variant="outline" className="w-full bg-transparent border-slate-700 text-slate-200 hover:bg-slate-800">
+                    System Audit Logs
+                  </Button>
                 </div>
               </div>
             </div>
