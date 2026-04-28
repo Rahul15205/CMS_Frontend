@@ -200,6 +200,23 @@ export default function Notices() {
     setShowEditorSheet(true);
   };
 
+  const handlePublishNotice = async (noticeId: string) => {
+    try {
+      await noticesService.update(noticeId, { status: 'NOTICE_ACTIVE' as any });
+      setNoticesList((prev) => prev.map(n => n.id === noticeId ? { ...n, status: 'NOTICE_ACTIVE' } : n));
+      toast({
+        title: "Success",
+        description: "Privacy notice published successfully.",
+      });
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to publish notice.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const handleSaveNotice = async (updatedNotice: NoticeRecord) => {
     try {
       if (!updatedNotice.id) {
@@ -559,10 +576,10 @@ export default function Notices() {
                             </TooltipTrigger>
                             <TooltipContent>Edit Notice</TooltipContent>
                           </Tooltip>
-                          {(notice.status === "NOTICE_DRAFT" || notice.status === "draft") && (
+                          {(notice.status === "NOTICE_DRAFT" || notice.status === "draft" || notice.status === "NOTICE_PENDING_REVIEW") && (
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <Button size="sm" className="flex-1">
+                                <Button size="sm" className="flex-1" onClick={() => handlePublishNotice(notice.id)}>
                                   <Send className="h-4 w-4 sm:mr-1" />
                                   <span className="hidden sm:inline">Publish</span>
                                 </Button>
