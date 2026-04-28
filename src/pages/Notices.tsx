@@ -31,6 +31,12 @@ import {
   BookOpen,
   GitBranch,
   ShieldAlert,
+  Copy,
+  Layout,
+  RefreshCw,
+  Search,
+  Trash2,
+  ExternalLink,
 } from "lucide-react";
 import {
   Tooltip,
@@ -65,6 +71,7 @@ import {
 import { useToast } from "@/components/ui/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 import { noticesService } from "@/services/noticesService";
+import { cookieWebsitesService } from "@/services/cookiesService";
 import {
   NoticeRecord,
   NoticeType,
@@ -111,6 +118,8 @@ export default function Notices() {
   const [languages, setLanguages] = useState<NoticeLanguage[]>([]);
   const [history, setHistory] = useState<NoticeHistoryRecord[]>([]);
   const [loading, setLoading] = useState(true);
+  const [websites, setWebsites] = useState<any[]>([]);
+  const [selectedWebsiteId, setSelectedWebsiteId] = useState<string>("all");
 
   const [selectedNotice, setSelectedNotice] = useState<any>(null);
   const [selectedLanguage, setSelectedLanguage] = useState<NoticeLanguage | null>(null);
@@ -123,15 +132,17 @@ export default function Notices() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [noticesRes, typesRes, languagesRes] = await Promise.all([
+      const [noticesRes, typesRes, languagesRes, websitesRes] = await Promise.all([
         noticesService.getAll(),
         noticesService.getTypes(),
         noticesService.getLanguages(),
+        cookieWebsitesService.getAll(),
       ]);
 
       if (noticesRes) setNoticesList(noticesRes.data || noticesRes);
       if (typesRes) setNoticeTypes(typesRes);
       if (languagesRes) setLanguages(languagesRes);
+      if (websitesRes) setWebsites(websitesRes);
 
       // Fetch global history sample
       const globalHistory = await noticesService.getGlobalHistory();
@@ -307,6 +318,7 @@ export default function Notices() {
               <SelectItem value="overview">Overview</SelectItem>
               <SelectItem value="notices">All Notices</SelectItem>
               <SelectItem value="localization">Localization</SelectItem>
+              <SelectItem value="integration">Integration</SelectItem>
               <SelectItem value="settings">Settings</SelectItem>
             </SelectContent>
           </Select>
@@ -317,6 +329,7 @@ export default function Notices() {
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="notices">All Notices</TabsTrigger>
           <TabsTrigger value="localization">Localization</TabsTrigger>
+          <TabsTrigger value="integration">Integration</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
         </TabsList>
 
@@ -648,6 +661,86 @@ export default function Notices() {
                     <p className="text-sm text-warning-foreground">Missing Translations</p>
                   </div>
                 </div>
+              </div>
+            </div>
+          </PageSection>
+        </TabsContent>
+
+        {/* INTEGRATION TAB */}
+        <TabsContent value="integration" className="space-y-6">
+          <PageSection>
+            <div className="dashboard-card">
+              <div className="mb-6">
+                <SectionTitle>Notice Integration</SectionTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Copy and paste this script into your website's <code className="bg-muted px-1 rounded">&lt;head&gt;</code> or <code className="bg-muted px-1 rounded">&lt;body&gt;</code> section to enable notice modals and widgets.
+                </p>
+              </div>
+
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <Label>1. Select Website</Label>
+                  <Select value={selectedWebsiteId} onValueChange={setSelectedWebsiteId}>
+                    <SelectTrigger className="w-full md:w-[400px]">
+                      <SelectValue placeholder="Choose a website to get its script" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Select a Website</SelectItem>
+                      {websites.map(site => (
+                        <SelectItem key={site.id} value={site.id}>{site.name} ({site.url})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {selectedWebsiteId !== "all" ? (
+                  <div className="space-y-4">
+                    <div className="space-y-3">
+                      <Label>2. Copy & Paste Integration Script</Label>
+                      <div className="relative">
+                        <div className="bg-slate-950 text-slate-50 p-4 rounded-xl font-mono text-sm border shadow-xl overflow-x-auto pr-12">
+                          <pre>
+                            {`<script src="${window.location.origin}/api/v1/public/notices/script/${selectedWebsiteId}" defer></script>`}
+                          </pre>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="absolute top-3 right-3 text-slate-400 hover:text-white hover:bg-white/10"
+                          onClick={() => {
+                            const script = `<script src="${window.location.origin}/api/v1/public/notices/script/${selectedWebsiteId}" defer></script>`;
+                            navigator.clipboard.writeText(script);
+                            toast({
+                              title: "Script Copied",
+                              description: "The notice integration script has been copied to your clipboard.",
+                            });
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="p-4 bg-primary/5 rounded-lg border border-primary/20 space-y-3">
+                      <h4 className="text-sm font-semibold flex items-center gap-2">
+                        <ShieldAlert className="h-4 w-4 text-primary" />
+                        How to use the script?
+                      </h4>
+                      <div className="text-xs text-muted-foreground space-y-2">
+                        <p>Once the script is loaded, you can open any active notice using JavaScript:</p>
+                        <div className="bg-muted p-2 rounded font-mono">
+                          ProteccioNotice.showByType('Privacy Policy');
+                        </div>
+                        <p>This allows you to link your "Privacy Policy" footer link directly to the managed content in this dashboard.</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="py-12 border-2 border-dashed rounded-xl flex flex-col items-center justify-center text-muted-foreground">
+                    <Globe className="h-12 w-12 mb-4 opacity-20" />
+                    <p>Select a website above to generate your integration script.</p>
+                  </div>
+                )}
               </div>
             </div>
           </PageSection>
