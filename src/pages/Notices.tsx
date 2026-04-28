@@ -139,7 +139,10 @@ export default function Notices() {
         cookieWebsitesService.getAll(),
       ]);
 
-      if (noticesRes) setNoticesList(noticesRes.data || noticesRes);
+      if (noticesRes) {
+        const noticesData = Array.isArray(noticesRes) ? noticesRes : noticesRes.data;
+        setNoticesList(noticesData);
+      }
       if (typesRes) setNoticeTypes(typesRes);
       if (languagesRes) setLanguages(languagesRes);
       if (websitesRes) setWebsites(websitesRes);
