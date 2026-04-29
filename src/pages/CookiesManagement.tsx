@@ -1051,6 +1051,8 @@ export default function CookiesManagement() {
                         <TableRow className="bg-muted/50 shadow-sm">
                           <TableHead>User Identifier</TableHead>
                           <TableHead>Website</TableHead>
+                          <TableHead>IP Address</TableHead>
+                          <TableHead>Location</TableHead>
                           <TableHead>Consent Date</TableHead>
                           <TableHead>Categories</TableHead>
                           <TableHead>Status</TableHead>
@@ -1061,7 +1063,7 @@ export default function CookiesManagement() {
                         {loading ? (
                           Array(5).fill(0).map((_, i) => (
                             <TableRow key={i}>
-                              <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
+                              <TableCell colSpan={8}><Skeleton className="h-8 w-full" /></TableCell>
                             </TableRow>
                           ))
                         ) : consentLogs.filter(log => {
@@ -1076,6 +1078,8 @@ export default function CookiesManagement() {
                                 <TableCell className="text-xs">
                                   {websites.find(w => w.id === log.websiteId)?.name || "External Site"}
                                 </TableCell>
+                                <TableCell className="text-xs font-mono">{log.ipAddress || "xxx.xxx.xxx.xxx"}</TableCell>
+                                <TableCell className="text-xs">{log.region || "Unknown"}</TableCell>
                                 <TableCell className="text-xs">{new Date(log.createdAt || Date.now()).toLocaleString()}</TableCell>
                                 <TableCell>
                                   <div className="flex gap-1 flex-wrap">
@@ -1108,7 +1112,7 @@ export default function CookiesManagement() {
                             ))
                         ) : (
                           <TableRow>
-                            <TableCell colSpan={6} className="text-center py-10 text-muted-foreground italic">
+                            <TableCell colSpan={8} className="text-center py-10 text-muted-foreground italic">
                               No consent logs found for this website.
                             </TableCell>
                           </TableRow>
