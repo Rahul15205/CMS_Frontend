@@ -102,8 +102,6 @@ export function SidebarContent({ collapsed, onNavItemClick }: { collapsed?: bool
 
   // Filter items based on permissions
   const visibleItems = navItems.filter(item => {
-    // If no permission key, visible by default (or hide? Access usually requires explicit permission)
-    // Assuming modules all have keys.
     if (!item.permissionKey) return true;
     return canAccess(item.permissionKey, 'view');
   });
@@ -123,7 +121,7 @@ export function SidebarContent({ collapsed, onNavItemClick }: { collapsed?: bool
       )}>
         {!collapsed && (
           <img
-            src="/proteccio_logo_new-removebg-preview.png"
+            src="https://res.cloudinary.com/dlfzzfdx0/image/upload/v1777286182/Brand_title_with_tagline-removebg-preview_jpjpet.png"
             alt="Proteccio"
             className="h-10 w-auto object-contain"
           />
@@ -131,7 +129,7 @@ export function SidebarContent({ collapsed, onNavItemClick }: { collapsed?: bool
         {collapsed && (
           <div className="h-10 w-10 flex items-center justify-center overflow-hidden">
             <img
-              src="/proteccio_logo_new-removebg-preview1.png"
+              src="https://res.cloudinary.com/dlfzzfdx0/image/upload/v1777286182/Brand_title_with_tagline-removebg-preview_jpjpet.png"
               alt="Proteccio"
               className="h-8 w-auto object-contain"
             />

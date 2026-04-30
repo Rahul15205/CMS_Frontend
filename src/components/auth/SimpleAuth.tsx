@@ -62,8 +62,15 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
         <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4">
             <Card className="w-full max-w-md shadow-lg">
                 <CardHeader className="text-center space-y-2">
-                    <div className="mx-auto w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-2">
-                        <Lock className="w-6 h-6 text-primary" />
+                    <div className="flex flex-col items-center mb-6">
+                        <img 
+                            src="https://res.cloudinary.com/dlfzzfdx0/image/upload/v1777286182/Brand_title_with_tagline-removebg-preview_jpjpet.png" 
+                            alt="Proteccio Data" 
+                            className="h-12 w-auto mb-2"
+                        />
+                        <p style={{ color: '#2ecc71', margin: 0, fontSize: '10px', letterSpacing: '1px', fontWeight: 'bold', textTransform: 'uppercase' }}>
+                            Data Privacy • Compliance • Implementation
+                        </p>
                     </div>
                     <CardTitle className="text-2xl font-bold">Restricted Access</CardTitle>
                     <p className="text-sm text-gray-500">Please enter your credentials to continue</p>

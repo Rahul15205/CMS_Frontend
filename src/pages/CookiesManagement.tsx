@@ -1074,7 +1074,7 @@ export default function CookiesManagement() {
                             .filter(log => selectedWebsiteId === 'all' || log.websiteId === selectedWebsiteId)
                             .map((log) => (
                               <TableRow key={log.id}>
-                                <TableCell className="font-mono text-[10px]">{log.userId || log.id.substring(0, 13)}...</TableCell>
+                                <TableCell className="font-mono text-[10px]">{log.userId || log.id}</TableCell>
                                 <TableCell className="text-xs">
                                   {websites.find(w => w.id === log.websiteId)?.name || "External Site"}
                                 </TableCell>
