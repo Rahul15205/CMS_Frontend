@@ -1083,17 +1083,35 @@ export default function CookiesManagement() {
                                 <TableCell className="text-xs">{new Date(log.createdAt || Date.now()).toLocaleString()}</TableCell>
                                 <TableCell>
                                   <div className="flex gap-1 flex-wrap">
-                                    {log.categories?.map((cat: string) => (
-                                      <Badge key={cat} variant="secondary" className="text-[10px] py-0">{cat}</Badge>
-                                    ))}
+                                    {log.categories?.map((cat: string) => {
+                                      const isAnalytics = cat.toLowerCase().includes('analytics');
+                                      const isMarketing = cat.toLowerCase().includes('marketing') || cat.toLowerCase().includes('advertising');
+                                      const isEssential = cat.toLowerCase().includes('essential') || cat.toLowerCase().includes('necessary');
+                                      
+                                      let badgeClass = "text-[10px] py-0 px-2 font-medium border shadow-none";
+                                      if (isAnalytics) badgeClass += " bg-blue-50 text-blue-700 border-blue-100";
+                                      else if (isMarketing) badgeClass += " bg-purple-50 text-purple-700 border-purple-100";
+                                      else if (isEssential) badgeClass += " bg-slate-50 text-slate-700 border-slate-100";
+                                      else badgeClass += " bg-gray-50 text-gray-600 border-gray-100";
+                                      
+                                      return (
+                                        <Badge key={cat} variant="outline" className={badgeClass}>
+                                          {cat}
+                                        </Badge>
+                                      );
+                                    })}
                                   </div>
                                 </TableCell>
                                 <TableCell>
                                   <Badge 
                                     variant={['Active', 'accepted', 'GRANTED', 'ACCEPTED'].includes(log.status) ? 'default' : 'secondary'} 
-                                    className={`text-[10px] ${['Active', 'accepted', 'GRANTED', 'ACCEPTED'].includes(log.status) ? 'bg-green-500 hover:bg-green-600' : ''}`}
+                                    className={`text-[10px] font-bold px-3 ${
+                                      ['Active', 'accepted', 'GRANTED', 'ACCEPTED'].includes(log.status) 
+                                        ? 'bg-green-500 hover:bg-green-600' 
+                                        : (log.status === 'REJECTED' ? 'bg-red-500 hover:bg-red-600' : '')
+                                    }`}
                                   >
-                                    {log.status}
+                                    {log.status === 'ACCEPTED' ? 'ACCEPTED ALL' : log.status}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
