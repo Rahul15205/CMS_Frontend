@@ -40,11 +40,19 @@ export function AddWebsiteDialog({
         email: "",
         autoCategorize: true,
         scanBehindLogin: false,
+        loginUrl: "",
+        loginUsername: "",
+        loginPassword: "",
     });
 
     useEffect(() => {
         if (initialData) {
-            setFormData(initialData);
+            setFormData({
+                ...initialData,
+                loginUrl: initialData.loginUrl || "",
+                loginUsername: initialData.loginUsername || "",
+                loginPassword: initialData.loginPassword || "",
+            });
         } else {
             setFormData({
                 url: "",
@@ -54,6 +62,9 @@ export function AddWebsiteDialog({
                 email: "",
                 autoCategorize: true,
                 scanBehindLogin: false,
+                loginUrl: "",
+                loginUsername: "",
+                loginPassword: "",
             });
         }
     }, [initialData, open]);
@@ -168,6 +179,44 @@ export function AddWebsiteDialog({
                                     onCheckedChange={(checked) => setFormData({ ...formData, scanBehindLogin: checked })}
                                 />
                             </div>
+
+                            {formData.scanBehindLogin && (
+                                <div className="space-y-4 p-4 border rounded-lg bg-muted/30 animate-in fade-in slide-in-from-top-2">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="loginUrl">Login URL</Label>
+                                        <Input
+                                            id="loginUrl"
+                                            placeholder="https://example.com/login"
+                                            value={formData.loginUrl}
+                                            onChange={(e) => setFormData({ ...formData, loginUrl: e.target.value })}
+                                            required={formData.scanBehindLogin}
+                                        />
+                                    </div>
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="loginUsername">Username / Email</Label>
+                                            <Input
+                                                id="loginUsername"
+                                                placeholder="admin@example.com"
+                                                value={formData.loginUsername}
+                                                onChange={(e) => setFormData({ ...formData, loginUsername: e.target.value })}
+                                                required={formData.scanBehindLogin}
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="loginPassword">Password</Label>
+                                            <Input
+                                                id="loginPassword"
+                                                type="password"
+                                                placeholder="••••••••"
+                                                value={formData.loginPassword}
+                                                onChange={(e) => setFormData({ ...formData, loginPassword: e.target.value })}
+                                                required={formData.scanBehindLogin}
+                                            />
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <DialogFooter>
