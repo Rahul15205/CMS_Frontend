@@ -677,7 +677,23 @@ export default function Notices() {
                   </div>
                   <div className="p-4 bg-warning/10 rounded-lg border border-warning/20">
                     <h4 className="font-semibold text-2xl text-warning">
-                      {loading ? <Skeleton className="h-8 w-12" /> : "12"}
+                      {loading ? (
+                        <Skeleton className="h-8 w-12" />
+                      ) : (
+                        (() => {
+                          const additionalLanguages = languages.filter(l => !l.isDefault);
+                          const totalNotices = noticesList.length;
+                          if (totalNotices === 0) return "0";
+                          
+                          // Calculate total missing translations based on completion percentages
+                          const missingCount = additionalLanguages.reduce((acc, lang) => {
+                            const completedCount = Math.round((lang.completion / 100) * totalNotices);
+                            return acc + (totalNotices - completedCount);
+                          }, 0);
+                          
+                          return missingCount.toString();
+                        })()
+                      )}
                     </h4>
                     <p className="text-sm text-warning-foreground">Missing Translations</p>
                   </div>
@@ -839,14 +855,23 @@ export default function Notices() {
                   <div className="space-y-6">
                     <div className="space-y-2">
                       <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Default Language</Label>
-                      <Select defaultValue="en">
+                      <Select 
+                        value={languages.find(l => l.isDefault)?.code || "en"}
+                        onValueChange={(code) => handleUpdateLanguage(code, { isDefault: true })}
+                      >
                         <SelectTrigger className="bg-muted/30">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="en">English (Global)</SelectItem>
-                          <SelectItem value="es">Spanish</SelectItem>
-                          <SelectItem value="fr">French</SelectItem>
+                          {languages.length > 0 ? (
+                            languages.map(lang => (
+                              <SelectItem key={lang.code} value={lang.code}>
+                                {lang.name} ({lang.code.toUpperCase()})
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="en">English (EN)</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                       <p className="text-[10px] text-muted-foreground">Fallback language if translation is missing.</p>
@@ -904,6 +929,7 @@ export default function Notices() {
         open={showPreviewDialog}
         onOpenChange={setShowPreviewDialog}
         notice={selectedNotice}
+        languages={languages}
         onEdit={(notice) => {
           setShowPreviewDialog(false);
           handleEditNotice(notice);

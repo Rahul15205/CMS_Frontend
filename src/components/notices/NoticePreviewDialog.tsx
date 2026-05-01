@@ -28,6 +28,7 @@ interface NoticePreviewDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     notice: Notice | null;
+    languages: any[];
     onEdit: (notice: Notice) => void;
 }
 
@@ -35,6 +36,7 @@ export function NoticePreviewDialog({
     open,
     onOpenChange,
     notice,
+    languages,
     onEdit,
 }: NoticePreviewDialogProps) {
     if (!notice) return null;
@@ -71,26 +73,17 @@ export function NoticePreviewDialog({
                             <ScrollArea className="h-[400px] w-full pr-4">
                                 <div className="space-y-4">
                                     <h3 className="font-semibold text-lg">{notice.title}</h3>
-                                    <p className="text-muted-foreground text-sm">
-                                        This is a preview of the notice content. Ideally, this would be fetched from a backend or stored in the notice object.
-                                        Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.
-                                    </p>
-
-                                    <h4 className="font-medium mt-4">1. Introduction</h4>
-                                    <p className="text-muted-foreground text-sm">
-                                        Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.
-                                    </p>
-
-                                    <h4 className="font-medium mt-4">2. Data Collection</h4>
-                                    <p className="text-muted-foreground text-sm">
-                                        Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.
-                                        Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.
-                                    </p>
-
-                                    <h4 className="font-medium mt-4">3. User Rights</h4>
-                                    <p className="text-muted-foreground text-sm">
-                                        Sed ut perspiciatis unde omnis iste natus error sit voluptatem accusantium doloremque laudantium, totam rem aperiam.
-                                    </p>
+                                    {notice.content ? (
+                                        <div 
+                                            className="prose prose-sm max-w-none text-foreground"
+                                            dangerouslySetInnerHTML={{ __html: notice.content }}
+                                        />
+                                    ) : (
+                                        <div className="flex flex-col items-center justify-center py-12 text-muted-foreground italic">
+                                            <FileText className="h-12 w-12 mb-2 opacity-20" />
+                                            <p>No content has been added to this notice yet.</p>
+                                        </div>
+                                    )}
                                 </div>
                             </ScrollArea>
                         </div>
@@ -146,9 +139,15 @@ export function NoticePreviewDialog({
                             </h4>
                             <Separator />
                             <div className="flex flex-wrap gap-2">
-                                <Badge variant="outline">English (Default)</Badge>
-                                <Badge variant="outline">Spanish</Badge>
-                                <Badge variant="outline">French</Badge>
+                                {languages && languages.length > 0 ? (
+                                    languages.map(lang => (
+                                        <Badge key={lang.code} variant="outline" className="flex items-center gap-1">
+                                            {lang.name} {lang.isDefault && <span className="text-[10px] text-muted-foreground">(Default)</span>}
+                                        </Badge>
+                                    ))
+                                ) : (
+                                    <Badge variant="outline">English (Default)</Badge>
+                                )}
                             </div>
                         </div>
                     </div>
