@@ -19,18 +19,18 @@ import {
 } from "@/components/ui/select";
 
 const AVAILABLE_LANGUAGES = [
-    { code: "en", name: "English" },
     { code: "hi", name: "Hindi" },
-    { code: "es", name: "Spanish" },
-    { code: "fr", name: "French" },
-    { code: "de", name: "German" },
-    { code: "it", name: "Italian" },
-    { code: "pt", name: "Portuguese" },
-    { code: "ru", name: "Russian" },
-    { code: "zh", name: "Chinese" },
-    { code: "ja", name: "Japanese" },
-    { code: "ko", name: "Korean" },
-    { code: "ar", name: "Arabic" },
+    { code: "mr", name: "Marathi" },
+    { code: "gu", name: "Gujarati" },
+    { code: "ta", name: "Tamil" },
+    { code: "te", name: "Telugu" },
+    { code: "kn", name: "Kannada" },
+    { code: "pa", name: "Punjabi" },
+    { code: "bn", name: "Bengali" },
+    { code: "ml", name: "Malayalam" },
+    { code: "or", name: "Odia" },
+    { code: "as", name: "Assamese" },
+    { code: "en", name: "English" },
 ];
 
 interface AddLanguageDialogProps {
