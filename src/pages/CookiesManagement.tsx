@@ -823,6 +823,7 @@ export default function CookiesManagement() {
                           <TableRow>
                             <TableHead>User ID</TableHead>
                             <TableHead>Region</TableHead>
+                            <TableHead>Language</TableHead>
                             <TableHead>Categories</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
@@ -834,6 +835,7 @@ export default function CookiesManagement() {
                               <TableRow key={log.id}>
                                 <TableCell className="font-medium text-xs">{log.userId}</TableCell>
                                 <TableCell className="text-xs">{log.region}</TableCell>
+                                <TableCell className="text-xs font-semibold uppercase text-muted-foreground">{log.language || "EN"}</TableCell>
                                 <TableCell>
                                   <div className="flex gap-1 flex-wrap">
                                     {log.categories.map((cat: string) => (
@@ -1053,6 +1055,7 @@ export default function CookiesManagement() {
                           <TableHead>Website</TableHead>
                           <TableHead>IP Address</TableHead>
                           <TableHead>Location</TableHead>
+                          <TableHead>Language</TableHead>
                           <TableHead>Consent Date</TableHead>
                           <TableHead>Categories</TableHead>
                           <TableHead>Status</TableHead>
@@ -1080,6 +1083,7 @@ export default function CookiesManagement() {
                                 </TableCell>
                                 <TableCell className="text-xs font-mono">{log.ipAddress || "xxx.xxx.xxx.xxx"}</TableCell>
                                 <TableCell className="text-xs">{log.region || "Unknown"}</TableCell>
+                                <TableCell className="text-xs font-semibold uppercase text-muted-foreground">{log.language || "EN"}</TableCell>
                                 <TableCell className="text-xs">{new Date(log.createdAt || Date.now()).toLocaleString()}</TableCell>
                                 <TableCell>
                                   <div className="flex gap-1 flex-wrap">
