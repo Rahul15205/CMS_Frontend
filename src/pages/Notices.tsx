@@ -119,6 +119,7 @@ export default function Notices() {
   const [noticeTypes, setNoticeTypes] = useState<NoticeType[]>([]);
   const [languages, setLanguages] = useState<NoticeLanguage[]>([]);
   const [history, setHistory] = useState<NoticeHistoryRecord[]>([]);
+  const [analyticsData, setAnalyticsData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [websites, setWebsites] = useState<any[]>([]);
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<string>("all");
@@ -136,8 +137,10 @@ export default function Notices() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [noticesRes, typesRes, languagesRes, websitesRes] = await Promise.all([
+      const [noticesRes, historyRes, analyticsRes, typesRes, languagesRes, websitesRes] = await Promise.all([
         noticesService.getAll(),
+        noticesService.getGlobalHistory(),
+        noticesService.getAnalytics({ limit: 10 }),
         noticesService.getTypes(),
         noticesService.getLanguages(),
         cookieWebsitesService.getAll(),
@@ -147,6 +150,8 @@ export default function Notices() {
         const noticesData = Array.isArray(noticesRes) ? noticesRes : noticesRes.data;
         setNoticesList(noticesData);
       }
+      if (historyRes) setHistory(historyRes);
+      if (analyticsRes) setAnalyticsData(analyticsRes.data || []);
       if (typesRes) setNoticeTypes(typesRes);
       if (languagesRes) setLanguages(languagesRes);
       if (websitesRes) setWebsites(websitesRes);
@@ -349,9 +354,10 @@ export default function Notices() {
         </div>
 
         {/* Desktop Navigation */}
-        <TabsList className="hidden md:grid w-full grid-cols-5 lg:w-auto bg-muted/50 p-1">
+        <TabsList className="hidden md:grid w-full grid-cols-6 lg:w-auto bg-muted/50 p-1">
           <TabsTrigger value="overview">Overview</TabsTrigger>
           <TabsTrigger value="notices">All Notices</TabsTrigger>
+          <TabsTrigger value="analytics">Visitor Analytics</TabsTrigger>
           <TabsTrigger value="localization">Localization</TabsTrigger>
           <TabsTrigger value="integration">Integration</TabsTrigger>
           <TabsTrigger value="settings">Settings</TabsTrigger>
@@ -954,6 +960,85 @@ export default function Notices() {
                     System Audit Logs
                   </Button>
                 </div>
+              </div>
+            </div>
+          </PageSection>
+        </TabsContent>
+
+        {/* VISITOR ANALYTICS TAB */}
+        <TabsContent value="analytics" className="space-y-6">
+          <PageSection>
+            <div className="dashboard-card">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <SectionTitle>Visitor Analytics</SectionTitle>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Track who is visiting your notices and how much time they spend reading.
+                  </p>
+                </div>
+                <Button variant="outline" size="sm" onClick={fetchData}>
+                  <RefreshCw className={cn("h-4 w-4 mr-2", loading && "animate-spin")} />
+                  Refresh
+                </Button>
+              </div>
+
+              <div className="border rounded-lg overflow-hidden">
+                <Table>
+                  <TableHeader className="bg-muted/50">
+                    <TableRow>
+                      <TableHead>Visitor (Email/IP)</TableHead>
+                      <TableHead>Notice</TableHead>
+                      <TableHead>Language</TableHead>
+                      <TableHead>Time Spent</TableHead>
+                      <TableHead>Device/Browser</TableHead>
+                      <TableHead className="text-right">Visit Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {loading ? (
+                      Array(5).fill(0).map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
+                        </TableRow>
+                      ))
+                    ) : analyticsData.length > 0 ? (
+                      analyticsData.map((log, idx) => (
+                        <TableRow key={idx} className="hover:bg-muted/30 transition-colors">
+                          <TableCell>
+                            <div className="flex flex-col">
+                              <span className="font-medium text-xs">{log.userEmail || "Anonymous"}</span>
+                              <span className="text-[10px] text-muted-foreground">{log.ipAddress || "Unknown IP"}</span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-xs font-medium">{log.notice?.title || "N/A"}</TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="text-[10px] uppercase">
+                              {log.language || "en"}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-1.5 text-xs font-mono text-primary">
+                              <Clock className="h-3 w-3" />
+                              {log.viewDuration || 0}s
+                            </div>
+                          </TableCell>
+                          <TableCell className="max-w-[200px] truncate text-[10px] text-muted-foreground" title={log.userAgent}>
+                            {log.userAgent || "N/A"}
+                          </TableCell>
+                          <TableCell className="text-right text-xs text-muted-foreground">
+                            {new Date(log.acknowledgedAt).toLocaleString()}
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                          No visitor data available yet.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
               </div>
             </div>
           </PageSection>

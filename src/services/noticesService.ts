@@ -170,5 +170,11 @@ export const noticesService = {
     return normalizeHistory(res.data);
   },
 
+  getAnalytics: async (params?: Record<string, unknown>): Promise<PaginatedResponse<any> | null> => {
+    if (!FEATURE_FLAGS.notices) return null;
+    const res = await api.get('/api/v1/notices/analytics', { params });
+    return res.data;
+  },
+
   normalizeNotices,
 };
