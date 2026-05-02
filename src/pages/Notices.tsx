@@ -438,67 +438,72 @@ export default function Notices() {
                         Version History
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="max-w-2xl">
+                    <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
                       <DialogHeader>
                         <DialogTitle>Global Notice Version History</DialogTitle>
                         <DialogDescription>
                           Recent version updates across all privacy notices and policies.
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="border rounded-lg overflow-hidden mt-4">
-                        <Table>
-                          <TableHeader>
-                            <TableRow className="bg-muted/50">
-                              <TableHead>Notice Title</TableHead>
-                              <TableHead>Version</TableHead>
-                              <TableHead>Date</TableHead>
-                              <TableHead>Author</TableHead>
-                              <TableHead>Changes</TableHead>
-                              <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {loading ? (
-                              Array(5).fill(0).map((_, i) => (
-                                <TableRow key={i}>
-                                  <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
-                                </TableRow>
-                              ))
-                            ) : history.length > 0 ? (
-                              history.map((item, idx) => (
-                                <TableRow key={idx}>
-                                  <TableCell className="font-medium">{item.title}</TableCell>
-                                  <TableCell>
-                                    <Badge variant="outline" className="text-xs font-mono">
-                                      {item.version}
-                                    </Badge>
-                                  </TableCell>
-                                  <TableCell className="text-xs text-muted-foreground">{item.date}</TableCell>
-                                  <TableCell className="text-xs text-muted-foreground">{item.author}</TableCell>
-                                  <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate" title={item.changes}>
-                                    {item.changes}
-                                  </TableCell>
-                                  <TableCell className="text-right">
-                                    <Button 
-                                      variant="ghost" 
-                                      size="sm" 
-                                      onClick={() => {
-                                        setSelectedHistoryItem(item);
-                                        setShowHistoryPreview(true);
-                                      }}
-                                    >
-                                      <Eye className="h-4 w-4" />
-                                    </Button>
-                                  </TableCell>
-                                </TableRow>
-                              ))
-                            ) : (
-                              <TableRow>
-                                <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">No history available</TableCell>
+                      <div className="flex-1 overflow-hidden mt-4">
+                        <ScrollArea className="h-full max-h-[60vh] border rounded-lg">
+                          <Table>
+                            <TableHeader>
+                              <TableRow className="bg-muted/50 sticky top-0 z-10">
+                                <TableHead className="bg-muted/50">Notice Title</TableHead>
+                                <TableHead className="bg-muted/50">Version</TableHead>
+                                <TableHead className="bg-muted/50">Date</TableHead>
+                                <TableHead className="bg-muted/50">Author</TableHead>
+                                <TableHead className="bg-muted/50">Changes</TableHead>
+                                <TableHead className="text-right bg-muted/50">Actions</TableHead>
                               </TableRow>
-                            )}
-                          </TableBody>
-                        </Table>
+                            </TableHeader>
+                            <TableBody>
+                              {loading ? (
+                                Array(5).fill(0).map((_, i) => (
+                                  <TableRow key={i}>
+                                    <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
+                                  </TableRow>
+                                ))
+                              ) : history.length > 0 ? (
+                                history.map((item, idx) => (
+                                  <TableRow key={idx}>
+                                    <TableCell className="font-medium">{item.title}</TableCell>
+                                    <TableCell>
+                                      <Badge variant="outline" className="text-xs font-mono">
+                                        {item.version}
+                                      </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-xs text-muted-foreground">{item.date}</TableCell>
+                                    <TableCell className="text-xs text-muted-foreground">{item.author}</TableCell>
+                                    <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate" title={item.changes}>
+                                      {item.changes}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                      <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        onClick={() => {
+                                          setSelectedHistoryItem(item);
+                                          setShowHistoryPreview(true);
+                                        }}
+                                      >
+                                        <Eye className="h-4 w-4" />
+                                      </Button>
+                                    </TableCell>
+                                  </TableRow>
+                                ))
+                              ) : (
+                                <TableRow>
+                                  <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">No history available</TableCell>
+                                </TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </ScrollArea>
+                      </div>
+                      <div className="flex justify-end mt-4">
+                         <Button variant="outline" onClick={() => setShowHistoryDialog(false)}>Close</Button>
                       </div>
                     </DialogContent>
                   </Dialog>
