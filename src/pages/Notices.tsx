@@ -129,6 +129,8 @@ export default function Notices() {
   const [showAddNoticeTypeDialog, setShowAddNoticeTypeDialog] = useState(false);
   const [showAddLanguageDialog, setShowAddLanguageDialog] = useState(false);
   const [showLanguageSettingsDialog, setShowLanguageSettingsDialog] = useState(false);
+  const [selectedHistoryItem, setSelectedHistoryItem] = useState<NoticeHistoryRecord | null>(null);
+  const [showHistoryPreview, setShowHistoryPreview] = useState(false);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -451,6 +453,7 @@ export default function Notices() {
                               <TableHead>Date</TableHead>
                               <TableHead>Author</TableHead>
                               <TableHead>Changes</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
                           <TableBody>
@@ -474,6 +477,18 @@ export default function Notices() {
                                   <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate" title={item.changes}>
                                     {item.changes}
                                   </TableCell>
+                                  <TableCell className="text-right">
+                                    <Button 
+                                      variant="ghost" 
+                                      size="sm" 
+                                      onClick={() => {
+                                        setSelectedHistoryItem(item);
+                                        setShowHistoryPreview(true);
+                                      }}
+                                    >
+                                      <Eye className="h-4 w-4" />
+                                    </Button>
+                                  </TableCell>
                                 </TableRow>
                               ))
                             ) : (
@@ -483,6 +498,36 @@ export default function Notices() {
                             )}
                           </TableBody>
                         </Table>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+
+                  {/* History Item Preview Sub-Dialog */}
+                  <Dialog open={showHistoryPreview} onOpenChange={setShowHistoryPreview}>
+                    <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+                      <DialogHeader>
+                        <DialogTitle>Version Preview: {selectedHistoryItem?.title}</DialogTitle>
+                        <DialogDescription>
+                          Viewing version {selectedHistoryItem?.version} created on {selectedHistoryItem?.date}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="flex-1 overflow-hidden mt-4">
+                        <ScrollArea className="h-[500px] w-full rounded-md border p-4 bg-muted/20">
+                          <div className="prose prose-sm max-w-none dark:prose-invert">
+                            {selectedHistoryItem && (selectedHistoryItem as any).content ? (
+                              <div dangerouslySetInnerHTML={{ __html: (selectedHistoryItem as any).content }} />
+                            ) : (
+                              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground italic">
+                                <FileText className="h-12 w-12 mb-2 opacity-20" />
+                                <p>No content available for this version snapshot.</p>
+                                <p className="text-xs mt-2">Historical content might be missing for very old versions.</p>
+                              </div>
+                            )}
+                          </div>
+                        </ScrollArea>
+                      </div>
+                      <div className="flex justify-end mt-4">
+                        <Button variant="outline" onClick={() => setShowHistoryPreview(false)}>Close Preview</Button>
                       </div>
                     </DialogContent>
                   </Dialog>

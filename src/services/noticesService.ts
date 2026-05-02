@@ -52,6 +52,7 @@ const normalizeHistory = (payload: any[]): NoticeHistoryRecord[] =>
     date: item.createdAt ? new Date(item.createdAt).toLocaleDateString() : 'N/A',
     author: item.author || 'System',
     changes: item.changes || 'Updated',
+    content: item.content,
     createdAt: item.createdAt,
   }));
 
