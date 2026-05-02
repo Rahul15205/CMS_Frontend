@@ -354,13 +354,11 @@ export default function Notices() {
         </div>
 
         {/* Desktop Navigation */}
-        <TabsList className="hidden md:grid w-full grid-cols-6 lg:w-auto bg-muted/50 p-1">
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="notices">All Notices</TabsTrigger>
-          <TabsTrigger value="analytics">Visitor Analytics</TabsTrigger>
-          <TabsTrigger value="localization">Localization</TabsTrigger>
-          <TabsTrigger value="integration">Integration</TabsTrigger>
-          <TabsTrigger value="settings">Settings</TabsTrigger>
+        <TabsList className="mb-8 p-1 bg-muted/30 rounded-xl border w-fit">
+          <TabsTrigger value="overview" className="rounded-lg px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Overview</TabsTrigger>
+          <TabsTrigger value="notices" className="rounded-lg px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">All Notices</TabsTrigger>
+          <TabsTrigger value="analytics" className="rounded-lg px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Visitor Analytics</TabsTrigger>
+          <TabsTrigger value="integration" className="rounded-lg px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Integration</TabsTrigger>
         </TabsList>
 
         {/* OVERVIEW TAB */}
@@ -644,108 +642,6 @@ export default function Notices() {
           </PageSection>
         </TabsContent>
 
-        {/* LOCALIZATION TAB */}
-        <TabsContent value="localization" className="space-y-6">
-          <PageSection>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="dashboard-card lg:col-span-2">
-                <div className="flex items-center justify-between mb-6">
-                  <SectionTitle>Supported Languages</SectionTitle>
-                  <Button variant="outline" size="sm" onClick={() => setShowAddLanguageDialog(true)}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Language
-                  </Button>
-                </div>
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead>Language</TableHead>
-                        <TableHead>Code</TableHead>
-                        <TableHead>Default</TableHead>
-                        <TableHead>Translation Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {loading ? (
-                        Array(3).fill(0).map((_, i) => (
-                          <TableRow key={i}>
-                            <TableCell colSpan={5}><Skeleton className="h-8 w-full" /></TableCell>
-                          </TableRow>
-                        ))
-                      ) : languages.length > 0 ? (
-                        languages.map((lang) => (
-                          <TableRow key={lang.code}>
-                            <TableCell className="font-medium">
-                              <div className="flex items-center gap-2">
-                                <Globe className="h-4 w-4 text-muted-foreground" />
-                                {lang.name}
-                              </div>
-                            </TableCell>
-                            <TableCell><Badge variant="outline" className="font-mono text-xs">{lang.code}</Badge></TableCell>
-                            <TableCell>
-                              {lang.isDefault && <Badge variant="secondary">Default</Badge>}
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center gap-2">
-                                <div className="h-2 flex-1 bg-muted rounded-full overflow-hidden w-20">
-                                  <div className="h-full bg-primary" style={{ width: `${lang.completion}%` }} />
-                                </div>
-                                <span className="text-xs text-muted-foreground">{lang.completion}%</span>
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openLanguageSettings(lang)}>
-                                <Settings className="h-4 w-4" />
-                              </Button>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">No languages configured</TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-              <div className="dashboard-card">
-                <SectionTitle>Summary</SectionTitle>
-                <div className="space-y-4 mt-4">
-                  <div className="p-4 bg-muted/30 rounded-lg border border-border">
-                    <h4 className="font-semibold text-2xl">{loading ? <Skeleton className="h-8 w-12" /> : languages.length}</h4>
-                    <p className="text-sm text-muted-foreground">Active Languages</p>
-                  </div>
-                  <div className="p-4 bg-warning/10 rounded-lg border border-warning/20">
-                    <h4 className="font-semibold text-2xl text-warning">
-                      {loading ? (
-                        <Skeleton className="h-8 w-12" />
-                      ) : (
-                        (() => {
-                          const additionalLanguages = languages.filter(l => !l.isDefault);
-                          const totalNotices = noticesList.length;
-                          if (totalNotices === 0) return "0";
-                          
-                          // Calculate total missing translations based on completion percentages
-                          const missingCount = additionalLanguages.reduce((acc, lang) => {
-                            const completedCount = Math.round((lang.completion / 100) * totalNotices);
-                            return acc + (totalNotices - completedCount);
-                          }, 0);
-                          
-                          return missingCount.toString();
-                        })()
-                      )}
-                    </h4>
-                    <p className="text-sm text-warning-foreground">Missing Translations</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </PageSection>
-        </TabsContent>
-
         {/* INTEGRATION TAB */}
         <TabsContent value="integration" className="space-y-6">
           <PageSection>
@@ -826,144 +722,6 @@ export default function Notices() {
           </PageSection>
         </TabsContent>
 
-        {/* SETTINGS TAB */}
-        <TabsContent value="settings" className="space-y-6">
-          <PageSection>
-            <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
-              {/* Left Column: Notice Types */}
-              <div className="xl:col-span-2 space-y-6">
-                <div className="dashboard-card">
-                  <div className="flex items-center justify-between mb-6">
-                    <div>
-                      <SectionTitle>Notice Types</SectionTitle>
-                      <p className="text-sm text-muted-foreground mt-1">Define categories for your privacy notices and documents.</p>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => setShowAddNoticeTypeDialog(true)}>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Type
-                    </Button>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {loading ? (
-                      Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-24 w-full rounded-xl" />)
-                    ) : noticeTypes.length > 0 ? (
-                      noticeTypes.map((type) => (
-                        <div key={type.id} className="group flex flex-col p-4 border rounded-xl bg-card hover:border-primary/30 transition-all hover:shadow-md">
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="p-2 bg-primary/5 rounded-lg text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                              <BookOpen className="h-4 w-4" />
-                            </div>
-                            {type.required && (
-                              <Badge variant="secondary" className="text-[10px] bg-red-500/10 text-red-600 border-red-500/20">
-                                Required
-                              </Badge>
-                            )}
-                          </div>
-                          <h5 className="font-semibold text-sm mb-1">{type.name}</h5>
-                          <p className="text-xs text-muted-foreground line-clamp-2">{type.description}</p>
-                        </div>
-                      ))
-                    ) : (
-                      <div className="col-span-full py-8 text-center border-2 border-dashed rounded-xl">
-                        <BookOpen className="h-8 w-8 mx-auto mb-2 text-muted-foreground opacity-20" />
-                        <p className="text-sm text-muted-foreground">No notice types defined</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="dashboard-card border-l-4 border-l-primary">
-                  <div className="flex items-start gap-4">
-                    <div className="p-3 bg-primary/10 rounded-xl text-primary">
-                      <Shield className="h-6 w-6" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold">Compliance Enforcement</h4>
-                      <p className="text-sm text-muted-foreground mt-1">
-                        Configure how notices are enforced across your applications. Major version updates can be set to require re-acknowledgement from all users.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Right Column: General Settings & Controls */}
-              <div className="space-y-6">
-                <div className="dashboard-card">
-                  <SectionTitle className="mb-6 flex items-center gap-2">
-                    <Settings className="h-4 w-4 text-primary" />
-                    General Settings
-                  </SectionTitle>
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Default Language</Label>
-                      <Select 
-                        value={languages.find(l => l.isDefault)?.code || "en"}
-                        onValueChange={(code) => handleUpdateLanguage(code, { isDefault: true })}
-                      >
-                        <SelectTrigger className="bg-muted/30">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {languages.length > 0 ? (
-                            languages.map(lang => (
-                              <SelectItem key={lang.code} value={lang.code}>
-                                {lang.name} ({lang.code.toUpperCase()})
-                              </SelectItem>
-                            ))
-                          ) : (
-                            <SelectItem value="en">English (EN)</SelectItem>
-                          )}
-                        </SelectContent>
-                      </Select>
-                      <p className="text-[10px] text-muted-foreground">Fallback language if translation is missing.</p>
-                    </div>
-
-                    <div className="pt-4 border-t space-y-4">
-                      <div className="flex items-center justify-between group">
-                        <div className="space-y-0.5">
-                          <Label className="cursor-pointer group-hover:text-primary transition-colors">Enforce Acknowledgement</Label>
-                          <p className="text-[11px] text-muted-foreground leading-tight">Block access until critical notices are accepted</p>
-                        </div>
-                        <Switch />
-                      </div>
-
-                      <div className="flex items-center justify-between group">
-                        <div className="space-y-0.5">
-                          <Label className="cursor-pointer group-hover:text-primary transition-colors">Auto-Archive Old Versions</Label>
-                          <p className="text-[11px] text-muted-foreground leading-tight">Hide previous versions from public API</p>
-                        </div>
-                        <Switch defaultChecked />
-                      </div>
-
-                      <div className="flex items-center justify-between group">
-                        <div className="space-y-0.5">
-                          <Label className="cursor-pointer group-hover:text-primary transition-colors">Audit Logging</Label>
-                          <p className="text-[11px] text-muted-foreground leading-tight">Track all administrative changes to notices</p>
-                        </div>
-                        <Switch defaultChecked />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="dashboard-card bg-slate-900 text-white border-none shadow-2xl">
-                  <h4 className="font-bold flex items-center gap-2 mb-2">
-                    <ShieldAlert className="h-4 w-4 text-yellow-400" />
-                    Security Notice
-                  </h4>
-                  <p className="text-xs text-slate-400 mb-4">
-                    Deleting a notice type will also remove all associated notices. This action cannot be undone.
-                  </p>
-                  <Button variant="outline" className="w-full bg-transparent border-slate-700 text-slate-200 hover:bg-slate-800">
-                    System Audit Logs
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </PageSection>
-        </TabsContent>
 
         {/* VISITOR ANALYTICS TAB */}
         <TabsContent value="analytics" className="space-y-6">
@@ -1064,6 +822,8 @@ export default function Notices() {
         onOpenChange={setShowEditorSheet}
         notice={selectedNotice}
         onSave={handleSaveNotice}
+        noticeTypes={noticeTypes}
+        languages={languages}
       />
 
       <AddNoticeTypeDialog

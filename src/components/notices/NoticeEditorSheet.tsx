@@ -22,6 +22,8 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Calendar, Save, Trash2 } from "lucide-react";
 
+import { Switch } from "@/components/ui/switch";
+
 interface Notice {
     id: string;
     title: string;
@@ -31,6 +33,11 @@ interface Notice {
     acknowledgements: number;
     pendingAck: number;
     content?: string;
+    typeId?: string;
+    defaultLanguage?: string;
+    enforceAcknowledgement?: boolean;
+    autoArchive?: boolean;
+    auditLogging?: boolean;
 }
 
 interface NoticeEditorSheetProps {
@@ -38,6 +45,8 @@ interface NoticeEditorSheetProps {
     onOpenChange: (open: boolean) => void;
     notice: Notice | null;
     onSave: (notice: Notice) => void;
+    noticeTypes?: { id: string, name: string }[];
+    languages?: { code: string, name: string }[];
 }
 
 export function NoticeEditorSheet({
@@ -45,14 +54,21 @@ export function NoticeEditorSheet({
     onOpenChange,
     notice,
     onSave,
+    noticeTypes = [],
+    languages = []
 }: NoticeEditorSheetProps) {
     const [formData, setFormData] = useState<Notice | null>(null);
 
     useEffect(() => {
         if (notice) {
-            setFormData({ ...notice });
+            setFormData({ 
+                ...notice,
+                defaultLanguage: notice.defaultLanguage || "en",
+                enforceAcknowledgement: notice.enforceAcknowledgement ?? false,
+                autoArchive: notice.autoArchive ?? true,
+                auditLogging: notice.auditLogging ?? true
+            });
         } else {
-            // Default state for creating a new notice
             setFormData({
                 id: "",
                 title: "",
@@ -61,12 +77,16 @@ export function NoticeEditorSheet({
                 lastUpdated: new Date().toISOString().split('T')[0],
                 acknowledgements: 0,
                 pendingAck: 0,
-                content: ""
+                content: "",
+                defaultLanguage: "en",
+                enforceAcknowledgement: false,
+                autoArchive: true,
+                auditLogging: true
             });
         }
     }, [notice, open]);
 
-    const handleChange = (field: keyof Notice, value: string) => {
+    const handleChange = (field: keyof Notice, value: any) => {
         if (formData) {
             setFormData({ ...formData, [field]: value });
         }
@@ -84,16 +104,19 @@ export function NoticeEditorSheet({
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
-            <SheetContent className="w-[400px] sm:w-[540px] flex flex-col h-full">
+            <SheetContent className="w-[400px] sm:w-[600px] flex flex-col h-full overflow-hidden">
                 <SheetHeader>
                     <SheetTitle>{notice ? "Edit Notice" : "Create New Notice"}</SheetTitle>
                     <SheetDescription>
-                        {notice ? "Make changes to the notice details. Click save when you're done." : "Fill in the details to create a new notice."}
+                        {notice ? "Make changes to the notice details and settings." : "Fill in the details to create a new notice and configure its behavior."}
                     </SheetDescription>
                 </SheetHeader>
 
-                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto py-6 space-y-6">
+                <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto py-6 space-y-8 pr-2">
+                    {/* Basic Information Section */}
                     <div className="space-y-4">
+                        <h4 className="text-sm font-bold uppercase tracking-widest text-primary/70">Basic Information</h4>
+                        
                         <div className="space-y-2">
                             <Label htmlFor="title">Notice Title</Label>
                             <Input
@@ -107,6 +130,23 @@ export function NoticeEditorSheet({
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
+                                <Label htmlFor="noticeType">Notice Type</Label>
+                                <Select
+                                    value={formData.typeId}
+                                    onValueChange={(val) => handleChange("typeId", val)}
+                                >
+                                    <SelectTrigger>
+                                        <SelectValue placeholder="Select type" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {noticeTypes.map(type => (
+                                            <SelectItem key={type.id} value={type.id}>{type.name}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+
+                            <div className="space-y-2">
                                 <Label htmlFor="version">Version</Label>
                                 <Input
                                     id="version"
@@ -115,55 +155,122 @@ export function NoticeEditorSheet({
                                     placeholder="e.g. 1.0"
                                 />
                             </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="status">Status</Label>
-                                <Select
-                                    value={formData.status}
-                                    onValueChange={(val) => handleChange("status", val)}
-                                >
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Select status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="NOTICE_ACTIVE">Active</SelectItem>
-                                        <SelectItem value="NOTICE_DRAFT">Draft</SelectItem>
-                                        <SelectItem value="NOTICE_PENDING_REVIEW">Pending Review</SelectItem>
-                                        <SelectItem value="NOTICE_ARCHIVED">Archived</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
                         </div>
 
                         <div className="space-y-2">
-                            <Label htmlFor="content">Content Preview (Snippet)</Label>
+                            <Label htmlFor="status">Status</Label>
+                            <Select
+                                value={formData.status}
+                                onValueChange={(val) => handleChange("status", val)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select status" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="NOTICE_ACTIVE">Active</SelectItem>
+                                    <SelectItem value="NOTICE_DRAFT">Draft</SelectItem>
+                                    <SelectItem value="NOTICE_PENDING_REVIEW">Pending Review</SelectItem>
+                                    <SelectItem value="NOTICE_ARCHIVED">Archived</SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Content Section */}
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-bold uppercase tracking-widest text-primary/70">Content Management</h4>
+                        <div className="space-y-2">
+                            <Label htmlFor="content">Content Preview (HTML/Markdown)</Label>
                             <Textarea
                                 id="content"
-                                className="min-h-[200px] font-mono text-sm"
+                                className="min-h-[150px] font-mono text-sm bg-muted/30"
                                 placeholder="Enter notice content here..."
                                 value={formData.content || ""}
                                 onChange={(e) => handleChange("content", e.target.value)}
                             />
-                            <p className="text-xs text-muted-foreground">
-                                This is a simplified editor. For full document editing, please use the CMS integration.
-                            </p>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* General Settings Section (Moved from Settings Tab) */}
+                    <div className="space-y-4">
+                        <h4 className="text-sm font-bold uppercase tracking-widest text-primary/70">Notice Behavior & Settings</h4>
+                        
+                        <div className="space-y-2">
+                            <Label htmlFor="defaultLanguage">Default Language</Label>
+                            <Select
+                                value={formData.defaultLanguage}
+                                onValueChange={(val) => handleChange("defaultLanguage", val)}
+                            >
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select default language" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {languages.length > 0 ? (
+                                        languages.map(lang => (
+                                            <SelectItem key={lang.code} value={lang.code}>{lang.name} ({lang.code.toUpperCase()})</SelectItem>
+                                        ))
+                                    ) : (
+                                        <SelectItem value="en">English (EN)</SelectItem>
+                                    )}
+                                </SelectContent>
+                            </Select>
                         </div>
 
-                        <Separator />
-
-                        <div className="space-y-4">
-                            <h4 className="text-sm font-medium">Metadata</h4>
-                            <div className="grid grid-cols-2 gap-4 text-sm">
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-muted-foreground">ID</span>
-                                    <span className="font-mono bg-muted px-2 py-1 rounded w-fit">{formData.id || "Auto-generated"}</span>
+                        <div className="grid grid-cols-1 gap-4 pt-2">
+                            <div className="flex items-center justify-between p-3 border rounded-xl bg-primary/5">
+                                <div className="space-y-0.5">
+                                    <Label className="text-sm font-semibold">Enforce Acknowledgement</Label>
+                                    <p className="text-[11px] text-muted-foreground">Block access until notice is accepted</p>
                                 </div>
-                                <div className="flex flex-col gap-1">
-                                    <span className="text-muted-foreground">Last Updated</span>
-                                    <div className="flex items-center gap-2">
-                                        <Calendar className="h-3 w-3" />
-                                        <span>{formData.lastUpdated}</span>
-                                    </div>
+                                <Switch 
+                                    checked={formData.enforceAcknowledgement} 
+                                    onCheckedChange={(val) => handleChange("enforceAcknowledgement", val)} 
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-between p-3 border rounded-xl bg-primary/5">
+                                <div className="space-y-0.5">
+                                    <Label className="text-sm font-semibold">Auto-Archive Old Versions</Label>
+                                    <p className="text-[11px] text-muted-foreground">Hide previous versions from public API</p>
+                                </div>
+                                <Switch 
+                                    checked={formData.autoArchive} 
+                                    onCheckedChange={(val) => handleChange("autoArchive", val)} 
+                                />
+                            </div>
+
+                            <div className="flex items-center justify-between p-3 border rounded-xl bg-primary/5">
+                                <div className="space-y-0.5">
+                                    <Label className="text-sm font-semibold">Audit Logging</Label>
+                                    <p className="text-[11px] text-muted-foreground">Track all administrative changes</p>
+                                </div>
+                                <Switch 
+                                    checked={formData.auditLogging} 
+                                    onCheckedChange={(val) => handleChange("auditLogging", val)} 
+                                />
+                            </div>
+                        </div>
+                    </div>
+
+                    <Separator />
+
+                    {/* Metadata Section */}
+                    <div className="space-y-4 pb-4">
+                        <h4 className="text-sm font-bold uppercase tracking-widest text-primary/70">Metadata</h4>
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                            <div className="flex flex-col gap-1">
+                                <span className="text-muted-foreground uppercase font-black tracking-tighter">System ID</span>
+                                <span className="font-mono bg-muted px-2 py-1 rounded w-fit border">{formData.id || "Unassigned"}</span>
+                            </div>
+                            <div className="flex flex-col gap-1">
+                                <span className="text-muted-foreground uppercase font-black tracking-tighter">Last Modified</span>
+                                <div className="flex items-center gap-2 font-bold">
+                                    <Calendar className="h-3 w-3" />
+                                    <span>{formData.lastUpdated}</span>
                                 </div>
                             </div>
                         </div>
