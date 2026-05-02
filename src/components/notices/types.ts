@@ -8,6 +8,7 @@ export interface NoticeRecord {
   acknowledgements?: number;
   pendingAck?: number;
   content?: string;
+  avgReadTime?: number;
   typeId?: string;
   tenantId?: string;
   _count?: {

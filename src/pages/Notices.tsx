@@ -582,7 +582,15 @@ export default function Notices() {
                                 {(notice.acknowledgements ?? notice._count?.acknowledgements ?? 0).toLocaleString()}
                               </span>
                             </div>
-
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                Avg. Read Time
+                              </span>
+                              <span className="font-medium text-primary">
+                                {notice.avgReadTime || 0}s
+                              </span>
+                            </div>
                           </>
                         </div>
 
