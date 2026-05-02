@@ -378,12 +378,6 @@ export default function Notices() {
                     trend={{ value: 8, direction: "up" }}
                   />
                   <KPICard
-                    title="Pending Acknowledgements"
-                    value={noticesList.reduce((acc, n) => acc + (Number(n.pendingAck) || 0), 0).toLocaleString()}
-                    icon={<Clock className="h-6 w-6" />}
-                    variant="warning"
-                  />
-                  <KPICard
                     title="Drafts & Under Review"
                     value={noticesList.filter(n => (n.status === 'NOTICE_DRAFT' || n.status === 'draft' || n.status === 'NOTICE_PENDING_REVIEW' || n.status === 'pending_review')).length.toString()}
                     icon={<Edit className="h-6 w-6" />}
@@ -588,27 +582,7 @@ export default function Notices() {
                                 {(notice.acknowledgements ?? notice._count?.acknowledgements ?? 0).toLocaleString()}
                               </span>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-muted-foreground">Pending</span>
-                              <span className="font-medium text-warning">
-                                {notice.pendingAck ?? 0}
-                              </span>
-                            </div>
 
-                            {/* Acknowledgement Progress */}
-                            <div className="pt-2">
-                              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                                <div
-                                  className="h-full bg-success rounded-full"
-                                  style={{
-                                    width: `${((notice.acknowledgements ?? notice._count?.acknowledgements ?? 0) / (((notice.acknowledgements ?? notice._count?.acknowledgements ?? 0) + (notice.pendingAck ?? 0)) || 1)) * 100}%`,
-                                  }}
-                                />
-                              </div>
-                              <p className="text-xs text-muted-foreground mt-1 text-right">
-                                {(((notice.acknowledgements ?? notice._count?.acknowledgements ?? 0) / (((notice.acknowledgements ?? notice._count?.acknowledgements ?? 0) + (notice.pendingAck ?? 0)) || 1)) * 100).toFixed(1)}% acknowledged
-                              </p>
-                            </div>
                           </>
                         </div>
 
