@@ -445,17 +445,17 @@ export default function Notices() {
                           Recent version updates across all privacy notices and policies.
                         </DialogDescription>
                       </DialogHeader>
-                      <div className="flex-1 overflow-hidden mt-4">
-                        <ScrollArea className="h-full max-h-[60vh] border rounded-lg">
+                      <div className="mt-4 border rounded-lg overflow-hidden">
+                        <div className="max-h-[450px] overflow-y-auto custom-scrollbar">
                           <Table>
-                            <TableHeader>
-                              <TableRow className="bg-muted/50 sticky top-0 z-10">
-                                <TableHead className="bg-muted/50">Notice Title</TableHead>
-                                <TableHead className="bg-muted/50">Version</TableHead>
-                                <TableHead className="bg-muted/50">Date</TableHead>
-                                <TableHead className="bg-muted/50">Author</TableHead>
-                                <TableHead className="bg-muted/50">Changes</TableHead>
-                                <TableHead className="text-right bg-muted/50">Actions</TableHead>
+                            <TableHeader className="sticky top-0 z-20 bg-background border-b">
+                              <TableRow>
+                                <TableHead className="w-[180px]">Notice Title</TableHead>
+                                <TableHead className="w-[80px]">Version</TableHead>
+                                <TableHead className="w-[100px]">Date</TableHead>
+                                <TableHead className="w-[150px]">Author</TableHead>
+                                <TableHead>Changes</TableHead>
+                                <TableHead className="text-right w-[80px]">Actions</TableHead>
                               </TableRow>
                             </TableHeader>
                             <TableBody>
@@ -467,7 +467,7 @@ export default function Notices() {
                                 ))
                               ) : history.length > 0 ? (
                                 history.map((item, idx) => (
-                                  <TableRow key={idx}>
+                                  <TableRow key={idx} className="hover:bg-muted/30 transition-colors">
                                     <TableCell className="font-medium">{item.title}</TableCell>
                                     <TableCell>
                                       <Badge variant="outline" className="text-xs font-mono">
@@ -475,7 +475,7 @@ export default function Notices() {
                                       </Badge>
                                     </TableCell>
                                     <TableCell className="text-xs text-muted-foreground">{item.date}</TableCell>
-                                    <TableCell className="text-xs text-muted-foreground">{item.author}</TableCell>
+                                    <TableCell className="text-xs text-muted-foreground truncate max-w-[150px]" title={item.author}>{item.author}</TableCell>
                                     <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate" title={item.changes}>
                                       {item.changes}
                                     </TableCell>
@@ -483,6 +483,7 @@ export default function Notices() {
                                       <Button 
                                         variant="ghost" 
                                         size="sm" 
+                                        className="h-8 w-8 p-0"
                                         onClick={() => {
                                           setSelectedHistoryItem(item);
                                           setShowHistoryPreview(true);
@@ -495,12 +496,12 @@ export default function Notices() {
                                 ))
                               ) : (
                                 <TableRow>
-                                  <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">No history available</TableCell>
+                                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">No history available</TableCell>
                                 </TableRow>
                               )}
                             </TableBody>
                           </Table>
-                        </ScrollArea>
+                        </div>
                       </div>
                       <div className="flex justify-end mt-4">
                          <Button variant="outline" onClick={() => setShowHistoryDialog(false)}>Close</Button>
@@ -518,10 +519,13 @@ export default function Notices() {
                         </DialogDescription>
                       </DialogHeader>
                       <div className="flex-1 overflow-hidden mt-4">
-                        <ScrollArea className="h-[500px] w-full rounded-md border p-4 bg-muted/20">
+                        <div className="max-h-[60vh] overflow-y-auto border rounded-md p-6 bg-muted/10 custom-scrollbar">
                           <div className="prose prose-sm max-w-none dark:prose-invert">
                             {selectedHistoryItem && (selectedHistoryItem as any).content ? (
-                              <div dangerouslySetInnerHTML={{ __html: (selectedHistoryItem as any).content }} />
+                              <div 
+                                className="cms-html-render"
+                                dangerouslySetInnerHTML={{ __html: (selectedHistoryItem as any).content }} 
+                              />
                             ) : (
                               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground italic">
                                 <FileText className="h-12 w-12 mb-2 opacity-20" />
@@ -530,7 +534,7 @@ export default function Notices() {
                               </div>
                             )}
                           </div>
-                        </ScrollArea>
+                        </div>
                       </div>
                       <div className="flex justify-end mt-4">
                         <Button variant="outline" onClick={() => setShowHistoryPreview(false)}>Close Preview</Button>
