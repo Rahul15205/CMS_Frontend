@@ -753,7 +753,8 @@ export default function Notices() {
                       <TableHead className="text-right">Visit Date</TableHead>
                     </TableRow>
                   </TableHeader>
-                      {analyticsData.length > 0 ? (
+                  <TableBody>
+                    {analyticsData.length > 0 ? (
                         analyticsData.map((log, idx) => (
                           <TableRow key={idx} className="hover:bg-muted/30 transition-all">
                             <TableCell>
