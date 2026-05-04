@@ -36,6 +36,8 @@ const normalizeNotice = (notice: any): NoticeRecord => ({
   typeId: notice.typeId,
   tenantId: notice.tenantId,
   _count: notice._count,
+  avgReadTime: notice.avgReadTime,
+  totalReadTime: notice.totalReadTime,
 });
 
 const normalizeNotices = (payload: NoticeRecord[] | PaginatedResponse<NoticeRecord>) => {
