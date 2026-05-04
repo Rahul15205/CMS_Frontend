@@ -17,6 +17,12 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
+import {
+    Tooltip,
+    TooltipContent,
+    TooltipTrigger,
+} from "@/components/ui/tooltip";
+import { Info } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface AddWebsiteDialogProps {
@@ -111,7 +117,17 @@ export function AddWebsiteDialog({
 
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                                <Label htmlFor="frequency">Scan Frequency</Label>
+                                <div className="flex items-center gap-1.5">
+                                    <Label htmlFor="frequency">Scan Frequency</Label>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="max-w-[220px] text-xs">
+                                            How often we automatically check your website for new or changed cookies.
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
                                 <Select
                                     value={formData.frequency}
                                     onValueChange={(value) => setFormData({ ...formData, frequency: value })}
@@ -127,7 +143,17 @@ export function AddWebsiteDialog({
                                 </Select>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="depth">Scan Depth</Label>
+                                <div className="flex items-center gap-1.5">
+                                    <Label htmlFor="depth">Scan Depth</Label>
+                                    <Tooltip>
+                                        <TooltipTrigger asChild>
+                                            <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top" className="max-w-[220px] text-xs">
+                                            Defines how many pages we scan on your website. Standard covers up to 100 pages; Deep scans the entire site.
+                                        </TooltipContent>
+                                    </Tooltip>
+                                </div>
                                 <Select
                                     value={formData.depth}
                                     onValueChange={(value) => setFormData({ ...formData, depth: value })}
@@ -157,7 +183,17 @@ export function AddWebsiteDialog({
                         <div className="flex flex-col gap-4 mt-2">
                             <div className="flex items-center justify-between border rounded-lg p-3">
                                 <div className="space-y-0.5">
-                                    <Label className="text-base">Automatic Categorization</Label>
+                                    <div className="flex items-center gap-1.5">
+                                        <Label className="text-base">Automatic Categorization</Label>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" className="max-w-[240px] text-xs">
+                                                When enabled, our system will automatically sort cookies into categories like Necessary, Analytics, and Marketing using our built-in cookie database.
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
                                     <div className="text-xs text-muted-foreground">
                                         Automatically categorize known cookies from our database.
                                     </div>
@@ -169,7 +205,17 @@ export function AddWebsiteDialog({
                             </div>
                             <div className="flex items-center justify-between border rounded-lg p-3">
                                 <div className="space-y-0.5">
-                                    <Label className="text-base">Scan Behind Login</Label>
+                                    <div className="flex items-center gap-1.5">
+                                        <Label className="text-base">Scan Behind Login</Label>
+                                        <Tooltip>
+                                            <TooltipTrigger asChild>
+                                                <Info className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                                            </TooltipTrigger>
+                                            <TooltipContent side="top" className="max-w-[240px] text-xs">
+                                                Enable this if your website has pages behind a login wall that also use cookies. Our scanner will log in with the credentials you provide to scan those pages too.
+                                            </TooltipContent>
+                                        </Tooltip>
+                                    </div>
                                     <div className="text-xs text-muted-foreground">
                                         Allow scanner to access protected pages (requires credentials).
                                     </div>

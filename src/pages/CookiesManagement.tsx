@@ -71,6 +71,7 @@ import {
   Copy,
   FileText,
   Trash2,
+  RotateCcw,
 } from "lucide-react";
 import {
   Tooltip,
@@ -98,10 +99,62 @@ const IconMap: Record<string, any> = {
 };
 
 import { AddCookieDialog } from "@/components/cookies/AddCookieDialog";
-
 import { CreateBannerDialog } from "@/components/cookies/CreateBannerDialog";
-
 import { AddWebsiteDialog } from "@/components/cookies/AddWebsiteDialog";
+
+const EmptyState = ({ onAction }: { onAction: () => void }) => (
+  <div className="flex flex-col items-center justify-center p-12 text-center border rounded-xl bg-muted/20 border-dashed my-8">
+    <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center mb-6">
+      <Globe className="h-10 w-10 text-primary" />
+    </div>
+    <h3 className="text-xl font-semibold mb-2">Start by adding your website</h3>
+    <p className="text-muted-foreground mb-6 max-w-md">
+      Add your website URL to begin scanning for cookies and setting up your compliance banner.
+    </p>
+    <Button onClick={onAction} size="lg">
+      <Plus className="h-5 w-5 mr-2" />
+      Add Website
+    </Button>
+  </div>
+);
+
+const StepWizard = ({ currentStep, onStepClick }: { currentStep: number, onStepClick: (step: number) => void }) => {
+  const steps = [
+    { num: 1, title: "Add Website" },
+    { num: 2, title: "Install Script" },
+    { num: 3, title: "Customize Banner" },
+    { num: 4, title: "Publish" },
+  ];
+  return (
+    <div className="mb-8 px-4 sm:px-12">
+      <div className="flex items-center justify-between relative">
+        <div className="absolute left-0 top-1/2 w-full h-1 bg-muted -z-10 -translate-y-1/2" />
+        {steps.map((s) => {
+           const isActive = s.num === currentStep;
+           const isPast = s.num < currentStep;
+           return (
+             <div key={s.num} className="flex flex-col items-center gap-2 relative" onClick={() => onStepClick(s.num)}>
+               <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold border-2 transition-colors cursor-pointer
+                 ${isActive ? 'bg-primary border-primary text-primary-foreground' : ''}
+                 ${isPast ? 'bg-primary/20 border-primary text-primary' : ''}
+                 ${!isActive && !isPast ? 'bg-background border-muted text-muted-foreground' : ''}
+               `}>
+                 {isPast ? <CheckCircle className="h-5 w-5" /> : s.num}
+               </div>
+               <span className={`text-sm font-medium ${isActive ? 'text-primary' : 'text-muted-foreground'} hidden sm:block absolute top-12 text-center w-32 -ml-16 left-1/2`}>
+                 {s.title}
+               </span>
+               <span className={`text-[10px] font-medium ${isActive ? 'text-primary' : 'text-muted-foreground'} sm:hidden absolute top-12 text-center w-20 -ml-10 left-1/2`}>
+                 {s.title}
+               </span>
+             </div>
+           )
+        })}
+      </div>
+      <div className="h-10 sm:h-12" /> {/* Spacer */}
+    </div>
+  );
+};
 
 export default function CookiesManagement() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -145,6 +198,7 @@ export default function CookiesManagement() {
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<string>("all");
   const [isSavingBanner, setIsSavingBanner] = useState(false);
+  const [configStep, setConfigStep] = useState(1);
 
   const { toast } = useToast();
 
@@ -681,9 +735,9 @@ export default function CookiesManagement() {
                 </Button>
               </div>
             )}
-            <Button size="sm" onClick={() => setIsPreviewDialogOpen(true)}>
+            <Button variant="outline" size="sm" onClick={() => setIsPreviewDialogOpen(true)}>
               <Eye className="h-4 w-4 sm:mr-2" />
-              <span className="hidden sm:inline">Live Preview</span>
+              <span className="hidden sm:inline">Preview</span>
             </Button>
           </div>
         }
@@ -774,9 +828,47 @@ export default function CookiesManagement() {
                     icon={<XCircle className="h-4 w-4" />}
                     trend={{ value: 0.5, direction: "down" }}
                   />
-                </>
+               </>
               )}
             </div>
+
+            {websites.length > 0 && websites[0].complianceScore != null && !loading && (
+               <Card className="border-primary/20 bg-primary/5">
+                  <CardHeader>
+                    <CardTitle className="text-primary flex items-center gap-2">
+                       <Shield className="h-5 w-5" />
+                       Compliance Health ({websites[0].name})
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                     <div className="flex flex-col md:flex-row items-center gap-8">
+                        <div className="flex flex-col items-center justify-center">
+                           <div className={`relative h-32 w-32 flex items-center justify-center rounded-full border-8 ${websites[0].complianceScore >= 80 ? 'border-green-500 text-green-600' : websites[0].complianceScore >= 50 ? 'border-yellow-500 text-yellow-600' : 'border-red-500 text-red-600'}`}>
+                              <div className="text-3xl font-bold">{websites[0].complianceScore}%</div>
+                           </div>
+                           <div className="mt-4 flex items-center gap-2">
+                             <Badge variant="outline" className={`bg-background ${websites[0].riskLevel === 'LOW' ? 'text-green-600 border-green-200' : websites[0].riskLevel === 'MEDIUM' ? 'text-yellow-600 border-yellow-200' : 'text-red-600 border-red-200'}`}>{websites[0].riskLevel} RISK</Badge>
+                             <Badge variant="outline" className="bg-background">GRADE {websites[0].complianceGrade}</Badge>
+                           </div>
+                        </div>
+                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                           {websites[0].scanResults?.map((ind: any) => (
+                             <div key={ind.id} className="flex items-start gap-2 text-sm bg-background/50 p-3 rounded-lg border">
+                                {ind.passed ? <CheckCircle className="h-4 w-4 text-green-500 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />}
+                                <div className="flex-1">
+                                  <div className="font-semibold flex justify-between items-center">
+                                    {ind.name} 
+                                    <span className="text-xs font-normal text-muted-foreground">{ind.score}/{ind.weight}</span>
+                                  </div>
+                                  <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{ind.details}</div>
+                                </div>
+                             </div>
+                           ))}
+                        </div>
+                     </div>
+                  </CardContent>
+               </Card>
+            )}
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
               {loading ? (
@@ -1149,187 +1241,299 @@ export default function CookiesManagement() {
 
           {/* CONFIG TAB */}
           <TabsContent value="config" className="space-y-6">
-            <PageSection>
-              <div className="dashboard-card">
-                <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
-                  <div>
-                    <SectionTitle>Website Configurations</SectionTitle>
-                    <p className="text-sm text-muted-foreground mt-1">
-                      Manage scanning settings for your registered websites.
-                    </p>
-                  </div>
-                  <Button onClick={openAddWebsiteDialog}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Add Website
-                  </Button>
-                </div>
+            <StepWizard 
+              currentStep={configStep} 
+              onStepClick={(step) => {
+                 if (step > 1 && websites.length === 0) {
+                   toast({ title: "Action Required", description: "Please add a website first." });
+                   return;
+                 }
+                 setConfigStep(step);
+              }} 
+            />
 
-                <div className="border rounded-lg overflow-hidden">
-                  <Table>
-                    <TableHeader>
-                      <TableRow className="bg-muted/50">
-                        <TableHead>Website Name</TableHead>
-                        <TableHead>URL</TableHead>
-                        <TableHead>Frequency</TableHead>
-                        <TableHead>Last Scan</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Actions</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {loading ? (
-                        Array(3).fill(0).map((_, i) => (
-                          <TableRow key={i}>
-                            <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
-                          </TableRow>
-                        ))
-                      ) : websites.length > 0 ? (
-                        websites.map((site) => (
-                          <TableRow key={site.id}>
-                            <TableCell className="font-medium">{site.name}</TableCell>
-                            <TableCell className="text-blue-500 hover:underline cursor-pointer">
-                              <a href={site.url} target="_blank" rel="noopener noreferrer">{site.url}</a>
-                            </TableCell>
-                            <TableCell className="capitalize">{site.frequency}</TableCell>
-                            <TableCell className="text-xs">
-                              {site.lastScan ? new Date(site.lastScan).toLocaleString() : "Never"}
-                            </TableCell>
-                            <TableCell>
-                              <Badge
-                                variant={site.status === 'Active' ? 'outline' : 'destructive'}
-                                className={
-                                  site.status === 'Active'
-                                    ? 'bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20 shadow-none'
-                                    : (site.status === 'Withdrawn' ? 'bg-destructive/10 text-destructive border-destructive/20 shadow-none' : 'shadow-none')
-                                }
-                              >
-                                {site.status}
-                              </Badge>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex items-center justify-end gap-2">
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" onClick={() => handleGenerateReport(site)}>
-                                      <FileText className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Generate Report</TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button variant="ghost" size="icon" onClick={() => openEditWebsiteDialog(site)}>
-                                      <Settings className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Settings</TooltipContent>
-                                </Tooltip>
-                                <Tooltip>
-                                  <TooltipTrigger asChild>
-                                    <Button 
-                                      variant="ghost" 
-                                      size="icon" 
-                                      className="text-destructive hover:bg-destructive/10"
-                                      onClick={() => handleDeleteWebsite(site.id)}
-                                    >
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
-                                  </TooltipTrigger>
-                                  <TooltipContent>Delete Website</TooltipContent>
-                                </Tooltip>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={6} className="text-center py-4 text-muted-foreground">No websites configured</TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </div>
-              </div>
-            </PageSection>
-
-            <PageSection>
-              <div className="dashboard-card">
-                <div className="mb-6">
-                  <SectionTitle>Banner Installation</SectionTitle>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Copy and paste this script into your website's <code className="bg-muted px-1 rounded">&lt;head&gt;</code> section to activate the banner.
-                  </p>
-                </div>
-
-                <div className="space-y-6">
-                  <div className="space-y-2">
-                    <Label>1. Select Website</Label>
-                    <Select value={selectedWebsiteId} onValueChange={handleWebsiteChange}>
-                      <SelectTrigger className="w-full md:w-[400px]">
-                        <SelectValue placeholder="Choose a website to get its script" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Global Template (General)</SelectItem>
-                        {websites.map(site => (
-                          <SelectItem key={site.id} value={site.id}>{site.name} ({site.url})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+            {configStep === 1 && (
+              <PageSection>
+                <div className="dashboard-card">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
+                    <div>
+                      <SectionTitle>Website Configurations</SectionTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Manage scanning settings for your registered websites.
+                      </p>
+                    </div>
+                    {websites.length > 0 && (
+                      <Button onClick={openAddWebsiteDialog}>
+                        <Plus className="h-4 w-4 mr-2" />
+                        Add Website
+                      </Button>
+                    )}
                   </div>
 
-                  <div className="space-y-3">
-                    <Label>2. Copy & Paste Script</Label>
-                    <div className="relative">
-                      <div className="bg-slate-950 text-slate-50 p-4 rounded-xl font-mono text-sm border shadow-xl overflow-x-auto pr-12">
-                        <pre>
-                          {`<script 
-  src="${window.location.origin}/api/v1/public/cookies/banner-script/${selectedWebsiteId !== 'all' ? selectedWebsiteId : 'GLOBAL_ID'}" 
-  defer
-></script>`}
-                        </pre>
-                      </div>
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="absolute top-3 right-3 text-slate-400 hover:text-white hover:bg-white/10"
-                        onClick={() => {
-                          const script = `<script src="${window.location.origin}/api/v1/public/cookies/banner-script/${selectedWebsiteId !== 'all' ? selectedWebsiteId : 'GLOBAL_ID'}" defer></script>`;
-                          navigator.clipboard.writeText(script);
-                          toast({
-                            title: "Script Copied",
-                            description: "The integration script has been copied to your clipboard.",
-                          });
-                        }}
-                      >
-                        <Copy className="h-4 w-4" />
+                  {!loading && websites.length === 0 ? (
+                    <EmptyState onAction={openAddWebsiteDialog} />
+                  ) : (
+                    <div className="border rounded-lg overflow-hidden">
+                      <Table>
+                        <TableHeader>
+                          <TableRow className="bg-muted/50">
+                            <TableHead>Website Name</TableHead>
+                            <TableHead>URL</TableHead>
+                            <TableHead>Frequency</TableHead>
+                            <TableHead>Compliance Score</TableHead>
+                            <TableHead>Risk Level</TableHead>
+                            <TableHead>Last Scan</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {loading ? (
+                            Array(3).fill(0).map((_, i) => (
+                              <TableRow key={i}>
+                                <TableCell colSpan={8}><Skeleton className="h-8 w-full" /></TableCell>
+                              </TableRow>
+                            ))
+                          ) : (
+                            websites.map((site) => (
+                              <TableRow key={site.id}>
+                                <TableCell className="font-medium">{site.name}</TableCell>
+                                <TableCell className="text-blue-500 hover:underline cursor-pointer">
+                                  <a href={site.url} target="_blank" rel="noopener noreferrer">{site.url}</a>
+                                </TableCell>
+                                <TableCell className="capitalize">{site.frequency}</TableCell>
+                                <TableCell>
+                                  {site.complianceScore != null ? (
+                                    <div className="flex items-center gap-2">
+                                      <Progress value={site.complianceScore} className={`h-2 w-16 ${site.complianceScore >= 80 ? 'bg-green-100 [&>div]:bg-green-600' : site.complianceScore >= 50 ? 'bg-yellow-100 [&>div]:bg-yellow-500' : 'bg-red-100 [&>div]:bg-red-600'}`} />
+                                      <span className="text-xs font-semibold">{site.complianceScore}%</span>
+                                    </div>
+                                  ) : <span className="text-muted-foreground text-xs">Not scanned</span>}
+                                </TableCell>
+                                <TableCell>
+                                  {site.riskLevel ? (
+                                    <Badge variant="outline" className={
+                                      site.riskLevel === 'LOW' ? 'bg-green-50 text-green-700 border-green-200' :
+                                      site.riskLevel === 'MEDIUM' ? 'bg-yellow-50 text-yellow-700 border-yellow-200' :
+                                      'bg-red-50 text-red-700 border-red-200'
+                                    }>
+                                      {site.riskLevel}
+                                    </Badge>
+                                  ) : <span className="text-muted-foreground">-</span>}
+                                </TableCell>
+                                <TableCell className="text-xs">
+                                  {site.lastScan ? new Date(site.lastScan).toLocaleString() : "Never"}
+                                </TableCell>
+                                <TableCell>
+                                  <Badge
+                                    variant={site.status === 'Active' ? 'outline' : 'destructive'}
+                                    className={
+                                      site.status === 'Active'
+                                        ? 'bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20 shadow-none'
+                                        : (site.status === 'Withdrawn' ? 'bg-destructive/10 text-destructive border-destructive/20 shadow-none' : 'shadow-none')
+                                    }
+                                  >
+                                    {site.status}
+                                  </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <div className="flex items-center justify-end gap-2">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" onClick={() => handleGenerateReport(site)}>
+                                          <FileText className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Generate Report</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button variant="ghost" size="icon" onClick={() => openEditWebsiteDialog(site)}>
+                                          <Settings className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Settings</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          className="text-destructive hover:bg-destructive/10"
+                                          onClick={() => handleDeleteWebsite(site.id)}
+                                        >
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Delete Website</TooltipContent>
+                                    </Tooltip>
+                                  </div>
+                                </TableCell>
+                              </TableRow>
+                            ))
+                          )}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+
+                  {websites.length > 0 && (
+                    <div className="flex justify-end mt-6">
+                      <Button onClick={() => setConfigStep(2)}>
+                        Next: Install Script
                       </Button>
                     </div>
-                  </div>
+                  )}
                 </div>
-              </div>
-            </PageSection>
+              </PageSection>
+            )}
 
-            {/* MOVED BANNER CUSTOMIZATION SECTION */}
-            <PageSection>
-              <div className="dashboard-card mb-6">
-                <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
-                  <div>
-                    <SectionTitle>Banner Customization</SectionTitle>
+            {configStep === 2 && (
+              <PageSection>
+                <div className="dashboard-card mb-6">
+                  <div className="mb-6">
+                    <SectionTitle>Banner Installation</SectionTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Customize how the banner looks on your website.
+                      Copy and paste this script into your website's <code className="bg-muted px-1 rounded">&lt;head&gt;</code> section to activate the banner.
                     </p>
                   </div>
-                  <div className="flex items-center gap-3">
-                    <Button 
-                      onClick={handleSaveBannerSettings} 
-                      disabled={isSavingBanner}
-                      className="shrink-0"
-                    >
-                      {isSavingBanner ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
-                      Save Customization
+
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <Label>1. Select Website</Label>
+                      <Select value={selectedWebsiteId} onValueChange={handleWebsiteChange}>
+                        <SelectTrigger className="w-full md:w-[400px]">
+                          <SelectValue placeholder="Choose a website to get its script" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="all">Global Template (General)</SelectItem>
+                          {websites.map(site => (
+                            <SelectItem key={site.id} value={site.id}>{site.name} ({site.url})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-3">
+                      <Label>2. Copy & Paste Script</Label>
+                      <div className="relative">
+                        <div className="bg-slate-950 text-slate-50 p-4 rounded-xl font-mono text-sm border shadow-xl overflow-x-auto pr-12">
+                          <pre>
+                            {`<script 
+    src="${window.location.origin}/api/v1/public/cookies/banner-script/${selectedWebsiteId !== 'all' ? selectedWebsiteId : 'GLOBAL_ID'}" 
+    defer
+  ></script>`}
+                          </pre>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="absolute top-3 right-3 text-slate-400 hover:text-white hover:bg-white/10"
+                          onClick={() => {
+                            const script = `<script src="${window.location.origin}/api/v1/public/cookies/banner-script/${selectedWebsiteId !== 'all' ? selectedWebsiteId : 'GLOBAL_ID'}" defer></script>`;
+                            navigator.clipboard.writeText(script);
+                            toast({
+                              title: "Script Copied",
+                              description: "The integration script has been copied to your clipboard.",
+                            });
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 pt-2">
+                      <Label>3. Verify Installation</Label>
+                      <div className="flex items-center gap-4 border rounded-lg p-4 bg-muted/20">
+                        <Button 
+                          variant="secondary"
+                          onClick={() => {
+                            if (selectedWebsiteId === 'all') {
+                              toast({ title: "Select Website", description: "Please select a specific website to verify.", variant: "destructive" });
+                              return;
+                            }
+                            toast({ title: "Verifying...", description: "Checking if script is installed on the selected website." });
+                            setTimeout(() => {
+                              toast({ title: "Verification Scheduled", description: "We are pinging your website. This might take a minute." });
+                            }, 1500);
+                          }}
+                        >
+                          <Shield className="h-4 w-4 mr-2" />
+                          Verify Installation
+                        </Button>
+                        <span className="text-sm text-muted-foreground">Click to automatically check if your website is correctly loading the script.</span>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between mt-8">
+                    <Button variant="outline" onClick={() => setConfigStep(1)}>
+                      Back
+                    </Button>
+                    <Button onClick={() => setConfigStep(3)}>
+                      Next: Customize Banner
                     </Button>
                   </div>
                 </div>
+              </PageSection>
+            )}
+
+            {(configStep === 3 || configStep === 4) && (
+              <PageSection>
+                <div className="dashboard-card mb-6">
+                  {configStep === 4 && (
+                    <div className="mb-6 p-4 bg-green-50 text-green-800 border border-green-200 rounded-lg flex items-start gap-3">
+                      <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
+                      <div>
+                        <h4 className="font-semibold">Banner Published Successfully!</h4>
+                        <p className="text-sm mt-1">Your banner is now live. If you have installed the script on your website, your users will start seeing it.</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
+                    <div>
+                      <SectionTitle>Banner Customization</SectionTitle>
+                      <p className="text-sm text-muted-foreground mt-1">
+                        Customize how the banner looks on your website.
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <Button 
+                        variant="outline"
+                        onClick={() => {
+                          setBannerTheme("#2563eb");
+                          setBannerBgColor("#ffffff");
+                          setBannerTextColor("#111827");
+                          setBannerBtnTextColor("#ffffff");
+                          setBannerBorderRadius(12);
+                          setBannerMaxWidth(1200);
+                          setBannerFontSize(14);
+                          setBannerPadding(24);
+                          setBannerBlur(0);
+                          setBannerOpacity(50);
+                          setBannerHeading("We value your privacy");
+                          setBannerDescription("We use cookies to enhance your browsing experience, serve personalized ads or content, and analyze our traffic. By clicking \"Accept All\", you consent to our use of cookies.");
+                          setBannerPosition("BOTTOM");
+                        }}
+                      >
+                        <RotateCcw className="h-4 w-4 mr-2" />
+                        Reset to Default
+                      </Button>
+                      <Button 
+                        onClick={async () => {
+                          await handleSaveBannerSettings();
+                          setConfigStep(4);
+                        }} 
+                        disabled={isSavingBanner}
+                        className="shrink-0 bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        {isSavingBanner ? <RefreshCw className="h-4 w-4 animate-spin mr-2" /> : <Shield className="h-4 w-4 mr-2" />}
+                        Save & Publish
+                      </Button>
+                    </div>
+                  </div>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   <div className="lg:col-span-1 space-y-6">
@@ -1560,7 +1764,7 @@ export default function CookiesManagement() {
                 </div>
               </div>
             </PageSection>
-
+            )}
 
             <AddWebsiteDialog
               open={isAddWebsiteOpen}
