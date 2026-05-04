@@ -590,10 +590,19 @@ export default function Notices() {
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                Total Time Spent
+                                Avg. Read Time
                               </span>
                               <span className="font-medium text-primary">
-                                {notice.totalReadTime || notice.avgReadTime || 0}s
+                                {notice.avgReadTime || 0}s
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-muted-foreground flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                Total Time Spent
+                              </span>
+                              <span className="font-medium text-success">
+                                {notice.totalReadTime || 0}s
                               </span>
                             </div>
                           </>
@@ -741,16 +750,16 @@ export default function Notices() {
                 </Button>
               </div>
 
-              <div className="border rounded-lg overflow-hidden">
+              <div className="max-h-[550px] overflow-y-auto border rounded-lg custom-scrollbar">
                 <Table>
-                  <TableHeader className="bg-muted/50">
+                  <TableHeader className="sticky top-0 z-20 bg-background border-b shadow-sm">
                     <TableRow>
-                      <TableHead>Visitor (Email/IP)</TableHead>
-                      <TableHead>Notice</TableHead>
-                      <TableHead>Language</TableHead>
-                      <TableHead>Time Spent</TableHead>
-                      <TableHead>Device/Browser</TableHead>
-                      <TableHead className="text-right">Visit Date</TableHead>
+                      <TableHead className="bg-background">Visitor (Email/IP)</TableHead>
+                      <TableHead className="bg-background">Notice</TableHead>
+                      <TableHead className="bg-background">Language</TableHead>
+                      <TableHead className="bg-background">Time Spent</TableHead>
+                      <TableHead className="bg-background">Device/Browser</TableHead>
+                      <TableHead className="text-right bg-background">Visit Date</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -783,8 +792,8 @@ export default function Notices() {
                             <TableCell className="text-[10px] text-muted-foreground truncate max-w-[150px]" title={log.userAgent}>
                               {log.userAgent || "N/A"}
                             </TableCell>
-                            <TableCell className="text-right text-[10px] text-muted-foreground">
-                              {log.createdAt ? new Date(log.createdAt).toLocaleString() : "N/A"}
+                            <TableCell className="text-right text-[10px] text-muted-foreground font-mono">
+                              {log.acknowledgedAt ? new Date(log.acknowledgedAt).toLocaleString() : "N/A"}
                             </TableCell>
                           </TableRow>
                         ))
