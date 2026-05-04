@@ -314,13 +314,15 @@ export function DashboardLayout({
 
 export function PageSection({
   children,
-  className
+  className,
+  id
 }: {
   children: ReactNode;
-  className?: string
+  className?: string;
+  id?: string;
 }) {
   return (
-    <section className={cn("space-y-4", className)}>
+    <section id={id} className={cn("space-y-4", className)}>
       {children}
     </section>
   );
@@ -330,15 +332,17 @@ export function SectionTitle({
   children,
   action,
   description,
-  className
+  className,
+  id
 }: {
   children: ReactNode;
   action?: ReactNode;
   description?: string;
   className?: string;
+  id?: string;
 }) {
   return (
-    <div className={cn("flex items-center justify-between", className)}>
+    <div id={id} className={cn("flex items-center justify-between", className)}>
       <div>
         <h2 className="text-lg font-semibold text-foreground">{children}</h2>
         {description && (

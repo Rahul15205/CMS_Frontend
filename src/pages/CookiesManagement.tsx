@@ -72,6 +72,7 @@ import {
   FileText,
   Trash2,
   RotateCcw,
+  HelpCircle,
 } from "lucide-react";
 import {
   Tooltip,
@@ -162,6 +163,68 @@ export default function CookiesManagement() {
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<string>("all");
   const [isSavingBanner, setIsSavingBanner] = useState(false);
+  const [isTourOpen, setIsTourOpen] = useState(false);
+  const [tourStep, setTourStep] = useState(0);
+
+  // Check for first-time visit
+  useEffect(() => {
+    const hasSeenTour = localStorage.getItem("hasSeenCookieTour");
+    if (!hasSeenTour) {
+      const timer = setTimeout(() => setIsTourOpen(true), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const tourSteps = [
+    {
+      title: "Welcome to Cookie Management",
+      content: "This module helps you automate website compliance. Let's take a quick 1-minute tour!",
+      targetId: "overview-header"
+    },
+    {
+      title: "Compliance Health",
+      content: "Our AI scanner checks 10 legal indicators (like HTTPS and Privacy Policy) to give you a real-time compliance score.",
+      targetId: "compliance-health"
+    },
+    {
+      title: "Website Inventory",
+      content: "Register your domains here. We'll automatically crawl them to identify and categorize all cookies used.",
+      targetId: "website-config"
+    },
+    {
+      title: "Integration Script",
+      content: "Copy this unique script into your website's <head> section to activate the consent banner instantly.",
+      targetId: "script-installation"
+    },
+    {
+      title: "Banner Customization",
+      content: "Tailor the banner's design, position, and text to match your brand's look and feel.",
+      targetId: "banner-customization"
+    }
+  ];
+
+  const nextTourStep = () => {
+    if (tourStep < tourSteps.length - 1) {
+      setTourStep(prev => prev + 1);
+      // Auto-switch tabs for certain steps
+      if (tourStep === 1) setActiveTab("config");
+    } else {
+      setIsTourOpen(false);
+      localStorage.setItem("hasSeenCookieTour", "true");
+    }
+  };
+
+  const prevTourStep = () => {
+    if (tourStep > 0) {
+      setTourStep(prev => prev - 1);
+      if (tourStep === 2) setActiveTab("overview");
+    }
+  };
+
+  const skipTour = () => {
+    setIsTourOpen(false);
+    localStorage.setItem("hasSeenCookieTour", "true");
+  };
 
 
   const { toast } = useToast();
@@ -699,6 +762,19 @@ export default function CookiesManagement() {
                 </Button>
               </div>
             )}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              className="bg-primary/5 border-primary/20 hover:bg-primary/10 text-primary"
+              onClick={() => {
+                setTourStep(0);
+                setIsTourOpen(true);
+                setActiveTab("overview");
+              }}
+            >
+              <HelpCircle className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">Take a Tour</span>
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setIsPreviewDialogOpen(true)}>
               <Eye className="h-4 w-4 sm:mr-2" />
               <span className="hidden sm:inline">Preview</span>
@@ -763,7 +839,7 @@ export default function CookiesManagement() {
           </TabsList>
 
           {/* OVERVIEW TAB */}
-          <TabsContent value="overview" className="space-y-6">
+          <TabsContent value="overview" className="space-y-6" id="overview-header">
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {loading ? (
                 Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)
@@ -797,7 +873,7 @@ export default function CookiesManagement() {
             </div>
 
             {websites.length > 0 && websites[0].complianceScore != null && !loading && (
-               <Card className="border-primary/20 bg-primary/5">
+               <Card id="compliance-health" className="border-primary/20 bg-primary/5">
                   <CardHeader>
                     <CardTitle className="text-primary flex items-center gap-2">
                        <Shield className="h-5 w-5" />
@@ -1207,7 +1283,7 @@ export default function CookiesManagement() {
           <TabsContent value="config" className="space-y-6">
 
 
-            <PageSection>
+            <PageSection id="website-config">
                 <div className="dashboard-card">
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
                     <div>
@@ -1333,7 +1409,7 @@ export default function CookiesManagement() {
                 </div>
               </PageSection>
 
-            <PageSection>
+            <PageSection id="script-installation">
                 <div className="dashboard-card mb-6">
                   <div className="mb-6">
                     <SectionTitle>Banner Installation</SectionTitle>
@@ -1413,7 +1489,7 @@ export default function CookiesManagement() {
                 </div>
               </PageSection>
 
-            <PageSection>
+            <PageSection id="banner-customization">
                 <div className="dashboard-card mb-6">
 
 
@@ -1862,6 +1938,54 @@ export default function CookiesManagement() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Tutorial Overlay */}
+      {isTourOpen && (
+        <div className="fixed inset-0 z-[9999] pointer-events-none overflow-hidden">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] pointer-events-auto" onClick={skipTour} />
+          
+          {/* Spotlight Effect (simplified) */}
+          <div className="relative w-full h-full flex items-center justify-center p-4">
+            <Card className="max-w-md w-full shadow-2xl border-2 border-primary animate-in zoom-in duration-300 pointer-events-auto">
+              <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
+                <div className="flex items-center gap-2">
+                  <div className="bg-primary/10 p-1.5 rounded-lg">
+                    <HelpCircle className="h-5 w-5 text-primary" />
+                  </div>
+                  <CardTitle className="text-lg">{tourSteps[tourStep].title}</CardTitle>
+                </div>
+                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={skipTour}>
+                  <XCircle className="h-4 w-4" />
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {tourSteps[tourStep].content}
+                </p>
+                
+                <div className="flex items-center justify-between pt-2">
+                  <div className="flex gap-1">
+                    {tourSteps.map((_, i) => (
+                      <div 
+                        key={i} 
+                        className={`h-1.5 rounded-full transition-all ${i === tourStep ? 'w-4 bg-primary' : 'w-1.5 bg-muted'}`} 
+                      />
+                    ))}
+                  </div>
+                  <div className="flex gap-2">
+                    {tourStep > 0 && (
+                      <Button variant="outline" size="sm" onClick={prevTourStep}>Back</Button>
+                    )}
+                    <Button size="sm" onClick={nextTourStep}>
+                      {tourStep === tourSteps.length - 1 ? "Get Started" : "Next"}
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
     </>
   );
 }
