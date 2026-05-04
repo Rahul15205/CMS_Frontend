@@ -118,43 +118,7 @@ const EmptyState = ({ onAction }: { onAction: () => void }) => (
   </div>
 );
 
-const StepWizard = ({ currentStep, onStepClick }: { currentStep: number, onStepClick: (step: number) => void }) => {
-  const steps = [
-    { num: 1, title: "Add Website" },
-    { num: 2, title: "Install Script" },
-    { num: 3, title: "Customize Banner" },
-    { num: 4, title: "Publish" },
-  ];
-  return (
-    <div className="mb-8 px-4 sm:px-12">
-      <div className="flex items-center justify-between relative">
-        <div className="absolute left-0 top-1/2 w-full h-1 bg-muted -z-10 -translate-y-1/2" />
-        {steps.map((s) => {
-           const isActive = s.num === currentStep;
-           const isPast = s.num < currentStep;
-           return (
-             <div key={s.num} className="flex flex-col items-center gap-2 relative" onClick={() => onStepClick(s.num)}>
-               <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold border-2 transition-colors cursor-pointer
-                 ${isActive ? 'bg-primary border-primary text-primary-foreground' : ''}
-                 ${isPast ? 'bg-primary/20 border-primary text-primary' : ''}
-                 ${!isActive && !isPast ? 'bg-background border-muted text-muted-foreground' : ''}
-               `}>
-                 {isPast ? <CheckCircle className="h-5 w-5" /> : s.num}
-               </div>
-               <span className={`text-sm font-medium ${isActive ? 'text-primary' : 'text-muted-foreground'} hidden sm:block absolute top-12 text-center w-32 -ml-16 left-1/2`}>
-                 {s.title}
-               </span>
-               <span className={`text-[10px] font-medium ${isActive ? 'text-primary' : 'text-muted-foreground'} sm:hidden absolute top-12 text-center w-20 -ml-10 left-1/2`}>
-                 {s.title}
-               </span>
-             </div>
-           )
-        })}
-      </div>
-      <div className="h-10 sm:h-12" /> {/* Spacer */}
-    </div>
-  );
-};
+
 
 export default function CookiesManagement() {
   const [activeTab, setActiveTab] = useState("overview");
@@ -198,7 +162,7 @@ export default function CookiesManagement() {
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<string>("all");
   const [isSavingBanner, setIsSavingBanner] = useState(false);
-  const [configStep, setConfigStep] = useState(1);
+
 
   const { toast } = useToast();
 
@@ -1241,19 +1205,9 @@ export default function CookiesManagement() {
 
           {/* CONFIG TAB */}
           <TabsContent value="config" className="space-y-6">
-            <StepWizard 
-              currentStep={configStep} 
-              onStepClick={(step) => {
-                 if (step > 1 && websites.length === 0) {
-                   toast({ title: "Action Required", description: "Please add a website first." });
-                   return;
-                 }
-                 setConfigStep(step);
-              }} 
-            />
 
-            {configStep === 1 && (
-              <PageSection>
+
+            <PageSection>
                 <div className="dashboard-card">
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
                     <div>
@@ -1376,20 +1330,10 @@ export default function CookiesManagement() {
                       </Table>
                     </div>
                   )}
-
-                  {websites.length > 0 && (
-                    <div className="flex justify-end mt-6">
-                      <Button onClick={() => setConfigStep(2)}>
-                        Next: Install Script
-                      </Button>
-                    </div>
-                  )}
                 </div>
               </PageSection>
-            )}
 
-            {configStep === 2 && (
-              <PageSection>
+            <PageSection>
                 <div className="dashboard-card mb-6">
                   <div className="mb-6">
                     <SectionTitle>Banner Installation</SectionTitle>
@@ -1466,31 +1410,12 @@ export default function CookiesManagement() {
                       </div>
                     </div>
                   </div>
-                  
-                  <div className="flex justify-between mt-8">
-                    <Button variant="outline" onClick={() => setConfigStep(1)}>
-                      Back
-                    </Button>
-                    <Button onClick={() => setConfigStep(3)}>
-                      Next: Customize Banner
-                    </Button>
-                  </div>
                 </div>
               </PageSection>
-            )}
 
-            {(configStep === 3 || configStep === 4) && (
-              <PageSection>
+            <PageSection>
                 <div className="dashboard-card mb-6">
-                  {configStep === 4 && (
-                    <div className="mb-6 p-4 bg-green-50 text-green-800 border border-green-200 rounded-lg flex items-start gap-3">
-                      <CheckCircle className="h-5 w-5 text-green-600 mt-0.5" />
-                      <div>
-                        <h4 className="font-semibold">Banner Published Successfully!</h4>
-                        <p className="text-sm mt-1">Your banner is now live. If you have installed the script on your website, your users will start seeing it.</p>
-                      </div>
-                    </div>
-                  )}
+
 
                   <div className="flex flex-col md:flex-row items-center justify-between gap-4 mb-6">
                     <div>
@@ -1522,10 +1447,7 @@ export default function CookiesManagement() {
                         Reset to Default
                       </Button>
                       <Button 
-                        onClick={async () => {
-                          await handleSaveBannerSettings();
-                          setConfigStep(4);
-                        }} 
+                        onClick={handleSaveBannerSettings} 
                         disabled={isSavingBanner}
                         className="shrink-0 bg-green-600 hover:bg-green-700 text-white"
                       >
@@ -1764,7 +1686,7 @@ export default function CookiesManagement() {
                 </div>
               </div>
             </PageSection>
-            )}
+
 
             <AddWebsiteDialog
               open={isAddWebsiteOpen}
