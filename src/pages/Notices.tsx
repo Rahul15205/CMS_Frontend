@@ -354,7 +354,7 @@ export default function Notices() {
         </div>
 
         {/* Desktop Navigation */}
-        <TabsList className="mb-8 p-1 bg-muted/30 rounded-xl border w-fit">
+        <TabsList className="mb-8 p-1 bg-muted/30 rounded-xl border w-full grid grid-cols-4">
           <TabsTrigger value="overview" className="rounded-lg px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Overview</TabsTrigger>
           <TabsTrigger value="notices" className="rounded-lg px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">All Notices</TabsTrigger>
           <TabsTrigger value="analytics" className="rounded-lg px-6 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Visitor Analytics</TabsTrigger>
@@ -761,11 +761,16 @@ export default function Notices() {
                       ))
                     ) : analyticsData.length > 0 ? (
                       analyticsData.map((log, idx) => (
-                        <TableRow key={idx} className="hover:bg-muted/30 transition-colors">
+                        <TableRow key={idx} className="hover:bg-muted/30 transition-all">
                           <TableCell>
                             <div className="flex flex-col">
-                              <span className="font-medium text-xs">{log.userEmail || "Anonymous"}</span>
-                              <span className="text-[10px] text-muted-foreground">{log.ipAddress || "Unknown IP"}</span>
+                              <span className="font-semibold text-sm text-primary">
+                                {log.userEmail || log.userId || "Anonymous"}
+                              </span>
+                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                <Globe className="h-3 w-3" />
+                                {log.ipAddress || "Unknown IP"}
+                              </span>
                             </div>
                           </TableCell>
                           <TableCell className="text-xs font-medium">{log.notice?.title || "N/A"}</TableCell>
