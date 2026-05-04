@@ -346,9 +346,8 @@ export default function Notices() {
             <SelectContent>
               <SelectItem value="overview">Overview</SelectItem>
               <SelectItem value="notices">All Notices</SelectItem>
-              <SelectItem value="localization">Localization</SelectItem>
+              <SelectItem value="analytics">Visitor Analytics</SelectItem>
               <SelectItem value="integration">Integration</SelectItem>
-              <SelectItem value="settings">Settings</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -395,27 +394,29 @@ export default function Notices() {
           <PageSection>
             <div className="dashboard-card">
               <SectionTitle>Recent Activity</SectionTitle>
-              <div className="mt-4 space-y-4">
+              <div className="mt-4 space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
                 {loading ? (
                   Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-16 w-full rounded-lg" />)
                 ) : history.length > 0 ? (
-                  history.slice(0, 3).map((item, idx) => (
-                    <div key={idx} className="flex items-center justify-between p-3 bg-muted/30 rounded-lg border border-border">
-                      <div className="flex items-center gap-3">
-                        <History className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-sm font-medium">{item.title}</p>
-                          <p className="text-xs text-muted-foreground">{item.changes}</p>
-                        </div>
+                  history.slice(0, 10).map((item, idx) => (
+                    <div key={idx} className="flex items-start gap-3 p-3 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/30 transition-colors">
+                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <History className="h-4 w-4 text-primary" />
                       </div>
-                      <div className="text-right">
-                        <Badge variant="outline" className="mb-1">{item.version}</Badge>
-                        <p className="text-xs text-muted-foreground">{item.date}</p>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="text-sm font-semibold truncate text-foreground">{item.title}</p>
+                          <Badge variant="outline" className="text-[10px] shrink-0 font-mono">v{item.version}</Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground truncate mt-0.5">{item.changes}</p>
+                        <p className="text-[10px] text-muted-foreground/70 mt-1">{item.date}</p>
                       </div>
                     </div>
                   ))
                 ) : (
-                  <p className="text-sm text-center py-4 text-muted-foreground">No recent activity</p>
+                  <div className="text-center py-8 text-muted-foreground italic text-sm">
+                    No recent activity
+                  </div>
                 )}
               </div>
             </div>
@@ -589,10 +590,10 @@ export default function Notices() {
                             <div className="flex items-center justify-between">
                               <span className="text-muted-foreground flex items-center gap-1">
                                 <Clock className="h-3 w-3" />
-                                Avg. Read Time
+                                Total Time Spent
                               </span>
                               <span className="font-medium text-primary">
-                                {notice.avgReadTime || 0}s
+                                {notice.totalReadTime || notice.avgReadTime || 0}s
                               </span>
                             </div>
                           </>
@@ -752,62 +753,54 @@ export default function Notices() {
                       <TableHead className="text-right">Visit Date</TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody>
-                    {loading ? (
-                      Array(5).fill(0).map((_, i) => (
-                        <TableRow key={i}>
-                          <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
-                        </TableRow>
-                      ))
-                    ) : analyticsData.length > 0 ? (
-                      analyticsData.map((log, idx) => (
-                        <TableRow key={idx} className="hover:bg-muted/30 transition-all">
-                          <TableCell>
-                            <div className="flex flex-col">
-                              <span className="font-semibold text-sm text-primary">
-                                {log.userEmail || log.userId || "Anonymous"}
+                      {analyticsData.length > 0 ? (
+                        analyticsData.map((log, idx) => (
+                          <TableRow key={idx} className="hover:bg-muted/30 transition-all">
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <span className="font-semibold text-sm text-primary">
+                                  {log.userEmail || log.userId || "Anonymous"}
+                                </span>
+                                <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                  <Globe className="h-3 w-3" />
+                                  {log.ipAddress || "Unknown IP"}
+                                </span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-xs font-medium">{log.notice?.title || "N/A"}</TableCell>
+                            <TableCell>
+                              <Badge variant="secondary" className="text-[10px] uppercase font-bold">
+                                {log.language || "EN"}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs">
+                              <span className="text-success font-medium flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {log.viewDuration || 0}s
                               </span>
-                              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                                <Globe className="h-3 w-3" />
-                                {log.ipAddress || "Unknown IP"}
-                              </span>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-xs font-medium">{log.notice?.title || "N/A"}</TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="text-[10px] uppercase">
-                              {log.language || "en"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-1.5 text-xs font-mono text-primary">
-                              <Clock className="h-3 w-3" />
-                              {log.viewDuration || 0}s
-                            </div>
-                          </TableCell>
-                          <TableCell className="max-w-[200px] truncate text-[10px] text-muted-foreground" title={log.userAgent}>
-                            {log.userAgent || "N/A"}
-                          </TableCell>
-                          <TableCell className="text-right text-xs text-muted-foreground">
-                            {new Date(log.acknowledgedAt).toLocaleString()}
+                            </TableCell>
+                            <TableCell className="text-[10px] text-muted-foreground truncate max-w-[150px]" title={log.userAgent}>
+                              {log.userAgent || "N/A"}
+                            </TableCell>
+                            <TableCell className="text-right text-[10px] text-muted-foreground">
+                              {log.createdAt ? new Date(log.createdAt).toLocaleString() : "N/A"}
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      ) : (
+                        <TableRow>
+                          <TableCell colSpan={6} className="text-center py-20 text-muted-foreground italic">
+                            No visitor data available yet.
                           </TableCell>
                         </TableRow>
-                      ))
-                    ) : (
-                      <TableRow>
-                        <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                          No visitor data available yet.
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
-            </div>
-          </PageSection>
-        </TabsContent>
-      </Tabs>
-
+            </PageSection>
+          </TabsContent>
+        </Tabs>
 
       {/* View Notice Dialog */}
       <NoticePreviewDialog
@@ -851,6 +844,6 @@ export default function Notices() {
         onUpdate={handleUpdateLanguage}
         onDelete={handleDeleteLanguage}
       />
-    </DashboardLayout >
+    </DashboardLayout>
   );
 }
