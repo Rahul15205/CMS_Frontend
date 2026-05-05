@@ -166,6 +166,11 @@ export default function CookiesManagement() {
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
 
+  // Scan Details Modal State
+  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
+  const [selectedSiteForDetails, setSelectedSiteForDetails] = useState<any>(null);
+
+
   // Check for first-time visit
   useEffect(() => {
     const hasSeenTour = localStorage.getItem("hasSeenCookieTour");
@@ -1326,10 +1331,22 @@ export default function CookiesManagement() {
                             ))
                           ) : (
                             websites.map((site) => (
-                              <TableRow key={site.id}>
-                                <TableCell className="font-medium">{site.name}</TableCell>
-                                <TableCell className="text-blue-500 hover:underline cursor-pointer">
-                                  <a href={site.url} target="_blank" rel="noopener noreferrer">{site.url}</a>
+                              <TableRow 
+                                key={site.id} 
+                                className="cursor-pointer hover:bg-muted/30 transition-colors"
+                                onClick={() => {
+                                  setSelectedSiteForDetails(site);
+                                  setIsDetailsOpen(true);
+                                }}
+                              >
+                                <TableCell className="font-medium">
+                                  <div className="flex items-center gap-2">
+                                    <Globe className="h-3 w-3 text-slate-400" />
+                                    {site.name}
+                                  </div>
+                                </TableCell>
+                                <TableCell className="text-blue-500 hover:underline">
+                                  {site.url}
                                 </TableCell>
                                 <TableCell className="capitalize">{site.frequency}</TableCell>
                                 <TableCell>
@@ -2008,6 +2025,120 @@ export default function CookiesManagement() {
           </div>
         </div>
       )}
+      {/* Scan Details Dialog */}
+      <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="flex items-center gap-4">
+              <div className={`h-12 w-12 rounded-full flex items-center justify-center border-4 ${
+                (selectedSiteForDetails?.complianceScore || 0) >= 80 ? 'border-green-500 text-green-600 bg-green-50' : 
+                (selectedSiteForDetails?.complianceScore || 0) >= 50 ? 'border-yellow-500 text-yellow-600 bg-yellow-50' : 
+                'border-red-500 text-red-600 bg-red-50'
+              }`}>
+                <span className="text-lg font-bold">{selectedSiteForDetails?.complianceScore || 0}%</span>
+              </div>
+              <div>
+                <DialogTitle className="text-xl">Compliance Audit Results</DialogTitle>
+                <DialogDescription className="flex items-center gap-2 mt-1">
+                  <Globe className="h-3 w-3" />
+                  {selectedSiteForDetails?.url}
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            {/* Summary Stats */}
+            <div className="grid grid-cols-3 gap-4">
+              <Card className="bg-muted/20 border-none shadow-none">
+                <CardContent className="p-4 text-center">
+                  <p className="text-xs text-muted-foreground mb-1 uppercase font-bold tracking-wider">Risk Level</p>
+                  <Badge className={
+                    selectedSiteForDetails?.riskLevel === 'LOW' ? 'bg-green-500' : 
+                    selectedSiteForDetails?.riskLevel === 'MEDIUM' ? 'bg-yellow-500' : 'bg-red-500'
+                  }>
+                    {selectedSiteForDetails?.riskLevel || 'UNKNOWN'}
+                  </Badge>
+                </CardContent>
+              </Card>
+              <Card className="bg-muted/20 border-none shadow-none">
+                <CardContent className="p-4 text-center">
+                  <p className="text-xs text-muted-foreground mb-1 uppercase font-bold tracking-wider">Pages Crawled</p>
+                  <p className="text-xl font-bold">{selectedSiteForDetails?.pagesCrawled || 0}</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-muted/20 border-none shadow-none">
+                <CardContent className="p-4 text-center">
+                  <p className="text-xs text-muted-foreground mb-1 uppercase font-bold tracking-wider">Cookies Found</p>
+                  <p className="text-xl font-bold">{selectedSiteForDetails?.cookiesDetected || 0}</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Breakdown */}
+            <div className="space-y-4">
+              <SectionTitle className="text-base flex items-center gap-2">
+                <BarChart3 className="h-4 w-4" />
+                Score Breakdown
+              </SectionTitle>
+              
+              <div className="border rounded-xl divide-y bg-card overflow-hidden">
+                {selectedSiteForDetails?.scanResults ? (
+                  (selectedSiteForDetails.scanResults as any[]).map((indicator: any) => (
+                    <div key={indicator.id} className="p-4 hover:bg-muted/10 transition-colors">
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-3">
+                          {indicator.passed ? (
+                            <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
+                          ) : (
+                            <XCircle className="h-5 w-5 text-red-500 shrink-0" />
+                          )}
+                          <div>
+                            <h4 className="font-semibold text-sm">{indicator.name}</h4>
+                            <p className="text-xs text-muted-foreground">{indicator.details}</p>
+                          </div>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <span className={`text-sm font-bold ${indicator.passed ? 'text-green-600' : 'text-red-600'}`}>
+                            {indicator.score} / {indicator.weight}
+                          </span>
+                          <p className="text-[10px] text-muted-foreground uppercase font-medium">Points</p>
+                        </div>
+                      </div>
+                      <Progress value={(indicator.score / indicator.weight) * 100} className={`h-1 ${indicator.passed ? 'bg-green-100 [&>div]:bg-green-500' : 'bg-red-100 [&>div]:bg-red-500'}`} />
+                    </div>
+                  ))
+                ) : (
+                  <div className="p-8 text-center text-muted-foreground italic">
+                    No detailed scan results available for this website. Trigger a rescan to generate a report.
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Third Party Scripts */}
+            {selectedSiteForDetails?.thirdPartyScripts && (selectedSiteForDetails.thirdPartyScripts as string[]).length > 0 && (
+              <div className="space-y-2">
+                <SectionTitle className="text-base">Detected Third-Party Hosts</SectionTitle>
+                <div className="flex flex-wrap gap-2">
+                  {(selectedSiteForDetails.thirdPartyScripts as string[]).map((host: string) => (
+                    <Badge key={host} variant="secondary" className="text-[10px]">
+                      {host}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex justify-between items-center mt-6 pt-4 border-t">
+             <p className="text-xs text-muted-foreground italic">
+               Last scanned on {selectedSiteForDetails?.lastScan ? new Date(selectedSiteForDetails.lastScan).toLocaleString() : 'N/A'}
+             </p>
+             <Button variant="outline" onClick={() => setIsDetailsOpen(false)}>Close</Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
