@@ -131,60 +131,57 @@ export const ProductTour: React.FC<ProductTourProps> = ({
 
       {/* Floating Tooltip/Popover (Purple box from image) */}
       <AnimatePresence mode="wait">
-        {targetRect && (
-          <motion.div
-            key={currentStep}
-            initial={{ opacity: 0, scale: 0.9, y: 10 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 10 }}
-            className="absolute z-[101] pointer-events-auto"
-            style={{
-              left: targetRect.left + targetRect.width / 2,
-              top: targetRect.bottom + 20,
-              transform: 'translateX(-50%)',
-            }}
-          >
-            {/* Arrow */}
+        <motion.div
+          key={currentStep}
+          initial={{ opacity: 0, scale: 0.9, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.9, y: 10 }}
+          className="fixed z-[101] pointer-events-auto shadow-2xl"
+          style={targetRect ? {
+            left: targetRect.left + targetRect.width / 2,
+            top: targetRect.bottom + 20,
+            transform: 'translateX(-50%)',
+            position: 'absolute'
+          } : {
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            position: 'fixed'
+          }}
+        >
+          {/* Arrow (only if target exists) */}
+          {targetRect && (
             <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[10px] border-b-purple-600" />
+          )}
+          
+          <div className="bg-purple-600 text-white p-6 rounded-2xl w-[320px] relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-12 -mt-12 blur-2xl" />
             
-            <div className="bg-purple-600 text-white p-6 rounded-2xl shadow-2xl max-w-xs relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-12 -mt-12 blur-2xl" />
-              
-              <h4 className="font-bold text-lg mb-2">{steps[currentStep].title}</h4>
-              <p className="text-sm text-purple-50/90 leading-relaxed mb-6">
-                {steps[currentStep].content}
-              </p>
-              
-              <div className="flex items-center justify-between gap-4">
-                <div className="flex gap-2">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                    onClick={() => setCurrentStep(Math.max(0, currentStep - 1))}
-                    disabled={currentStep === 0}
-                  >
-                    <ChevronLeft className="h-5 w-5" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 text-white"
-                    onClick={() => {
-                      if (currentStep < steps.length - 1) {
-                        setCurrentStep(currentStep + 1);
-                      } else {
-                        onClose();
-                      }
-                    }}
-                  >
-                    <ChevronRight className="h-5 w-5" />
-                  </Button>
-                </div>
-                
+            <h4 className="font-bold text-lg mb-2">{steps[currentStep].title}</h4>
+            <p className="text-sm text-purple-50/90 leading-relaxed mb-6">
+              {steps[currentStep].content}
+            </p>
+            
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex gap-2">
                 <Button
-                  className="bg-white text-purple-600 hover:bg-white/90 font-bold px-6 h-9 rounded-xl shadow-lg"
-                  onClick={() => {
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 text-white disabled:opacity-30"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setCurrentStep(Math.max(0, currentStep - 1));
+                  }}
+                  disabled={currentStep === 0}
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-9 w-9 rounded-full bg-white/10 hover:bg-white/20 text-white"
+                  onClick={(e) => {
+                    e.stopPropagation();
                     if (currentStep < steps.length - 1) {
                       setCurrentStep(currentStep + 1);
                     } else {
@@ -192,21 +189,35 @@ export const ProductTour: React.FC<ProductTourProps> = ({
                     }
                   }}
                 >
-                  {currentStep === steps.length - 1 ? "FINISH" : "NEXT"}
+                  <ChevronRight className="h-5 w-5" />
                 </Button>
               </div>
               
-              <div className="mt-4 flex gap-1 justify-center">
-                {steps.map((_, i) => (
-                  <div 
-                    key={i} 
-                    className={`h-1 rounded-full transition-all ${i === currentStep ? 'w-4 bg-white' : 'w-1 bg-white/30'}`} 
-                  />
-                ))}
-              </div>
+              <Button
+                className="bg-white text-purple-600 hover:bg-white/90 font-bold px-6 h-9 rounded-xl shadow-lg border-none"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  if (currentStep < steps.length - 1) {
+                    setCurrentStep(currentStep + 1);
+                  } else {
+                    onClose();
+                  }
+                }}
+              >
+                {currentStep === steps.length - 1 ? "FINISH" : "NEXT"}
+              </Button>
             </div>
-          </motion.div>
-        )}
+            
+            <div className="mt-4 flex gap-1 justify-center">
+              {steps.map((_, i) => (
+                <div 
+                  key={i} 
+                  className={`h-1 rounded-full transition-all ${i === currentStep ? 'w-4 bg-white' : 'w-1 bg-white/30'}`} 
+                />
+              ))}
+            </div>
+          </div>
+        </motion.div>
       </AnimatePresence>
     </div>
   );
