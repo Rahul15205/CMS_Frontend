@@ -184,49 +184,44 @@ export default function CookiesManagement() {
 
   const tourSteps = [
     {
-      title: "Welcome to Cookie Management",
-      content: "This module helps you automate website compliance. Let's take a quick 1-minute tour!",
-      targetId: "overview-header"
+      title: "Total Cookies",
+      content: "This shows the total number of cookies tracked across your websites. The +5% indicates growth compared to last week.",
+      targetSelector: '[data-tour="total-cookies"]'
     },
     {
-      title: "Real-time Metrics",
-      content: "Track your total cookies, categorization status, and consent opt-out rates at a glance.",
-      targetId: "kpi-metrics"
+      title: "Categories",
+      content: "Cookies are grouped into 5 categories (e.g., Necessary, Analytics, Marketing). Proper categorization is key for GDPR compliance.",
+      targetSelector: '[data-tour="categories"]'
     },
     {
-      title: "Compliance Health",
-      content: "Our AI scanner checks 10 legal indicators to give you a real-time compliance score for your network.",
-      targetId: "compliance-health"
+      title: "Active Consents",
+      content: "Total active user consent records. +12% growth means more users are accepting your cookie policy.",
+      targetSelector: '[data-tour="active-consents"]'
     },
     {
-      title: "Cookie Distribution",
-      content: "See how your cookies are distributed across categories like Necessary, Analytics, and Marketing.",
-      targetId: "cookie-distribution"
+      title: "Opt-out Rate",
+      content: "Percentage of users who opted out of non-essential cookies. A rising opt-out rate may indicate consent UX issues.",
+      targetSelector: '[data-tour="opt-out-rate"]'
     },
     {
-      title: "Consent Trends",
-      content: "Monitor user behavior and consent patterns over the last 7 days to optimize your privacy strategy.",
-      targetId: "consent-trends"
+      title: "Compliance Health Score",
+      content: "Your overall compliance health score. 55% = Medium Risk, Grade D. Based on checks across 2 websites.",
+      targetSelector: '[data-tour="compliance-gauge"]'
     },
     {
-      title: "Recent Activity",
-      content: "View live consent events as they happen across your global network of websites.",
-      targetId: "recent-activity"
+      title: "Compliance Check Items",
+      content: "Each check shows how many websites passed. Red ✕ = failing. These need immediate attention to improve your compliance score.",
+      targetSelector: '[data-tour="check-items-left"]'
     },
     {
-      title: "Website Inventory",
-      content: "Register your domains here. We'll automatically crawl them to identify and categorize all cookies used.",
-      targetId: "website-config"
+      title: "Legal & Security Checks",
+      content: "HTTPS Security is the only fully passing check (10/10). Work on Privacy Notice and Cookie Categorization next.",
+      targetSelector: '[data-tour="check-items-right"]'
     },
     {
-      title: "Integration Script",
-      content: "Copy this unique script into your website's <head> section to activate the consent banner instantly.",
-      targetId: "script-installation"
-    },
-    {
-      title: "Banner Customization",
-      content: "Tailor the banner's design, position, and text to match your brand's look and feel.",
-      targetId: "banner-customization"
+      title: "Tab Navigation",
+      content: "Use these tabs to manage your cookie inventory, view consent logs, and configure your compliance settings.",
+      targetSelector: '[data-tour="tab-nav"]'
     }
   ];
 
@@ -846,7 +841,7 @@ export default function CookiesManagement() {
           </div>
 
           {/* Desktop Tabs List */}
-          <TabsList className="hidden sm:grid w-full grid-cols-4 h-auto p-1 bg-muted/50">
+          <TabsList className="hidden sm:grid w-full grid-cols-4 h-auto p-1 bg-muted/50" data-tour="tab-nav">
             <TabsTrigger value="overview" className="flex items-center gap-2 py-2.5">
               <PieChart className="h-4 w-4" />
               <span className="hidden sm:inline">Overview</span>
@@ -877,23 +872,27 @@ export default function CookiesManagement() {
                     value={metrics?.totalCookies || inventory.length}
                     icon={<Cookie className="h-4 w-4" />}
                     trend={{ value: 5, direction: "up", label: "this week" }}
+                    data-tour="total-cookies"
                   />
                   <KPICard
                     title="Categories"
                     value={metrics?.categories || categories.length}
                     icon={<Layout className="h-4 w-4" />}
+                    data-tour="categories"
                   />
                   <KPICard
                     title="Active Consents"
                     value={metrics?.activeConsents || "0"}
                     icon={<CheckCircle className="h-4 w-4" />}
                     trend={{ value: 12, direction: "up" }}
+                    data-tour="active-consents"
                   />
                   <KPICard
                     title="Opt-out Rate"
                     value={`${metrics?.optOutRate || 0}%`}
                     icon={<XCircle className="h-4 w-4" />}
                     trend={{ value: 0.5, direction: "down" }}
+                    data-tour="opt-out-rate"
                   />
                </>
               )}
@@ -942,7 +941,7 @@ export default function CookiesManagement() {
 
                         return (
                           <div className="flex flex-col md:flex-row items-center gap-8">
-                             <div className="flex flex-col items-center justify-center">
+                             <div className="flex flex-col items-center justify-center" data-tour="compliance-gauge">
                                 <div className={`relative h-32 w-32 flex items-center justify-center rounded-full border-8 ${avgScore >= 80 ? 'border-green-500 text-green-600' : avgScore >= 50 ? 'border-yellow-500 text-yellow-600' : 'border-red-500 text-red-600'}`}>
                                    <div className="text-3xl font-bold">{avgScore}%</div>
                                 </div>
@@ -953,22 +952,34 @@ export default function CookiesManagement() {
                                 <p className="text-[10px] text-muted-foreground mt-2 uppercase font-bold tracking-tighter">Based on {sitesWithScores.length} Websites</p>
                              </div>
                              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                {aggregateIndicators.length > 0 ? aggregateIndicators.map((ind: any) => (
-                                  <div key={ind.id} className="flex items-start gap-2 text-sm bg-background/50 p-3 rounded-lg border">
-                                     {ind.passed ? <CheckCircle className="h-4 w-4 text-green-500 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />}
-                                     <div className="flex-1">
-                                       <div className="font-semibold flex justify-between items-center">
-                                         {ind.name} 
-                                         <span className="text-xs font-normal text-muted-foreground">{ind.score}/{ind.weight}</span>
+                                <div className="space-y-4" data-tour="check-items-left">
+                                  {aggregateIndicators.slice(0, 5).map((ind: any) => (
+                                    <div key={ind.id} className="flex items-start gap-2 text-sm bg-background/50 p-3 rounded-lg border">
+                                       {ind.passed ? <CheckCircle className="h-4 w-4 text-green-500 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />}
+                                       <div className="flex-1">
+                                         <div className="font-semibold flex justify-between items-center">
+                                           {ind.name} 
+                                           <span className="text-xs font-normal text-muted-foreground">{ind.score}/{ind.weight}</span>
+                                         </div>
+                                         <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{ind.details}</div>
                                        </div>
-                                       <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{ind.details}</div>
-                                     </div>
-                                  </div>
-                                )) : (
-                                  <div className="col-span-2 text-center py-8 text-muted-foreground italic">
-                                    No aggregate scan data available yet.
-                                  </div>
-                                )}
+                                    </div>
+                                  ))}
+                                </div>
+                                <div className="space-y-4" data-tour="check-items-right">
+                                  {aggregateIndicators.slice(5).map((ind: any) => (
+                                    <div key={ind.id} className="flex items-start gap-2 text-sm bg-background/50 p-3 rounded-lg border">
+                                       {ind.passed ? <CheckCircle className="h-4 w-4 text-green-500 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />}
+                                       <div className="flex-1">
+                                         <div className="font-semibold flex justify-between items-center">
+                                           {ind.name} 
+                                           <span className="text-xs font-normal text-muted-foreground">{ind.score}/{ind.weight}</span>
+                                         </div>
+                                         <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{ind.details}</div>
+                                       </div>
+                                    </div>
+                                  ))}
+                                </div>
                              </div>
                           </div>
                         );

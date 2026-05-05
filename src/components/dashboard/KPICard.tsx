@@ -2,7 +2,7 @@ import { ReactNode } from "react";
 import { cn } from "@/lib/utils";
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 
-interface KPICardProps {
+interface KPICardProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string;
   value: string | number;
   icon: ReactNode;
@@ -12,7 +12,6 @@ interface KPICardProps {
     label?: string;
   };
   variant?: "default" | "success" | "warning" | "destructive" | "info";
-  className?: string;
   valueClassName?: string;
 }
 
@@ -40,6 +39,7 @@ export function KPICard({
   variant = "default",
   className,
   valueClassName,
+  ...props
 }: KPICardProps) {
   return (
     <div
@@ -48,6 +48,7 @@ export function KPICard({
         variantStyles[variant],
         className
       )}
+      {...props}
     >
       <div className="flex items-start justify-between gap-4">
         <div className="space-y-1 min-w-0 flex-1">
