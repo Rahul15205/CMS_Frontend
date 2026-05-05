@@ -30,11 +30,11 @@ export const ProductTour: React.FC<ProductTourProps> = ({
   useEffect(() => {
     if (!isOpen) return;
 
+    // Remove forced scrolling from the continuous update logic
     const updateRect = () => {
       const element = document.querySelector(steps[currentStep].targetSelector);
       if (element) {
         setTargetRect(element.getBoundingClientRect());
-        element.scrollIntoView({ behavior: 'smooth', block: 'center' });
       } else {
         setTargetRect(null);
       }
@@ -44,7 +44,7 @@ export const ProductTour: React.FC<ProductTourProps> = ({
     const timer = setTimeout(updateRect, 100);
 
     window.addEventListener('resize', updateRect);
-    window.addEventListener('scroll', updateRect);
+    window.addEventListener('scroll', updateRect, { passive: true });
 
     return () => {
       clearTimeout(timer);
@@ -52,6 +52,16 @@ export const ProductTour: React.FC<ProductTourProps> = ({
       window.removeEventListener('scroll', updateRect);
     };
   }, [isOpen, currentStep, steps]);
+
+  // Only scroll into view when the step actually changes
+  useEffect(() => {
+    if (!isOpen) return;
+    
+    const element = document.querySelector(steps[currentStep].targetSelector);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [currentStep, isOpen]);
 
   if (!isOpen) return null;
 
