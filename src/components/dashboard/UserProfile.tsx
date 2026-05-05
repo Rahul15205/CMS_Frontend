@@ -23,7 +23,7 @@ export function UserProfile() {
  
     const handleLogout = () => {
         logout();
-        navigate("/login");
+        navigate("/");
     };
 
     const getUserInitials = (name: string) => {

@@ -34,8 +34,8 @@ const App = () => (
         <DashboardProvider>
           <Toaster />
           <Sonner />
-          <SimpleAuth>
-            <BrowserRouter>
+          <BrowserRouter>
+            <SimpleAuth>
               <Routes>
                 {/* Public Routes (if any) can go here without MainLayout */}
                 <Route path="/logout" element={<Logout />} />
@@ -59,8 +59,8 @@ const App = () => (
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </BrowserRouter>
-          </SimpleAuth>
+            </SimpleAuth>
+          </BrowserRouter>
         </DashboardProvider>
       </AuthProvider>
     </TooltipProvider>

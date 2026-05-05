@@ -25,6 +25,7 @@ import {
     SelectValue,
 } from "@/components/ui/select";
 import { rolesService } from "@/services/userSetupService";
+import { useNavigate, useLocation } from "react-router-dom";
 
 interface SimpleAuthProps {
     children: React.ReactNode;
@@ -32,6 +33,8 @@ interface SimpleAuthProps {
 
 const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
     const { isAuthenticated, isLoading: authLoading, login, roles, setRoles } = useAuth();
+    const navigate = useNavigate();
+    const location = useLocation();
     const [submitting, setSubmitting] = useState(false);
     const [inputUsername, setInputUsername] = useState("");
     const [inputPassword, setInputPassword] = useState("");
@@ -50,17 +53,17 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                     } else {
                         // Fallback roles for demo/initial state if API is unreachable
                         const fallbackRoles = [
-                            { id: 'admin', name: 'Admin', status: 'active' },
+                            { id: 'admin', name: 'Super Admin', status: 'active' },
                             { id: 'compliance-manager', name: 'Compliance Manager', status: 'active' },
                             { id: 'data-protection-officer', name: 'Data Protection Officer', status: 'active' }
                         ];
                         setRoles(fallbackRoles as any);
                     }
                 } catch (error) {
-                    console.error("Failed to fetch roles:", error);
-                    // Fallback on error
+                    console.warn("Could not fetch roles from API (expected if not logged in):", error);
+                    // Fallback on error (e.g. 401)
                     const fallbackRoles = [
-                        { id: 'admin', name: 'Admin', status: 'active' },
+                        { id: 'admin', name: 'Super Admin', status: 'active' },
                         { id: 'compliance-manager', name: 'Compliance Manager', status: 'active' }
                     ];
                     setRoles(fallbackRoles as any);
@@ -92,6 +95,12 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
             setSubmitting(false);
         }
     };
+
+    useEffect(() => {
+        if (isAuthenticated && (location.pathname === '/login' || location.pathname === '/logout')) {
+            navigate('/');
+        }
+    }, [isAuthenticated, location.pathname, navigate]);
 
     // Show loading while auth state is being restored
     if (authLoading) {
