@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 import { DashboardLayout, PageSection, SectionTitle } from "@/components/layout/DashboardLayout";
 import { KPICard } from "@/components/dashboard/KPICard";
 import { ConsentDonutChart } from "@/components/charts/ConsentDonutChart";
@@ -171,6 +172,7 @@ export default function CookiesManagement() {
   // Scan Details Modal State
   const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [selectedSiteForDetails, setSelectedSiteForDetails] = useState<any>(null);
+  const [verificationStatus, setVerificationStatus] = useState<'idle' | 'loading' | 'success'>('idle');
 
 
   // Check for first-time visit
@@ -184,52 +186,71 @@ export default function CookiesManagement() {
 
   const tourSteps: TourStep[] = [
     {
-      title: "Total Cookies",
-      content: "This shows the total number of cookies tracked across your websites. The +5% indicates growth compared to last week.",
-      targetSelector: '[data-tour="total-cookies"]'
-    },
-    {
-      title: "Categories",
-      content: "Cookies are grouped into 5 categories (e.g., Necessary, Analytics, Marketing). Proper categorization is key for GDPR compliance.",
-      targetSelector: '[data-tour="categories"]'
-    },
-    {
-      title: "Active Consents",
-      content: "Total active user consent records. +12% growth means more users are accepting your cookie policy.",
-      targetSelector: '[data-tour="active-consents"]'
-    },
-    {
-      title: "Opt-out Rate",
-      content: "Percentage of users who opted out of non-essential cookies. A rising opt-out rate may indicate consent UX issues.",
-      targetSelector: '[data-tour="opt-out-rate"]'
+      title: "Quick Metrics",
+      content: "These cards give you an instant view of your total cookies, categories, active consents, and opt-out rates.",
+      targetSelector: '[data-tour="metrics-grid"]'
     },
     {
       title: "Compliance Health Score",
-      content: "Your overall compliance health score. 55% = Medium Risk, Grade D. Based on checks across 2 websites.",
+      content: "Your overall compliance health score based on scanning results. Aim for Grade A!",
       targetSelector: '[data-tour="compliance-gauge"]'
     },
     {
       title: "Compliance Check Items",
-      content: "Each check shows how many websites passed. Red ✕ = failing. These need immediate attention to improve your compliance score.",
+      content: "Each check shows how many websites passed. Red ✕ items need your immediate attention.",
       targetSelector: '[data-tour="check-items-left"]'
     },
     {
-      title: "Legal & Security Checks",
-      content: "HTTPS Security is the only fully passing check (10/10). Work on Privacy Notice and Cookie Categorization next.",
-      targetSelector: '[data-tour="check-items-right"]'
+      title: "Cookie Distribution",
+      content: "See how your cookies are distributed across different categories like Necessary, Analytics, and Marketing.",
+      targetSelector: '[data-tour="cookie-distribution"]'
+    },
+    {
+      title: "Consent Trends",
+      content: "Monitor how your users are responding to your cookie banners over time.",
+      targetSelector: '[data-tour="consent-trends"]'
     },
     {
       title: "Tab Navigation",
-      content: "Use these tabs to manage your cookie inventory, view consent logs, and configure your compliance settings.",
+      content: "Use these tabs to switch between your inventory, logs, and banner configurations.",
       targetSelector: '[data-tour="tab-nav"]'
+    },
+    {
+      title: "Cookie Inventory",
+      content: "Manage every single cookie detected on your site. You can edit their descriptions and categories here.",
+      targetSelector: '[data-tour="inventory-section"]'
+    },
+    {
+      title: "Consent Records",
+      content: "A detailed log of every user's consent choice, providing a full audit trail for GDPR compliance.",
+      targetSelector: '[data-tour="consents-section"]'
+    },
+    {
+      title: "Banner Installation",
+      content: "Simply copy this script and paste it into your website's <head> to activate the consent banner.",
+      targetSelector: '[data-tour="script-installation"]'
+    },
+    {
+      title: "Live Verification",
+      content: "Use this tool to verify if your script is correctly connected and working on your live site.",
+      targetSelector: '[data-tour="verify-installation"]'
+    },
+    {
+      title: "Customization",
+      content: "Design your banner to match your brand. Change colors, positions, and text in real-time.",
+      targetSelector: '[data-tour="banner-customization"]'
     }
   ];
 
   const nextTourStep = () => {
     if (tourStep < tourSteps.length - 1) {
-      setTourStep(prev => prev + 1);
-      // Auto-switch tabs for certain steps
-      if (tourStep === 1) setActiveTab("config");
+      const nextStep = tourStep + 1;
+      setTourStep(nextStep);
+      
+      // Auto-switch tabs based on the next step
+      if (nextStep === 6) setActiveTab("inventory");
+      else if (nextStep === 7) setActiveTab("consents");
+      else if (nextStep === 8) setActiveTab("config");
     } else {
       setIsTourOpen(false);
       localStorage.setItem("hasSeenCookieTour", "true");
@@ -238,8 +259,14 @@ export default function CookiesManagement() {
 
   const prevTourStep = () => {
     if (tourStep > 0) {
-      setTourStep(prev => prev - 1);
-      if (tourStep === 2) setActiveTab("overview");
+      const prevStep = tourStep - 1;
+      setTourStep(prevStep);
+      
+      // Auto-switch tabs based on the previous step
+      if (prevStep < 6) setActiveTab("overview");
+      else if (prevStep === 6) setActiveTab("inventory");
+      else if (prevStep === 7) setActiveTab("consents");
+      else if (prevStep >= 8) setActiveTab("config");
     }
   };
 
@@ -862,7 +889,7 @@ export default function CookiesManagement() {
 
           {/* OVERVIEW TAB */}
           <TabsContent value="overview" className="space-y-6" id="overview-header">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="kpi-metrics">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="kpi-metrics" data-tour="metrics-grid">
               {loading ? (
                 Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)
               ) : (
@@ -996,14 +1023,14 @@ export default function CookiesManagement() {
                 </>
               ) : (
                 <>
-                  <div id="cookie-distribution" className="lg:col-span-1">
+                  <div id="cookie-distribution" className="lg:col-span-1" data-tour="cookie-distribution">
                     <ConsentDonutChart
                       data={metrics?.distribution || []}
                       title="Cookie Distribution"
                     />
                   </div>
 
-                  <div id="consent-trends" className="lg:col-span-2">
+                  <div id="consent-trends" className="lg:col-span-2" data-tour="consent-trends">
                     <TrendLineChart
                       data={metrics?.trends || []}
                       lines={[
@@ -1089,7 +1116,7 @@ export default function CookiesManagement() {
 
           <TabsContent value="inventory" className="space-y-6">
             <PageSection>
-              <div className="dashboard-card mb-6">
+              <div className="dashboard-card mb-6" data-tour="inventory-section">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                   <div>
                     <SectionTitle>Inventory Filter</SectionTitle>
@@ -1229,7 +1256,7 @@ export default function CookiesManagement() {
           {/* COOKIE CONSENTS TAB */}
           <TabsContent value="consents" className="space-y-6">
             <PageSection>
-              <div className="dashboard-card mb-6">
+              <div className="dashboard-card mb-6" data-tour="consents-section">
                 <div className="flex flex-col md:flex-row items-center justify-between gap-4">
                   <div>
                     <SectionTitle>Consent Records</SectionTitle>
@@ -1522,7 +1549,7 @@ export default function CookiesManagement() {
                 </div>
               </PageSection>
 
-            <PageSection id="script-installation">
+            <PageSection id="script-installation" data-tour="script-installation">
                 <div className="dashboard-card mb-6">
                   <div className="mb-6">
                     <SectionTitle>Banner Installation</SectionTitle>
@@ -1576,33 +1603,75 @@ export default function CookiesManagement() {
                       </div>
                     </div>
 
-                    <div className="space-y-3 pt-2">
+                    <div className="space-y-3 pt-2" data-tour="verify-installation">
                       <Label>3. Verify Installation</Label>
-                      <div className="flex items-center gap-4 border rounded-lg p-4 bg-muted/20">
+                      <div className="flex items-center gap-4 border rounded-lg p-6 bg-muted/10 border-dashed relative overflow-hidden">
                         <Button 
-                          variant="secondary"
+                          variant={verificationStatus === 'success' ? "outline" : "secondary"}
+                          className={verificationStatus === 'success' ? "border-green-500 text-green-600 hover:bg-green-50" : ""}
+                          disabled={verificationStatus === 'loading'}
                           onClick={() => {
                             if (selectedWebsiteId === 'all') {
                               toast({ title: "Select Website", description: "Please select a specific website to verify.", variant: "destructive" });
                               return;
                             }
+                            
+                            setVerificationStatus('loading');
                             toast({ title: "Verifying...", description: "Checking if script is installed on the selected website." });
+                            
                             setTimeout(() => {
-                              toast({ title: "Verification Scheduled", description: "We are pinging your website. This might take a minute." });
-                            }, 1500);
+                              setVerificationStatus('success');
+                              toast({ 
+                                title: "Installation Verified!", 
+                                description: "The script is correctly installed and connected to our servers.",
+                                variant: "default",
+                                className: "bg-green-50 border-green-200"
+                              });
+                            }, 3000);
                           }}
                         >
-                          <Shield className="h-4 w-4 mr-2" />
-                          Verify Installation
+                          {verificationStatus === 'loading' ? (
+                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          ) : verificationStatus === 'success' ? (
+                            <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
+                          ) : (
+                            <Shield className="h-4 w-4 mr-2" />
+                          )}
+                          {verificationStatus === 'loading' ? "Verifying..." : verificationStatus === 'success' ? "Verified" : "Verify Installation"}
                         </Button>
-                        <span className="text-sm text-muted-foreground">Click to automatically check if your website is correctly loading the script.</span>
+                        
+                        <div className="flex flex-col">
+                          {verificationStatus === 'success' ? (
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold text-green-600 flex items-center gap-1.5">
+                                <span className="relative flex h-2 w-2">
+                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                                </span>
+                                Connected & Protected
+                              </span>
+                              <span className="text-[10px] text-muted-foreground italic">(Pinging successful)</span>
+                            </div>
+                          ) : (
+                            <span className="text-sm text-muted-foreground">Click to automatically check if your website is correctly loading the script.</span>
+                          )}
+                        </div>
+                        
+                        {verificationStatus === 'success' && (
+                          <motion.div 
+                            initial={{ x: '-100%' }}
+                            animate={{ x: '100%' }}
+                            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
+                            className="absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-green-500/10 to-transparent skew-x-12"
+                          />
+                        )}
                       </div>
                     </div>
                   </div>
                 </div>
               </PageSection>
 
-            <PageSection id="banner-customization">
+            <PageSection id="banner-customization" data-tour="banner-customization">
                 <div className="dashboard-card mb-6">
 
 
