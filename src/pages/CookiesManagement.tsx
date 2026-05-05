@@ -91,7 +91,7 @@ import {
 } from "@/services/cookiesService";
 import { reportsService } from "@/services/reportsLogsSecurityService";
 import { Skeleton } from "@/components/ui/skeleton";
-import { ProductTour } from "@/components/tour/ProductTour";
+import { ProductTour, TourStep } from "@/components/tour/ProductTour";
 
 // Map string icons to components
 const IconMap: Record<string, any> = {
@@ -182,7 +182,7 @@ export default function CookiesManagement() {
     }
   }, []);
 
-  const tourSteps = [
+  const tourSteps: TourStep[] = [
     {
       title: "Total Cookies",
       content: "This shows the total number of cookies tracked across your websites. The +5% indicates growth compared to last week.",

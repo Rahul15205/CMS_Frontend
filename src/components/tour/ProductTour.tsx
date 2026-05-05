@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { X } from 'lucide-react';
 
-interface TourStep {
+export interface TourStep {
   title: string;
   content: string;
   targetSelector: string;
