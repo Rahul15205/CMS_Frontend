@@ -13,8 +13,11 @@ import {
     Database, 
     Activity, 
     ChevronRight,
-    MapPin
+    MapPin,
+    Sun,
+    Moon
 } from "lucide-react";
+import { useTheme } from "@/contexts/ThemeContext";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -32,6 +35,7 @@ interface SimpleAuthProps {
 
 const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
     const { isAuthenticated, isLoading: authLoading, login } = useAuth();
+    const { theme, toggleTheme } = useTheme();
     const navigate = useNavigate();
     const location = useLocation();
     const [submitting, setSubmitting] = useState(false);
@@ -61,8 +65,8 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
     // Show loading while auth state is being restored
     if (authLoading) {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-[#f5f7f5]">
-                <Loader2 className="w-8 h-8 animate-spin text-[#16a34a]" />
+            <div className="min-h-screen flex items-center justify-center bg-background">
+                <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
         );
     }
@@ -72,7 +76,7 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
     }
 
     return (
-        <div className="min-h-screen flex font-['Inter'] bg-[#f5f7f5]">
+        <div className="min-h-screen flex font-['Inter'] bg-background text-foreground transition-colors duration-300">
             {/* Left Panel - Hero Section */}
             <div className="hidden lg:flex lg:w-[45%] bg-[#1a2e1f] login-grid-pattern flex-col p-12 text-white relative overflow-hidden">
                 {/* Brand Logo */}
@@ -148,28 +152,44 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
             </div>
 
             {/* Right Panel - Login Card */}
-            <div className="w-full lg:w-[55%] flex items-center justify-center p-6">
+            <div className="w-full lg:w-[55%] flex items-center justify-center p-6 relative">
+                {/* Theme Toggle */}
+                <div className="absolute top-8 right-8 animate-fade-in">
+                    <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={toggleTheme}
+                        className="rounded-full w-12 h-12 bg-card border-border shadow-sm hover:bg-accent transition-all"
+                    >
+                        {theme === "light" ? (
+                            <Moon className="h-5 w-5 text-slate-700" />
+                        ) : (
+                            <Sun className="h-5 w-5 text-yellow-400" />
+                        )}
+                    </Button>
+                </div>
+
                 <div className="w-full max-w-md animate-fade-in">
-                    <Card className="border-none shadow-xl shadow-gray-200/50 bg-white rounded-3xl overflow-hidden">
+                    <Card className="border-none shadow-xl dark:shadow-none dark:bg-card/50 bg-white rounded-3xl overflow-hidden">
                         <CardContent className="p-8 sm:p-10">
                             <div className="mb-6">
-                                <p className="text-[10px] font-bold tracking-[0.2em] text-[#16a34a] uppercase mb-3">Consent Management System</p>
-                                <h2 className="text-3xl font-extrabold font-['Plus_Jakarta_Sans'] text-[#1a2e1f] mb-2">Welcome back 👋</h2>
-                                <p className="text-gray-400">Sign in to access your dashboard</p>
+                                <p className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase mb-3">Consent Management System</p>
+                                <h2 className="text-3xl font-extrabold font-['Plus_Jakarta_Sans'] text-card-foreground mb-2">Welcome back 👋</h2>
+                                <p className="text-muted-foreground">Sign in to access your dashboard</p>
                             </div>
 
                             <form onSubmit={handleLogin} className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="username" className="text-xs font-bold text-[#1a2e1f]/60 uppercase tracking-widest ml-1">Email Address</Label>
+                                    <Label htmlFor="username" className="text-xs font-bold text-card-foreground/60 uppercase tracking-widest ml-1">Email Address</Label>
                                     <div className="relative group">
                                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                            <Mail className="h-5 w-5 text-gray-300 group-focus-within:text-[#16a34a] transition-colors" />
+                                            <Mail className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                         </div>
                                         <Input
                                             id="username"
                                             type="text"
                                             placeholder="Enter your email"
-                                            className="h-14 pl-12 bg-[#f5f7f5]/50 border-[#dde8dd] focus:border-[#22c55e] focus:ring-[#22c55e]/10 rounded-2xl transition-all"
+                                            className="h-14 pl-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
                                             value={inputUsername}
                                             onChange={(e) => setInputUsername(e.target.value)}
                                             disabled={submitting}
@@ -180,18 +200,18 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
 
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center ml-1">
-                                        <Label htmlFor="password" className="text-xs font-bold text-[#1a2e1f]/60 uppercase tracking-widest">Password</Label>
-                                        <button type="button" className="text-xs font-bold text-[#16a34a] hover:text-[#22c55e] transition-colors">Forgot password?</button>
+                                        <Label htmlFor="password" className="text-xs font-bold text-card-foreground/60 uppercase tracking-widest">Password</Label>
+                                        <button type="button" className="text-xs font-bold text-primary hover:text-primary/80 transition-colors">Forgot password?</button>
                                     </div>
                                     <div className="relative group">
                                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                            <Lock className="h-5 w-5 text-gray-300 group-focus-within:text-[#16a34a] transition-colors" />
+                                            <Lock className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
                                         </div>
                                         <Input
                                             id="password"
                                             type="password"
                                             placeholder="Enter your password"
-                                            className="h-14 pl-12 bg-[#f5f7f5]/50 border-[#dde8dd] focus:border-[#22c55e] focus:ring-[#22c55e]/10 rounded-2xl transition-all"
+                                            className="h-14 pl-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
                                             value={inputPassword}
                                             onChange={(e) => setInputPassword(e.target.value)}
                                             disabled={submitting}
@@ -220,11 +240,11 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                             </form>
 
                             <div className="mt-8 text-center space-y-3">
-                                <p className="text-sm text-gray-400">
+                                <p className="text-sm text-muted-foreground">
                                     No access? Contact us at{' '}
-                                    <a href="mailto:hello@protecciodata.com" className="text-[#16a34a] font-bold hover:underline">hello@protecciodata.com</a>
+                                    <a href="mailto:hello@protecciodata.com" className="text-primary font-bold hover:underline">hello@protecciodata.com</a>
                                 </p>
-                                <div className="flex items-center justify-center gap-2 text-[10px] font-bold tracking-widest text-gray-300 uppercase pt-4 border-t border-gray-100">
+                                <div className="flex items-center justify-center gap-2 text-[10px] font-bold tracking-widest text-muted-foreground uppercase pt-4 border-t border-border">
                                     <Lock className="w-3 h-3" />
                                     <span>256-bit SSL Encrypted · Secure Login</span>
                                 </div>
