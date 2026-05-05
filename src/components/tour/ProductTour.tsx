@@ -110,20 +110,20 @@ export const ProductTour: React.FC<ProductTourProps> = ({
             };
           })()}
         >
-          <Card className="bg-white text-slate-900 border-none rounded-2xl shadow-2xl w-[320px] overflow-hidden">
+          <Card className="bg-white text-slate-900 border-none rounded-2xl shadow-2xl w-[350px] overflow-hidden">
             <CardContent className="p-0">
-              <div className="p-6">
-                <div className="flex justify-between items-start mb-2">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-bold uppercase tracking-widest text-primary">
+              <div className="p-6 pb-4">
+                <div className="flex justify-between items-start mb-4">
+                  <div className="space-y-1.5">
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-primary bg-primary/10 px-2.5 py-1 rounded-full">
                       Step {currentStep + 1} of {steps.length}
-                    </p>
-                    <h4 className="font-bold text-lg leading-tight">{steps[currentStep].title}</h4>
+                    </span>
+                    <h4 className="font-bold text-lg leading-tight block">{steps[currentStep].title}</h4>
                   </div>
                   <Button 
                     variant="ghost" 
                     size="icon" 
-                    className="h-6 w-6 text-muted-foreground hover:text-foreground"
+                    className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-slate-100 rounded-full"
                     onClick={onClose}
                   >
                     <X className="h-4 w-4" />
@@ -134,11 +134,11 @@ export const ProductTour: React.FC<ProductTourProps> = ({
                   {steps[currentStep].content}
                 </p>
                 
-                <div className="flex items-center justify-between gap-3">
+                <div className="flex items-center justify-between gap-2 border-t pt-4">
                   <Button
-                    variant="outline"
+                    variant="ghost"
                     size="sm"
-                    className="h-9 px-4 rounded-xl border-slate-200 text-slate-600 hover:bg-slate-50 font-medium"
+                    className="h-9 px-3 rounded-xl text-slate-500 hover:bg-slate-50 font-medium"
                     onClick={(e) => {
                       e.stopPropagation();
                       setCurrentStep(prev => typeof prev === 'number' ? Math.max(0, prev - 1) : prev);
@@ -148,17 +148,17 @@ export const ProductTour: React.FC<ProductTourProps> = ({
                     ← Previous
                   </Button>
                   
-                  <div className="flex gap-2">
+                  <div className="flex items-center gap-2">
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="h-9 px-3 text-muted-foreground hover:text-foreground text-xs"
+                      className="h-9 px-3 text-muted-foreground hover:text-destructive text-xs font-semibold"
                       onClick={onClose}
                     >
                       Skip
                     </Button>
                     <Button
-                      className="bg-primary text-white hover:bg-primary/90 font-bold px-5 h-9 rounded-xl shadow-md"
+                      className="bg-primary text-white hover:bg-primary/90 font-bold px-4 h-9 rounded-xl shadow-md transition-all active:scale-95"
                       onClick={(e) => {
                         e.stopPropagation();
                         if (currentStep < steps.length - 1) {
