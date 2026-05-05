@@ -81,53 +81,6 @@ export const ProductTour: React.FC<ProductTourProps> = ({
         />
       </svg>
 
-      {/* Progress Sidebar Card (Similar to the image) */}
-      <AnimatePresence>
-        <motion.div
-          initial={{ x: -100, opacity: 0 }}
-          animate={{ x: 20, opacity: 1 }}
-          exit={{ x: -100, opacity: 0 }}
-          className="absolute left-4 top-24 w-80 pointer-events-auto"
-        >
-          <Card className="shadow-2xl border-none overflow-hidden">
-            <div className="bg-primary/5 p-4 border-b flex justify-between items-center">
-              <h3 className="font-bold text-sm">Learn key product features</h3>
-              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={onClose}>
-                <X className="h-4 w-4" />
-              </Button>
-            </div>
-            <CardContent className="p-0">
-              <div className="flex flex-col">
-                {steps.map((step, idx) => (
-                  <div
-                    key={idx}
-                    className={`flex items-start gap-3 p-4 transition-colors ${
-                      idx === currentStep ? 'bg-primary/10 border-l-4 border-primary' : 'opacity-60'
-                    }`}
-                  >
-                    <div className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-bold shrink-0 ${
-                      idx < currentStep ? 'bg-green-500 text-white' : 
-                      idx === currentStep ? 'bg-primary text-white' : 'bg-muted text-muted-foreground'
-                    }`}>
-                      {idx < currentStep ? <Check className="h-3 w-3" /> : idx + 1}
-                    </div>
-                    <div>
-                      <p className={`text-sm font-bold ${idx === currentStep ? 'text-primary' : ''}`}>
-                        {step.title}
-                      </p>
-                      {idx === currentStep && (
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
-                          Explore the features of this section.
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-      </AnimatePresence>
 
       {/* Floating Tooltip/Popover (Purple box from image) */}
       <AnimatePresence mode="wait">
@@ -166,7 +119,12 @@ export const ProductTour: React.FC<ProductTourProps> = ({
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-12 -mt-12 blur-2xl" />
             
             <div className="flex justify-between items-start mb-2">
-              <h4 className="font-bold text-lg">{steps[currentStep].title}</h4>
+              <div>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-purple-200 block mb-1">
+                  Step {currentStep + 1} of {steps.length}
+                </span>
+                <h4 className="font-bold text-lg leading-tight">{steps[currentStep].title}</h4>
+              </div>
               <Button 
                 variant="ghost" 
                 size="sm" 
