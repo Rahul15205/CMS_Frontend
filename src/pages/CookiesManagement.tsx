@@ -877,40 +877,80 @@ export default function CookiesManagement() {
               )}
             </div>
 
-            {websites.length > 0 && websites[0].complianceScore != null && !loading && (
+            {/* GLOBAL COMPLIANCE HEALTH (AVERAGE) */}
+            {websites.length > 0 && !loading && (
                <Card id="compliance-health" className="border-primary/20 bg-primary/5">
                   <CardHeader>
                     <CardTitle className="text-primary flex items-center gap-2">
                        <Shield className="h-5 w-5" />
-                       Compliance Health ({websites[0].name})
+                       Compliance Health (Network Average)
                     </CardTitle>
                   </CardHeader>
                   <CardContent>
-                     <div className="flex flex-col md:flex-row items-center gap-8">
-                        <div className="flex flex-col items-center justify-center">
-                           <div className={`relative h-32 w-32 flex items-center justify-center rounded-full border-8 ${websites[0].complianceScore >= 80 ? 'border-green-500 text-green-600' : websites[0].complianceScore >= 50 ? 'border-yellow-500 text-yellow-600' : 'border-red-500 text-red-600'}`}>
-                              <div className="text-3xl font-bold">{websites[0].complianceScore}%</div>
-                           </div>
-                           <div className="mt-4 flex items-center gap-2">
-                             <Badge variant="outline" className={`bg-background ${websites[0].riskLevel === 'LOW' ? 'text-green-600 border-green-200' : websites[0].riskLevel === 'MEDIUM' ? 'text-yellow-600 border-yellow-200' : 'text-red-600 border-red-200'}`}>{websites[0].riskLevel} RISK</Badge>
-                             <Badge variant="outline" className="bg-background">GRADE {websites[0].complianceGrade}</Badge>
-                           </div>
-                        </div>
-                        <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                           {websites[0].scanResults?.map((ind: any) => (
-                             <div key={ind.id} className="flex items-start gap-2 text-sm bg-background/50 p-3 rounded-lg border">
-                                {ind.passed ? <CheckCircle className="h-4 w-4 text-green-500 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />}
-                                <div className="flex-1">
-                                  <div className="font-semibold flex justify-between items-center">
-                                    {ind.name} 
-                                    <span className="text-xs font-normal text-muted-foreground">{ind.score}/{ind.weight}</span>
-                                  </div>
-                                  <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{ind.details}</div>
+                     {(() => {
+                        const sitesWithScores = websites.filter(s => s.complianceScore != null);
+                        const avgScore = sitesWithScores.length > 0 
+                          ? Math.round(sitesWithScores.reduce((acc, s) => acc + (s.complianceScore || 0), 0) / sitesWithScores.length)
+                          : 0;
+                        
+                        const avgRisk = avgScore >= 80 ? 'LOW' : avgScore >= 50 ? 'MEDIUM' : 'HIGH';
+                        const avgGrade = avgScore >= 90 ? 'A' : avgScore >= 80 ? 'B' : avgScore >= 70 ? 'C' : 'D';
+
+                        // Aggregate indicators
+                        const aggregateIndicators = sitesWithScores.length > 0 && sitesWithScores[0].scanResults 
+                          ? (sitesWithScores[0].scanResults as any[]).map(baseInd => {
+                              const totalIndScore = sitesWithScores.reduce((acc, s) => {
+                                const ind = (s.scanResults as any[])?.find(i => i.id === baseInd.id);
+                                return acc + (ind?.score || 0);
+                              }, 0);
+                              const avgIndScore = Math.round(totalIndScore / sitesWithScores.length);
+                              const totalPassed = sitesWithScores.filter(s => {
+                                const ind = (s.scanResults as any[])?.find(i => i.id === baseInd.id);
+                                return ind?.passed;
+                              }).length;
+
+                              return {
+                                ...baseInd,
+                                score: avgIndScore,
+                                passed: totalPassed > (sitesWithScores.length / 2),
+                                details: `${totalPassed} of ${sitesWithScores.length} websites passed this check.`
+                              };
+                            })
+                          : [];
+
+                        return (
+                          <div className="flex flex-col md:flex-row items-center gap-8">
+                             <div className="flex flex-col items-center justify-center">
+                                <div className={`relative h-32 w-32 flex items-center justify-center rounded-full border-8 ${avgScore >= 80 ? 'border-green-500 text-green-600' : avgScore >= 50 ? 'border-yellow-500 text-yellow-600' : 'border-red-500 text-red-600'}`}>
+                                   <div className="text-3xl font-bold">{avgScore}%</div>
                                 </div>
+                                <div className="mt-4 flex items-center gap-2">
+                                  <Badge variant="outline" className={`bg-background ${avgRisk === 'LOW' ? 'text-green-600 border-green-200' : avgRisk === 'MEDIUM' ? 'text-yellow-600 border-yellow-200' : 'text-red-600 border-red-200'}`}>{avgRisk} RISK</Badge>
+                                  <Badge variant="outline" className="bg-background">GRADE {avgGrade}</Badge>
+                                </div>
+                                <p className="text-[10px] text-muted-foreground mt-2 uppercase font-bold tracking-tighter">Based on {sitesWithScores.length} Websites</p>
                              </div>
-                           ))}
-                        </div>
-                     </div>
+                             <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                {aggregateIndicators.length > 0 ? aggregateIndicators.map((ind: any) => (
+                                  <div key={ind.id} className="flex items-start gap-2 text-sm bg-background/50 p-3 rounded-lg border">
+                                     {ind.passed ? <CheckCircle className="h-4 w-4 text-green-500 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />}
+                                     <div className="flex-1">
+                                       <div className="font-semibold flex justify-between items-center">
+                                         {ind.name} 
+                                         <span className="text-xs font-normal text-muted-foreground">{ind.score}/{ind.weight}</span>
+                                       </div>
+                                       <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{ind.details}</div>
+                                     </div>
+                                  </div>
+                                )) : (
+                                  <div className="col-span-2 text-center py-8 text-muted-foreground italic">
+                                    No aggregate scan data available yet.
+                                  </div>
+                                )}
+                             </div>
+                          </div>
+                        );
+                     })()}
                   </CardContent>
                </Card>
             )}
