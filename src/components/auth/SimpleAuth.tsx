@@ -17,7 +17,7 @@ import {
     Sun,
     Moon
 } from "lucide-react";
-import { useTheme } from "@/contexts/ThemeContext";
+import { useDashboard } from "@/contexts/DashboardContext";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
 import {
@@ -35,7 +35,8 @@ interface SimpleAuthProps {
 
 const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
     const { isAuthenticated, isLoading: authLoading, login } = useAuth();
-    const { theme, toggleTheme } = useTheme();
+    const { config, setTheme } = useDashboard();
+    const theme = config.theme;
     const navigate = useNavigate();
     const location = useLocation();
     const [submitting, setSubmitting] = useState(false);
@@ -158,13 +159,13 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                     <Button
                         variant="outline"
                         size="icon"
-                        onClick={toggleTheme}
+                        onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
                         className="rounded-full w-12 h-12 bg-card border-border shadow-sm hover:bg-accent transition-all"
                     >
-                        {theme === "light" ? (
-                            <Moon className="h-5 w-5 text-slate-700" />
-                        ) : (
+                        {theme === "dark" ? (
                             <Sun className="h-5 w-5 text-yellow-400" />
+                        ) : (
+                            <Moon className="h-5 w-5 text-slate-700" />
                         )}
                     </Button>
                 </div>
