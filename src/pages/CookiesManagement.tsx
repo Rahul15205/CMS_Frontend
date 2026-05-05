@@ -1370,6 +1370,28 @@ export default function CookiesManagement() {
                                   <div className="flex items-center justify-end gap-2">
                                     <Tooltip>
                                       <TooltipTrigger asChild>
+                                        <Button 
+                                          variant="ghost" 
+                                          size="icon" 
+                                          onClick={() => {
+                                            cookieWebsitesService.startScan(site.id).then(() => {
+                                              toast({ title: "Scan Triggered", description: `A new scan has been started for ${site.name}.` });
+                                              setScanning(true);
+                                              setScanProgress(0);
+                                              setSelectedWebsiteId(site.id);
+                                            }).catch(() => {
+                                              toast({ title: "Scan Failed", description: "Could not trigger scan. Please try again later.", variant: "destructive" });
+                                            });
+                                          }}
+                                          disabled={scanning}
+                                        >
+                                          <RefreshCw className={`h-4 w-4 ${scanning && selectedWebsiteId === site.id ? 'animate-spin' : ''}`} />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Rescan Website</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
                                         <Button variant="ghost" size="icon" onClick={() => handleGenerateReport(site)}>
                                           <FileText className="h-4 w-4" />
                                         </Button>
