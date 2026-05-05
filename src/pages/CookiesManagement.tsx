@@ -58,6 +58,7 @@ import {
   Globe,
   Shield,
   BarChart3,
+  ExternalLink,
   Target,
   Search,
   Plus,
@@ -2136,6 +2137,27 @@ export default function CookiesManagement() {
                           <div>
                             <h4 className="font-semibold text-sm">{indicator.name}</h4>
                             <p className="text-xs text-muted-foreground">{indicator.details}</p>
+                            
+                            {/* Evidence Section */}
+                            {indicator.evidence && (
+                              <div className="mt-3 bg-muted/30 rounded-lg p-2 border border-dashed border-muted-foreground/20">
+                                <div className="flex items-center justify-between mb-1">
+                                  <span className="text-[10px] font-bold uppercase text-muted-foreground">Proof of Compliance</span>
+                                  <a 
+                                    href={indicator.evidence.url} 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-[10px] text-blue-500 hover:underline flex items-center gap-1"
+                                  >
+                                    <ExternalLink className="h-2.5 w-2.5" />
+                                    View Page
+                                  </a>
+                                </div>
+                                <p className="text-[10px] font-mono text-muted-foreground line-clamp-2 bg-background/50 p-1 rounded italic">
+                                  {indicator.evidence.snippet}
+                                </p>
+                              </div>
+                            )}
                           </div>
                         </div>
                         <div className="text-right shrink-0">
