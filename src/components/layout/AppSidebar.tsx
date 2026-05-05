@@ -127,11 +127,11 @@ export function SidebarContent({ collapsed, onNavItemClick }: { collapsed?: bool
           />
         )}
         {collapsed && (
-          <div className="h-10 w-10 flex items-center justify-center overflow-hidden">
+          <div className="h-10 w-10 flex items-center justify-center">
             <img
-              src="https://res.cloudinary.com/dlfzzfdx0/image/upload/v1777286182/Brand_title_with_tagline-removebg-preview_jpjpet.png"
+              src="/proteccio_logo_new-removebg-preview1.png"
               alt="Proteccio"
-              className="h-8 w-auto object-contain"
+              className="h-8 w-8 object-contain"
             />
           </div>
         )}
