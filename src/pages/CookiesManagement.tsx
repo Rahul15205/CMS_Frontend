@@ -91,6 +91,7 @@ import {
 } from "@/services/cookiesService";
 import { reportsService } from "@/services/reportsLogsSecurityService";
 import { Skeleton } from "@/components/ui/skeleton";
+import { ProductTour } from "@/components/tour/ProductTour";
 
 // Map string icons to components
 const IconMap: Record<string, any> = {
@@ -2019,53 +2020,14 @@ export default function CookiesManagement() {
         </DialogContent>
       </Dialog>
 
-      {/* Tutorial Overlay */}
-      {isTourOpen && (
-        <div className="fixed inset-0 z-[9999] pointer-events-none overflow-hidden">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px] pointer-events-auto" onClick={skipTour} />
-          
-          {/* Spotlight Effect (simplified) */}
-          <div className="relative w-full h-full flex items-center justify-center p-4">
-            <Card className="max-w-md w-full shadow-2xl border-2 border-primary animate-in zoom-in duration-300 pointer-events-auto">
-              <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
-                <div className="flex items-center gap-2">
-                  <div className="bg-primary/10 p-1.5 rounded-lg">
-                    <HelpCircle className="h-5 w-5 text-primary" />
-                  </div>
-                  <CardTitle className="text-lg">{tourSteps[tourStep].title}</CardTitle>
-                </div>
-                <Button variant="ghost" size="icon" className="h-8 w-8" onClick={skipTour}>
-                  <XCircle className="h-4 w-4" />
-                </Button>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <p className="text-sm leading-relaxed text-muted-foreground">
-                  {tourSteps[tourStep].content}
-                </p>
-                
-                <div className="flex items-center justify-between pt-2">
-                  <div className="flex gap-1">
-                    {tourSteps.map((_, i) => (
-                      <div 
-                        key={i} 
-                        className={`h-1.5 rounded-full transition-all ${i === tourStep ? 'w-4 bg-primary' : 'w-1.5 bg-muted'}`} 
-                      />
-                    ))}
-                  </div>
-                  <div className="flex gap-2">
-                    {tourStep > 0 && (
-                      <Button variant="outline" size="sm" onClick={prevTourStep}>Back</Button>
-                    )}
-                    <Button size="sm" onClick={nextTourStep}>
-                      {tourStep === tourSteps.length - 1 ? "Get Started" : "Next"}
-                    </Button>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </div>
-      )}
+      {/* Premium Product Tour */}
+      <ProductTour 
+        steps={tourSteps}
+        isOpen={isTourOpen}
+        onClose={skipTour}
+        currentStep={tourStep}
+        setCurrentStep={setTourStep}
+      />
       {/* Scan Details Dialog */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
