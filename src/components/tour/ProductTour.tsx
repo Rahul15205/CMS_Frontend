@@ -101,9 +101,16 @@ export const ProductTour: React.FC<ProductTourProps> = ({
               return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' };
             }
             
+            const tooltipWidth = 350;
+            const padding = 16;
             const isBottomHalf = targetRect.top > window.innerHeight * 0.6;
+            const targetCenter = targetRect.left + targetRect.width / 2;
+            const minLeft = tooltipWidth / 2 + padding;
+            const maxLeft = window.innerWidth - tooltipWidth / 2 - padding;
+            const clampedLeft = Math.max(minLeft, Math.min(maxLeft, targetCenter));
+            
             return {
-              left: targetRect.left + targetRect.width / 2,
+              left: clampedLeft,
               top: isBottomHalf ? targetRect.top - 20 : targetRect.bottom + 20,
               transform: `translateX(-50%) ${isBottomHalf ? 'translateY(-100%)' : ''}`,
               position: 'fixed'
@@ -188,11 +195,26 @@ export const ProductTour: React.FC<ProductTourProps> = ({
           {/* Arrow */}
           {targetRect && (
             <div 
-              className={`absolute left-1/2 -translate-x-1/2 w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent ${
+              className={`absolute w-0 h-0 border-l-[8px] border-l-transparent border-r-[8px] border-r-transparent ${
                 targetRect.top > window.innerHeight * 0.6 
                   ? 'border-t-[8px] border-t-white -bottom-2' 
                   : 'border-b-[8px] border-b-white -top-2'
-              }`} 
+              }`}
+              style={(() => {
+                const tooltipWidth = 350;
+                const padding = 16;
+                const targetCenter = targetRect.left + targetRect.width / 2;
+                const minLeft = tooltipWidth / 2 + padding;
+                const maxLeft = window.innerWidth - tooltipWidth / 2 - padding;
+                const clampedLeft = Math.max(minLeft, Math.min(maxLeft, targetCenter));
+                
+                // Offset from the center of the tooltip (which is at 50%)
+                const offset = targetCenter - clampedLeft;
+                return {
+                  left: `calc(50% + ${offset}px)`,
+                  transform: 'translateX(-50%)'
+                };
+              })()}
             />
           )}
         </motion.div>
