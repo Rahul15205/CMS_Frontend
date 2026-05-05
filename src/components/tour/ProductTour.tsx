@@ -147,7 +147,7 @@ export const ProductTour: React.FC<ProductTourProps> = ({
               left: targetRect.left + targetRect.width / 2,
               top: isBottomHalf ? targetRect.top - 20 : targetRect.bottom + 20,
               transform: `translateX(-50%) ${isBottomHalf ? 'translateY(-100%)' : ''}`,
-              position: 'absolute'
+              position: 'fixed' // Using fixed to stay in viewport
             };
           })()}
         >
