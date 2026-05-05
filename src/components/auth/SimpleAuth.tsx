@@ -24,17 +24,34 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { rolesService } from "@/services/userSetupService";
 
 interface SimpleAuthProps {
     children: React.ReactNode;
 }
 
 const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
-    const { isAuthenticated, isLoading: authLoading, login, roles } = useAuth();
+    const { isAuthenticated, isLoading: authLoading, login, roles, setRoles } = useAuth();
     const [submitting, setSubmitting] = useState(false);
     const [inputUsername, setInputUsername] = useState("");
     const [inputPassword, setInputPassword] = useState("");
     const [selectedRoleId, setSelectedRoleId] = useState("");
+
+    useEffect(() => {
+        const fetchRoles = async () => {
+            if (roles.length === 0) {
+                try {
+                    const rolesData = await rolesService.getAll();
+                    if (rolesData && Array.isArray(rolesData)) {
+                        setRoles(rolesData);
+                    }
+                } catch (error) {
+                    console.error("Failed to fetch roles:", error);
+                }
+            }
+        };
+        fetchRoles();
+    }, [roles.length, setRoles]);
 
     useEffect(() => {
         // Set default role if available and not set
@@ -75,13 +92,13 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
     return (
         <div className="min-h-screen flex font-['Inter'] bg-[#f5f7f5]">
             {/* Left Panel - Hero Section */}
-            <div className="hidden lg:flex lg:w-[45%] bg-[#1a2e1f] login-grid-pattern flex-col p-16 text-white relative overflow-hidden">
+            <div className="hidden lg:flex lg:w-[45%] bg-[#1a2e1f] login-grid-pattern flex-col p-12 text-white relative overflow-hidden">
                 {/* Brand Logo */}
-                <div className="mb-20 animate-fade-in">
+                <div className="mb-12 animate-fade-in">
                     <img 
                         src="https://res.cloudinary.com/dlfzzfdx0/image/upload/v1777286182/Brand_title_with_tagline-removebg-preview_jpjpet.png" 
                         alt="Proteccio Data" 
-                        className="h-12 w-auto brightness-0 invert"
+                        className="h-12 w-auto"
                     />
                 </div>
 
@@ -102,7 +119,7 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                     </p>
 
                     {/* Feature Items */}
-                    <div className="space-y-6 mb-16 animate-fade-in" style={{ animationDelay: '0.3s' }}>
+                    <div className="space-y-4 mb-10 animate-fade-in" style={{ animationDelay: '0.3s' }}>
                         <div className="flex items-start gap-4 group cursor-default">
                             <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-[#16a34a]/20 group-hover:border-[#16a34a]/30 transition-all">
                                 <Database className="w-5 h-5 text-gray-400 group-hover:text-[#22c55e]" />
@@ -149,17 +166,17 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
             </div>
 
             {/* Right Panel - Login Card */}
-            <div className="w-full lg:w-[55%] flex items-center justify-center p-6 sm:p-12">
+            <div className="w-full lg:w-[55%] flex items-center justify-center p-6">
                 <div className="w-full max-w-md animate-fade-in">
                     <Card className="border-none shadow-xl shadow-gray-200/50 bg-white rounded-3xl overflow-hidden">
-                        <CardContent className="p-8 sm:p-12">
-                            <div className="mb-10">
+                        <CardContent className="p-8 sm:p-10">
+                            <div className="mb-6">
                                 <p className="text-[10px] font-bold tracking-[0.2em] text-[#16a34a] uppercase mb-3">Consent Management System</p>
                                 <h2 className="text-3xl font-extrabold font-['Plus_Jakarta_Sans'] text-[#1a2e1f] mb-2">Welcome back 👋</h2>
                                 <p className="text-gray-400">Sign in to access your dashboard</p>
                             </div>
 
-                            <form onSubmit={handleLogin} className="space-y-6">
+                            <form onSubmit={handleLogin} className="space-y-4">
                                 <div className="space-y-2">
                                     <Label htmlFor="username" className="text-xs font-bold text-[#1a2e1f]/60 uppercase tracking-widest ml-1">Email Address</Label>
                                     <div className="relative group">
@@ -239,7 +256,7 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                                 </Button>
                             </form>
 
-                            <div className="mt-12 text-center space-y-4">
+                            <div className="mt-8 text-center space-y-3">
                                 <p className="text-sm text-gray-400">
                                     No access? Contact us at{' '}
                                     <a href="mailto:hello@protecciodata.com" className="text-[#16a34a] font-bold hover:underline">hello@protecciodata.com</a>
