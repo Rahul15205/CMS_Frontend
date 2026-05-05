@@ -136,28 +136,47 @@ export const ProductTour: React.FC<ProductTourProps> = ({
           initial={{ opacity: 0, scale: 0.9, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.9, y: 10 }}
-          className="fixed z-[101] pointer-events-auto shadow-2xl"
-          style={targetRect ? {
-            left: targetRect.left + targetRect.width / 2,
-            top: targetRect.bottom + 20,
-            transform: 'translateX(-50%)',
-            position: 'absolute'
-          } : {
-            left: '50%',
-            top: '50%',
-            transform: 'translate(-50%, -50%)',
-            position: 'fixed'
-          }}
+          className="fixed z-[150] pointer-events-auto shadow-2xl"
+          style={(() => {
+            if (!targetRect) {
+              return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' };
+            }
+            
+            const isBottomHalf = targetRect.top > window.innerHeight * 0.6;
+            return {
+              left: targetRect.left + targetRect.width / 2,
+              top: isBottomHalf ? targetRect.top - 20 : targetRect.bottom + 20,
+              transform: `translateX(-50%) ${isBottomHalf ? 'translateY(-100%)' : ''}`,
+              position: 'absolute'
+            };
+          })()}
         >
-          {/* Arrow (only if target exists) */}
+          {/* Arrow */}
           {targetRect && (
-            <div className="absolute -top-2 left-1/2 -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent border-b-[10px] border-b-purple-600" />
+            <div 
+              className={`absolute left-1/2 -translate-x-1/2 w-0 h-0 border-l-[10px] border-l-transparent border-r-[10px] border-r-transparent ${
+                targetRect.top > window.innerHeight * 0.6 
+                  ? 'border-t-[10px] border-t-purple-600 -bottom-2' 
+                  : 'border-b-[10px] border-b-purple-600 -top-2'
+              }`} 
+            />
           )}
           
-          <div className="bg-purple-600 text-white p-6 rounded-2xl w-[320px] relative overflow-hidden">
+          <div className="bg-purple-600 text-white p-6 rounded-2xl w-[340px] relative shadow-2xl ring-4 ring-white/10">
             <div className="absolute top-0 right-0 w-24 h-24 bg-white/10 rounded-full -mr-12 -mt-12 blur-2xl" />
             
-            <h4 className="font-bold text-lg mb-2">{steps[currentStep].title}</h4>
+            <div className="flex justify-between items-start mb-2">
+              <h4 className="font-bold text-lg">{steps[currentStep].title}</h4>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="h-6 text-[10px] text-purple-200 hover:text-white hover:bg-white/10 uppercase tracking-wider font-bold"
+                onClick={onClose}
+              >
+                Skip
+              </Button>
+            </div>
+
             <p className="text-sm text-purple-50/90 leading-relaxed mb-6">
               {steps[currentStep].content}
             </p>
