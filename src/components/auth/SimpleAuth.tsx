@@ -77,11 +77,12 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
             {/* Left Panel - Hero Section */}
             <div className="hidden lg:flex lg:w-[45%] bg-[#1a2e1f] login-grid-pattern flex-col p-16 text-white relative overflow-hidden">
                 {/* Brand Logo */}
-                <div className="flex items-center gap-3 mb-20 animate-fade-in">
-                    <div className="w-10 h-10 bg-[#16a34a] rounded-xl flex items-center justify-center shadow-lg shadow-green-900/20">
-                        <MapPin className="w-6 h-6 text-white" />
-                    </div>
-                    <span className="text-xl font-bold font-['Plus_Jakarta_Sans'] tracking-tight">Proteccio Data</span>
+                <div className="mb-20 animate-fade-in">
+                    <img 
+                        src="https://res.cloudinary.com/dlfzzfdx0/image/upload/v1777286182/Brand_title_with_tagline-removebg-preview_jpjpet.png" 
+                        alt="Proteccio Data" 
+                        className="h-12 w-auto brightness-0 invert"
+                    />
                 </div>
 
                 {/* Content */}

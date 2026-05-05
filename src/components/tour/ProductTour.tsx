@@ -56,7 +56,7 @@ export const ProductTour: React.FC<ProductTourProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[100] pointer-events-none overflow-hidden">
+    <div className="fixed inset-0 z-[100] pointer-events-none">
       {/* Spotlight Overlay */}
       <svg className="absolute inset-0 w-full h-full pointer-events-auto">
         <defs>
@@ -101,23 +101,32 @@ export const ProductTour: React.FC<ProductTourProps> = ({
               return { left: '50%', top: '50%', transform: 'translate(-50%, -50%)' };
             }
             
-            const tooltipWidth = 350;
-            const padding = 16;
+            const viewportWidth = window.innerWidth;
+            const tooltipWidth = Math.min(350, viewportWidth - 40);
+            const padding = 20;
             const isBottomHalf = targetRect.top > window.innerHeight * 0.6;
             const targetCenter = targetRect.left + targetRect.width / 2;
-            const minLeft = tooltipWidth / 2 + padding;
-            const maxLeft = window.innerWidth - tooltipWidth / 2 - padding;
-            const clampedLeft = Math.max(minLeft, Math.min(maxLeft, targetCenter));
+            
+            // Calculate and clamp left position
+            let leftPos = targetCenter - tooltipWidth / 2;
+            if (leftPos + tooltipWidth > viewportWidth - padding) {
+              leftPos = viewportWidth - padding - tooltipWidth;
+            }
+            if (leftPos < padding) {
+              leftPos = padding;
+            }
             
             return {
-              left: clampedLeft,
+              left: leftPos,
               top: isBottomHalf ? targetRect.top - 20 : targetRect.bottom + 20,
-              transform: `translateX(-50%) ${isBottomHalf ? 'translateY(-100%)' : ''}`,
-              position: 'fixed'
+              transform: isBottomHalf ? 'translateY(-100%)' : 'none',
+              position: 'fixed',
+              width: tooltipWidth,
+              zIndex: 150
             };
           })()}
         >
-          <Card className="bg-white text-slate-900 border-none rounded-2xl shadow-2xl w-[350px] overflow-hidden">
+          <Card className="bg-white text-slate-900 border-none rounded-2xl shadow-2xl w-full overflow-hidden">
             <CardContent className="p-0">
               <div className="p-6 pb-4">
                 <div className="flex justify-between items-start mb-4">
@@ -201,17 +210,21 @@ export const ProductTour: React.FC<ProductTourProps> = ({
                   : 'border-b-[8px] border-b-white -top-2'
               }`}
               style={(() => {
-                const tooltipWidth = 350;
-                const padding = 16;
+                const viewportWidth = window.innerWidth;
+                const tooltipWidth = Math.min(350, viewportWidth - 40);
+                const padding = 20;
                 const targetCenter = targetRect.left + targetRect.width / 2;
-                const minLeft = tooltipWidth / 2 + padding;
-                const maxLeft = window.innerWidth - tooltipWidth / 2 - padding;
-                const clampedLeft = Math.max(minLeft, Math.min(maxLeft, targetCenter));
                 
-                // Offset from the center of the tooltip (which is at 50%)
-                const offset = targetCenter - clampedLeft;
+                let leftPos = targetCenter - tooltipWidth / 2;
+                if (leftPos + tooltipWidth > viewportWidth - padding) {
+                  leftPos = viewportWidth - padding - tooltipWidth;
+                }
+                if (leftPos < padding) {
+                  leftPos = padding;
+                }
+                
                 return {
-                  left: `calc(50% + ${offset}px)`,
+                  left: targetCenter - leftPos,
                   transform: 'translateX(-50%)'
                 };
               })()}
