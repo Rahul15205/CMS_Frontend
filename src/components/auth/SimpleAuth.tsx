@@ -24,7 +24,6 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
-import { rolesService } from "@/services/userSetupService";
 import { useNavigate, useLocation } from "react-router-dom";
 
 interface SimpleAuthProps {
@@ -32,62 +31,19 @@ interface SimpleAuthProps {
 }
 
 const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
-    const { isAuthenticated, isLoading: authLoading, login, roles, setRoles } = useAuth();
+    const { isAuthenticated, isLoading: authLoading, login } = useAuth();
     const navigate = useNavigate();
     const location = useLocation();
     const [submitting, setSubmitting] = useState(false);
     const [inputUsername, setInputUsername] = useState("");
     const [inputPassword, setInputPassword] = useState("");
-    const [selectedRoleId, setSelectedRoleId] = useState("");
 
-    useEffect(() => {
-        const fetchRoles = async () => {
-            if (roles.length === 0) {
-                try {
-                    const response = await rolesService.getAll();
-                    // Handle both direct array and { data: [...] } formats
-                    const rolesData = Array.isArray(response) ? response : response?.data;
-                    
-                    if (rolesData && Array.isArray(rolesData) && rolesData.length > 0) {
-                        setRoles(rolesData);
-                    } else {
-                        // Fallback roles for demo/initial state if API is unreachable
-                        const fallbackRoles = [
-                            { id: 'admin', name: 'Super Admin', status: 'active' },
-                            { id: 'compliance-manager', name: 'Compliance Manager', status: 'active' },
-                            { id: 'data-protection-officer', name: 'Data Protection Officer', status: 'active' }
-                        ];
-                        setRoles(fallbackRoles as any);
-                    }
-                } catch (error) {
-                    console.warn("Could not fetch roles from API (expected if not logged in):", error);
-                    // Fallback on error (e.g. 401)
-                    const fallbackRoles = [
-                        { id: 'admin', name: 'Super Admin', status: 'active' },
-                        { id: 'compliance-manager', name: 'Compliance Manager', status: 'active' }
-                    ];
-                    setRoles(fallbackRoles as any);
-                }
-            }
-        };
-        fetchRoles();
-    }, [roles.length, setRoles]);
-
-    useEffect(() => {
-        // Set default role if available and not set
-        if (!selectedRoleId && roles.length > 0) {
-            const activeRoles = roles.filter(r => r.status === 'active');
-            if (activeRoles.length > 0) {
-                setSelectedRoleId(activeRoles[0].id);
-            }
-        }
-    }, [roles, selectedRoleId]);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setSubmitting(true);
         try {
-            await login(inputUsername, inputPassword, selectedRoleId);
+            await login(inputUsername, inputPassword);
             toast.success("Authentication successful");
         } catch {
             // Error toast is handled by the auth service / context
@@ -242,25 +198,6 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                                             required
                                         />
                                     </div>
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="role" className="text-xs font-bold text-[#1a2e1f]/60 uppercase tracking-widest ml-1">Login As (Role)</Label>
-                                    <Select value={selectedRoleId} onValueChange={setSelectedRoleId} disabled={submitting}>
-                                        <SelectTrigger className="h-14 bg-[#f5f7f5]/50 border-[#dde8dd] focus:border-[#22c55e] focus:ring-[#22c55e]/10 rounded-2xl transition-all">
-                                            <div className="flex items-center gap-3">
-                                                <Shield className="w-5 h-5 text-gray-300" />
-                                                <SelectValue placeholder="Select a role" />
-                                            </div>
-                                        </SelectTrigger>
-                                        <SelectContent className="rounded-2xl border-[#dde8dd]">
-                                            {roles.filter(r => r.status === 'active').map((role) => (
-                                                <SelectItem key={role.id} value={role.id} className="rounded-xl my-1 mx-1 focus:bg-[#16a34a]/10 focus:text-[#16a34a]">
-                                                    {role.name}
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
                                 </div>
 
                                 <Button 
