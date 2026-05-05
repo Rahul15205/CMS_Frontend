@@ -189,9 +189,29 @@ export default function CookiesManagement() {
       targetId: "overview-header"
     },
     {
+      title: "Real-time Metrics",
+      content: "Track your total cookies, categorization status, and consent opt-out rates at a glance.",
+      targetId: "kpi-metrics"
+    },
+    {
       title: "Compliance Health",
-      content: "Our AI scanner checks 10 legal indicators (like HTTPS and Privacy Policy) to give you a real-time compliance score.",
+      content: "Our AI scanner checks 10 legal indicators to give you a real-time compliance score for your network.",
       targetId: "compliance-health"
+    },
+    {
+      title: "Cookie Distribution",
+      content: "See how your cookies are distributed across categories like Necessary, Analytics, and Marketing.",
+      targetId: "cookie-distribution"
+    },
+    {
+      title: "Consent Trends",
+      content: "Monitor user behavior and consent patterns over the last 7 days to optimize your privacy strategy.",
+      targetId: "consent-trends"
+    },
+    {
+      title: "Recent Activity",
+      content: "View live consent events as they happen across your global network of websites.",
+      targetId: "recent-activity"
     },
     {
       title: "Website Inventory",
@@ -847,7 +867,7 @@ export default function CookiesManagement() {
 
           {/* OVERVIEW TAB */}
           <TabsContent value="overview" className="space-y-6" id="overview-header">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4" id="kpi-metrics">
               {loading ? (
                 Array(4).fill(0).map((_, i) => <Skeleton key={i} className="h-32 w-full rounded-xl" />)
               ) : (
@@ -965,13 +985,14 @@ export default function CookiesManagement() {
                 </>
               ) : (
                 <>
-                  <ConsentDonutChart
-                    data={metrics?.distribution || []}
-                    title="Cookie Distribution"
-                    className="lg:col-span-1"
-                  />
+                  <div id="cookie-distribution" className="lg:col-span-1">
+                    <ConsentDonutChart
+                      data={metrics?.distribution || []}
+                      title="Cookie Distribution"
+                    />
+                  </div>
 
-                  <div className="lg:col-span-2">
+                  <div id="consent-trends" className="lg:col-span-2">
                     <TrendLineChart
                       data={metrics?.trends || []}
                       lines={[
@@ -990,7 +1011,7 @@ export default function CookiesManagement() {
               {loading ? (
                 <Skeleton className="h-[400px] w-full rounded-xl" />
               ) : (
-                <Card className="w-full">
+                <Card className="w-full" id="recent-activity">
                   <CardHeader>
                     <CardTitle>Recent Consent Activity</CardTitle>
                     <CardDescription>Latest user preferences and updates</CardDescription>
