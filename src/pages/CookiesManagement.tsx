@@ -75,6 +75,7 @@ import {
   Trash2,
   RotateCcw,
   HelpCircle,
+  Loader2,
 } from "lucide-react";
 import {
   Tooltip,
@@ -1473,16 +1474,34 @@ export default function CookiesManagement() {
                                   {site.lastScan ? new Date(site.lastScan).toLocaleString() : "Never"}
                                 </TableCell>
                                 <TableCell>
-                                  <Badge
-                                    variant={site.status === 'Active' ? 'outline' : 'destructive'}
-                                    className={
-                                      site.status === 'Active'
-                                        ? 'bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20 shadow-none'
-                                        : (site.status === 'Withdrawn' ? 'bg-destructive/10 text-destructive border-destructive/20 shadow-none' : 'shadow-none')
-                                    }
-                                  >
-                                    {site.status}
-                                  </Badge>
+                                  <div className="flex flex-col items-start gap-1.5">
+                                    <Badge
+                                      variant={site.status === 'COMPLETED' || site.status === 'Active' ? 'outline' : site.status === 'IN_PROGRESS' ? 'secondary' : 'default'}
+                                      className={
+                                        site.status === 'COMPLETED' || site.status === 'Active'
+                                          ? 'bg-green-500/10 text-green-600 border-green-500/20 hover:bg-green-500/20 shadow-none'
+                                          : site.status === 'IN_PROGRESS'
+                                          ? 'bg-blue-500/10 text-blue-600 border-blue-500/20 shadow-none'
+                                          : 'shadow-none'
+                                      }
+                                    >
+                                      {site.status === 'IN_PROGRESS' ? (
+                                        <span className="flex items-center gap-1">
+                                          <Loader2 className="h-3 w-3 animate-spin" />
+                                          Scanning
+                                        </span>
+                                      ) : (
+                                        site.status
+                                      )}
+                                    </Badge>
+                                    
+                                    {site.status === 'IN_PROGRESS' && site.pagesCrawled != null && (
+                                      <div className="text-[10px] text-muted-foreground font-medium flex flex-col leading-tight">
+                                        <span>Pages: {site.pagesCrawled}</span>
+                                        <span>Cookies: {site.cookiesDetected || 0}</span>
+                                      </div>
+                                    )}
+                                  </div>
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex items-center justify-end gap-2">
