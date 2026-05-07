@@ -76,6 +76,8 @@ import {
   RotateCcw,
   HelpCircle,
   Loader2,
+  Lock,
+  MapPin,
 } from "lucide-react";
 import {
   Tooltip,
@@ -286,7 +288,7 @@ export default function CookiesManagement() {
         cookieCategoriesService.getAll(),
         cookieInventoryService.getAll(),
         cookieWebsitesService.getAll(),
-        cookieConsentLogsService.getAll(),
+        cookieConsentLogsService.getAll({ limit: 500 }),
         cookieBannersService.getAll(),
         cookieComplianceService.getMetrics(selectedWebsiteId)
       ]);
@@ -1321,7 +1323,19 @@ export default function CookiesManagement() {
                                   {websites.find(w => w.id === log.websiteId)?.name || "External Site"}
                                 </TableCell>
                                 <TableCell className="text-xs font-mono">{log.ipAddress || "xxx.xxx.xxx.xxx"}</TableCell>
-                                <TableCell className="text-xs">{log.region || "Unknown"}</TableCell>
+                                <TableCell className="text-xs">
+                                  {log.region === "Private Network" ? (
+                                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 font-medium">
+                                      <Lock className="h-3 w-3" />
+                                      Private Network
+                                    </span>
+                                  ) : (
+                                    <div className="flex items-center gap-1">
+                                      <MapPin className="h-3 w-3 text-muted-foreground" />
+                                      {log.region || (log.countryCode ? (log.countryCode === 'IN' ? 'India' : log.countryCode === 'US' ? 'United States' : log.countryCode) : "Global / Unknown")}
+                                    </div>
+                                  )}
+                                </TableCell>
                                 <TableCell className="text-xs font-semibold uppercase text-muted-foreground">{log.language || "EN"}</TableCell>
                                 <TableCell className="text-xs">{new Date(log.createdAt || Date.now()).toLocaleString()}</TableCell>
                                 <TableCell>
@@ -1347,14 +1361,18 @@ export default function CookiesManagement() {
                                 </TableCell>
                                 <TableCell>
                                   <Badge 
-                                    variant={['Active', 'accepted', 'GRANTED', 'ACCEPTED'].includes(log.status) ? 'default' : 'secondary'} 
-                                    className={`text-[10px] font-bold px-3 ${
+                                    className={`text-[10px] font-extrabold px-2.5 py-0.5 rounded-full whitespace-nowrap shadow-sm ${
                                       ['Active', 'accepted', 'GRANTED', 'ACCEPTED'].includes(log.status) 
-                                        ? 'bg-green-500 hover:bg-green-600' 
-                                        : (log.status === 'REJECTED' ? 'bg-red-500 hover:bg-red-600' : '')
+                                        ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-none' 
+                                        : (log.status === 'REJECTED' ? 'bg-rose-500 hover:bg-rose-600 text-white border-none' : 'bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 border-none')
                                     }`}
                                   >
-                                    {log.status === 'ACCEPTED' ? 'ACCEPTED ALL' : log.status}
+                                    {log.status === 'ACCEPTED' ? (
+                                      <span className="flex items-center gap-1">
+                                        <CheckCircle className="h-3 w-3" />
+                                        ACCEPTED ALL
+                                      </span>
+                                    ) : log.status}
                                   </Badge>
                                 </TableCell>
                                 <TableCell className="text-right">
@@ -1510,7 +1528,8 @@ export default function CookiesManagement() {
                                         <Button 
                                           variant="ghost" 
                                           size="icon" 
-                                          onClick={() => {
+                                          onClick={(e) => {
+                                            e.stopPropagation();
                                             cookieWebsitesService.startScan(site.id).then(() => {
                                               toast({ title: "Scan Triggered", description: `A new scan has been started for ${site.name}.` });
                                               setScanning(true);
@@ -1529,7 +1548,7 @@ export default function CookiesManagement() {
                                     </Tooltip>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" onClick={() => handleGenerateReport(site)}>
+                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); handleGenerateReport(site); }}>
                                           <FileText className="h-4 w-4" />
                                         </Button>
                                       </TooltipTrigger>
@@ -1537,7 +1556,7 @@ export default function CookiesManagement() {
                                     </Tooltip>
                                     <Tooltip>
                                       <TooltipTrigger asChild>
-                                        <Button variant="ghost" size="icon" onClick={() => openEditWebsiteDialog(site)}>
+                                        <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); openEditWebsiteDialog(site); }}>
                                           <Settings className="h-4 w-4" />
                                         </Button>
                                       </TooltipTrigger>
@@ -1549,7 +1568,7 @@ export default function CookiesManagement() {
                                           variant="ghost" 
                                           size="icon" 
                                           className="text-destructive hover:bg-destructive/10"
-                                          onClick={() => handleDeleteWebsite(site.id)}
+                                          onClick={(e) => { e.stopPropagation(); handleDeleteWebsite(site.id); }}
                                         >
                                           <Trash2 className="h-4 w-4" />
                                         </Button>
@@ -1638,15 +1657,33 @@ export default function CookiesManagement() {
                             setVerificationStatus('loading');
                             toast({ title: "Verifying...", description: "Checking if script is installed on the selected website." });
                             
-                            setTimeout(() => {
-                              setVerificationStatus('success');
-                              toast({ 
-                                title: "Installation Verified!", 
-                                description: "The script is correctly installed and connected to our servers.",
-                                variant: "default",
-                                className: "bg-green-50 border-green-200"
+                            cookieWebsitesService.verifyIntegration(selectedWebsiteId)
+                              .then((res) => {
+                                if (res.success) {
+                                  setVerificationStatus('success');
+                                  toast({ 
+                                    title: "Installation Verified!", 
+                                    description: res.message,
+                                    variant: "default",
+                                    className: "bg-green-50 border-green-200"
+                                  });
+                                } else {
+                                  setVerificationStatus('idle');
+                                  toast({ 
+                                    title: "Verification Failed", 
+                                    description: res.message,
+                                    variant: "destructive"
+                                  });
+                                }
+                              })
+                              .catch((err) => {
+                                setVerificationStatus('idle');
+                                toast({ 
+                                  title: "Error", 
+                                  description: "Failed to connect to the verification service. Please try again.",
+                                  variant: "destructive"
+                                });
                               });
-                            }, 3000);
                           }}
                         >
                           {verificationStatus === 'loading' ? (

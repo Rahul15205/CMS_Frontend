@@ -15,7 +15,8 @@ import {
     ChevronRight,
     MapPin,
     Sun,
-    Moon
+    Moon,
+    Cookie
 } from "lucide-react";
 import { useDashboard } from "@/contexts/DashboardContext";
 import { toast } from "sonner";
@@ -27,6 +28,13 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogHeader,
+    DialogTitle,
+} from "@/components/ui/dialog";
 import { useNavigate, useLocation } from "react-router-dom";
 
 interface SimpleAuthProps {
@@ -42,6 +50,7 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
     const [submitting, setSubmitting] = useState(false);
     const [inputUsername, setInputUsername] = useState("");
     const [inputPassword, setInputPassword] = useState("");
+    const [showHelpDialog, setShowHelpDialog] = useState(false);
 
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -77,7 +86,7 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
     }
 
     return (
-        <div className="min-h-screen flex font-['Inter'] bg-background text-foreground transition-colors duration-300">
+        <div className="h-screen overflow-hidden flex font-['Inter'] bg-background text-foreground transition-colors duration-300">
             {/* Left Panel - Hero Section */}
             <div className="hidden lg:flex lg:w-[45%] bg-[#1a2e1f] login-grid-pattern flex-col p-12 text-white relative overflow-hidden">
                 {/* Brand Logo */}
@@ -122,18 +131,18 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                                 <Shield className="w-5 h-5 text-gray-400 group-hover:text-[#22c55e]" />
                             </div>
                             <div>
-                                <h4 className="font-semibold text-white mb-1">Rights Management</h4>
-                                <p className="text-sm text-gray-500">Handle DSARs, erasure & portability requests fast.</p>
+                                <h4 className="font-semibold text-white mb-1">Rights & Grievance Management</h4>
+                                <p className="text-sm text-gray-500">Automate DSARs and resolve privacy grievances with seamless tracking.</p>
                             </div>
                         </div>
 
                         <div className="flex items-start gap-4 group cursor-default">
                             <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-[#16a34a]/20 group-hover:border-[#16a34a]/30 transition-all">
-                                <Activity className="w-5 h-5 text-gray-400 group-hover:text-[#22c55e]" />
+                                <Cookie className="w-5 h-5 text-gray-400 group-hover:text-[#22c55e]" />
                             </div>
                             <div>
-                                <h4 className="font-semibold text-white mb-1">Risk & Compliance</h4>
-                                <p className="text-sm text-gray-500">Real-time SLA tracking, breach alerts & risk exposure.</p>
+                                <h4 className="font-semibold text-white mb-1">Cookies Management</h4>
+                                <p className="text-sm text-gray-500">Smart cookie scanning, categorization, and compliant consent banners.</p>
                             </div>
                         </div>
                     </div>
@@ -153,7 +162,7 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
             </div>
 
             {/* Right Panel - Login Card */}
-            <div className="w-full lg:w-[55%] flex items-center justify-center p-6 relative">
+            <div className="w-full lg:w-[55%] flex items-center justify-center p-6 relative overflow-y-auto scrollbar-hide">
                 {/* Theme Toggle */}
                 <div className="absolute top-8 right-8 animate-fade-in">
                     <Button
@@ -240,6 +249,35 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                                 </Button>
                             </form>
 
+                            <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2">
+                                <button 
+                                    type="button"
+                                    onClick={() => setShowHelpDialog(true)}
+                                    className="text-xs font-bold text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5"
+                                >
+                                    <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+                                    Help
+                                </button>
+                                <a 
+                                    href="https://protecciodata.com/privacy-notice" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-xs font-bold text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5"
+                                >
+                                    <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+                                    Privacy Notice
+                                </a>
+                                <a 
+                                    href="https://protecciodata.com/terms" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    className="text-xs font-bold text-muted-foreground hover:text-primary transition-colors flex items-center gap-1.5"
+                                >
+                                    <span className="w-1 h-1 rounded-full bg-muted-foreground/40" />
+                                    Terms of Service
+                                </a>
+                            </div>
+
                             <div className="mt-8 text-center space-y-3">
                                 <p className="text-sm text-muted-foreground">
                                     No access? Contact us at{' '}
@@ -254,6 +292,35 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                     </Card>
                 </div>
             </div>
+
+            <Dialog open={showHelpDialog} onOpenChange={setShowHelpDialog}>
+                <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-extrabold font-['Plus_Jakarta_Sans'] mb-2">Technical Support</DialogTitle>
+                        <DialogDescription className="text-base text-muted-foreground leading-relaxed">
+                            If you're experiencing any technical errors or need assistance with your account, please reach out to our support team.
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="mt-4 p-6 bg-secondary/50 rounded-2xl border border-border group hover:border-primary/30 transition-all text-center">
+                        <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">Support Email</p>
+                        <a 
+                            href="mailto:contact@protecciodata.com" 
+                            className="text-xl font-extrabold text-primary hover:underline underline-offset-4 flex items-center justify-center gap-2"
+                        >
+                            <Mail className="w-5 h-5" />
+                            contact@protecciodata.com
+                        </a>
+                    </div>
+                    <div className="mt-2 text-center">
+                        <Button 
+                            onClick={() => setShowHelpDialog(false)}
+                            className="mt-4 w-full h-12 rounded-xl font-bold bg-primary hover:bg-primary/90"
+                        >
+                            Got it, thanks!
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 };

@@ -38,6 +38,8 @@ import {
   Trash2,
   ExternalLink,
   Shield,
+  Monitor,
+  Smartphone,
 } from "lucide-react";
 import {
   Tooltip,
@@ -103,6 +105,33 @@ const getStatusBadge = (status: string) => {
   }
 };
 
+// User-Agent parser helper
+const parseUserAgent = (ua: string) => {
+  if (!ua) return { browser: 'Unknown', os: 'Unknown' };
+  
+  const uaLower = ua.toLowerCase();
+  let browser = 'Browser';
+  let os = 'OS';
+
+  // Browser detection
+  if (uaLower.includes('firefox')) browser = 'Firefox';
+  else if (uaLower.includes('edg/')) browser = 'Edge';
+  else if (uaLower.includes('chrome')) browser = 'Chrome';
+  else if (uaLower.includes('safari')) browser = 'Safari';
+  else if (uaLower.includes('opr/') || uaLower.includes('opera')) browser = 'Opera';
+  else browser = 'Generic Browser';
+
+  // OS detection
+  if (uaLower.includes('win')) os = 'Windows';
+  else if (uaLower.includes('android')) os = 'Android';
+  else if (uaLower.includes('iphone') || uaLower.includes('ipad') || uaLower.includes('ipod')) os = 'iOS';
+  else if (uaLower.includes('mac')) os = 'macOS';
+  else if (uaLower.includes('linux')) os = 'Linux';
+  else os = 'Unknown OS';
+
+  return { browser, os };
+};
+
 import { NoticePreviewDialog } from "@/components/notices/NoticePreviewDialog";
 import { NoticeEditorSheet } from "@/components/notices/NoticeEditorSheet";
 import { AddNoticeTypeDialog } from "@/components/notices/AddNoticeTypeDialog";
@@ -140,7 +169,7 @@ export default function Notices() {
       const [noticesRes, historyRes, analyticsRes, typesRes, languagesRes, websitesRes] = await Promise.all([
         noticesService.getAll(),
         noticesService.getGlobalHistory(),
-        noticesService.getAnalytics({ limit: 10 }),
+        noticesService.getAnalytics({ limit: 500 }),
         noticesService.getTypes(),
         noticesService.getLanguages(),
         cookieWebsitesService.getAll(),
@@ -789,8 +818,25 @@ export default function Notices() {
                                 {log.viewDuration || 0}s
                               </span>
                             </TableCell>
-                            <TableCell className="text-[10px] text-muted-foreground truncate max-w-[150px]" title={log.userAgent}>
-                              {log.userAgent || "N/A"}
+                            <TableCell>
+                              <div className="flex flex-col">
+                                <div className="flex items-center gap-2">
+                                  <div className="p-1 rounded bg-primary/10 text-primary">
+                                    {(() => {
+                                      const { os } = parseUserAgent(log.userAgent);
+                                      return (os === 'Android' || os === 'iOS') 
+                                        ? <Smartphone className="h-3 w-3" /> 
+                                        : <Monitor className="h-3 w-3" />;
+                                    })()}
+                                  </div>
+                                  <span className="text-xs font-semibold text-foreground">
+                                    {parseUserAgent(log.userAgent).browser}
+                                  </span>
+                                </div>
+                                <span className="text-[10px] text-muted-foreground font-medium ml-7">
+                                  on {parseUserAgent(log.userAgent).os}
+                                </span>
+                              </div>
                             </TableCell>
                             <TableCell className="text-right text-[10px] text-muted-foreground font-mono">
                               {log.acknowledgedAt ? new Date(log.acknowledgedAt).toLocaleString() : "N/A"}

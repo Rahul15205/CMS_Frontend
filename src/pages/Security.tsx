@@ -52,9 +52,9 @@ export default function Security() {
     setLoading(true);
     try {
       const [eventsRes, loginActRes, sessionsRes] = await Promise.all([
-        securityService.getEvents({ limit: 10 }),
+        securityService.getEvents({ limit: 100 }),
         securityService.getLoginActivity(undefined, 7),
-        securityService.getActiveSessions(undefined, 10)
+        securityService.getActiveSessions(undefined, 50)
       ]);
 
       setSecurityEvents(eventsRes?.data || []);

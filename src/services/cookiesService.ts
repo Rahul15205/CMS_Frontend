@@ -71,6 +71,10 @@ export const cookieWebsitesService = {
     const res = await api.post(`/api/v1/cookies/scan/${id}`);
     return res.data;
   },
+  verifyIntegration: async (id: string) => {
+    const res = await api.post(`/api/v1/cookies/verify/${id}`);
+    return res.data;
+  },
 };
 
 export const cookieBannersService = {
@@ -93,8 +97,8 @@ export const cookieBannersService = {
 };
 
 export const cookieConsentLogsService = {
-  getAll: async () => {
-    const res = await api.get('/api/v1/cookies/consent-logs');
+  getAll: async (params?: any) => {
+    const res = await api.get('/api/v1/cookies/consent-logs', { params });
     return unwrapList(res.data);
   },
   record: async (data: any) => {
