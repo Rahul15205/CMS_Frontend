@@ -956,7 +956,7 @@ export default function CookiesManagement() {
          </div>
               {/* GLOBAL COMPLIANCE HEALTH (AVERAGE) */}
             {websites.length > 0 && !loading && (
-               <Card id="compliance-health" className="border border-primary/20 bg-gradient-to-br from-white to-slate-50 overflow-hidden relative shadow-lg">
+                <Card id="compliance-health" className="border border-border bg-gradient-to-br from-card to-muted/50 overflow-hidden relative shadow-lg">
                   {/* Decorative background elements */}
                   <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32" />
                   <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl -ml-24 -mb-24" />
@@ -1007,7 +1007,7 @@ export default function CookiesManagement() {
 
                                 <div className="relative group">
                                   {/* Progress Ring */}
-                                  <div className="h-48 w-48 rounded-full border-[12px] border-slate-100 flex items-center justify-center relative transition-transform duration-500 group-hover:scale-105 bg-white shadow-inner">
+                                  <div className="h-48 w-48 rounded-full border-[12px] border-muted flex items-center justify-center relative transition-transform duration-500 group-hover:scale-105 bg-card shadow-inner">
                                     <div 
                                       className={`absolute inset-0 rounded-full border-[12px] transition-all duration-1000 ${
                                         avgScore >= 80 ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.2)]' : 
@@ -1036,9 +1036,9 @@ export default function CookiesManagement() {
 
                                 <div className="flex flex-col items-center gap-3 w-full">
                                   <div className={`px-6 py-2 rounded-full text-xs font-bold border flex items-center gap-2 ${
-                                    avgRisk === 'LOW' ? 'bg-green-50 text-green-600 border-green-200' : 
-                                    avgRisk === 'MEDIUM' ? 'bg-yellow-50 text-yellow-600 border-yellow-200' : 
-                                    'bg-red-50 text-red-600 border-red-200'
+                                    avgRisk === 'LOW' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 
+                                    avgRisk === 'MEDIUM' ? 'bg-yellow-500/10 text-yellow-500 border-yellow-500/20' : 
+                                    'bg-red-500/10 text-red-500 border-red-500/20'
                                   }`}>
                                     <div className={`h-2 w-2 rounded-full animate-pulse ${
                                       avgRisk === 'LOW' ? 'bg-green-500' : avgRisk === 'MEDIUM' ? 'bg-yellow-500' : 'bg-red-500'
@@ -1060,14 +1060,14 @@ export default function CookiesManagement() {
                                       key={ind.id} 
                                       className={`group p-4 rounded-xl border transition-all duration-300 hover:translate-x-1 ${
                                         ind.passed 
-                                          ? 'bg-white border-slate-200 hover:border-green-500/30' 
-                                          : 'bg-red-50/30 border-red-100 hover:border-red-500/30'
+                                          ? 'bg-card border-border hover:border-green-500/30' 
+                                          : 'bg-destructive/5 border-destructive/10 hover:border-destructive/30'
                                       }`}
                                     >
                                       <div className="flex items-start justify-between gap-3 mb-2">
                                         <div className="flex items-center gap-3">
                                           <div className={`p-2 rounded-lg transition-colors ${
-                                            ind.passed ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
+                                            ind.passed ? 'bg-green-500/10 text-green-500' : 'bg-destructive/10 text-destructive'
                                           }`}>
                                             {ind.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                                           </div>
@@ -1077,16 +1077,16 @@ export default function CookiesManagement() {
                                           </div>
                                         </div>
                                         <div className="text-right">
-                                          <div className={`text-xs font-black ${ind.passed ? 'text-green-600' : 'text-red-600'}`}>
+                                          <div className={`text-xs font-black ${ind.passed ? 'text-green-500' : 'text-destructive'}`}>
                                             {ind.score}<span className="text-[10px] text-muted-foreground font-normal">/{ind.weight}</span>
                                           </div>
                                         </div>
                                       </div>
                                       
                                       {/* Progress mini-bar */}
-                                      <div className="h-1.5 w-full bg-slate-100 rounded-full mt-3 overflow-hidden">
+                                      <div className="h-1.5 w-full bg-muted rounded-full mt-3 overflow-hidden">
                                         <div 
-                                          className={`h-full rounded-full transition-all duration-1000 ${ind.passed ? 'bg-green-500' : 'bg-red-500'}`}
+                                          className={`h-full rounded-full transition-all duration-1000 ${ind.passed ? 'bg-green-500' : 'bg-destructive'}`}
                                           style={{ width: `${(ind.score / ind.weight) * 100}%` }}
                                         />
                                       </div>
