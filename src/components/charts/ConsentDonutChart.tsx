@@ -19,15 +19,15 @@ export function ConsentDonutChart({ data, title, className }: ConsentDonutChartP
       {title && (
         <h3 className="text-sm font-semibold text-foreground mb-4">{title}</h3>
       )}
-      <div className="h-80 flex-grow relative">
-        <ResponsiveContainer width="100%" height="100%">
+      <div className="min-h-[380px] flex-grow relative flex flex-col">
+        <ResponsiveContainer width="100%" height="300">
           <PieChart>
             <Pie
               data={data}
               cx="50%"
               cy="50%"
-              innerRadius={80}
-              outerRadius={110}
+              innerRadius={70}
+              outerRadius={100}
               paddingAngle={4}
               dataKey="value"
             >
@@ -49,17 +49,19 @@ export function ConsentDonutChart({ data, title, className }: ConsentDonutChartP
             />
             <Legend
               verticalAlign="bottom"
-              height={36}
+              align="center"
+              iconType="circle"
+              iconSize={8}
               formatter={(value) => (
-                <span className="text-sm text-muted-foreground">{value}</span>
+                <span className="text-[11px] text-muted-foreground font-medium">{value}</span>
               )}
             />
           </PieChart>
         </ResponsiveContainer>
-        {/* Centered Total Label */}
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none pb-8">
-          <p className="text-3xl font-bold text-foreground">{total.toLocaleString()}</p>
-          <p className="text-xs text-muted-foreground font-medium uppercase tracking-wide">Total</p>
+        {/* Centered Total Label - Positioned relative to the pie (which is at top/center) */}
+        <div className="absolute top-[135px] left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none">
+          <p className="text-2xl font-bold text-foreground leading-none">{total.toLocaleString()}</p>
+          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter mt-1">Total</p>
         </div>
       </div>
     </div>

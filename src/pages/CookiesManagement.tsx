@@ -925,20 +925,18 @@ export default function CookiesManagement() {
                     data-tour="opt-out-rate"
                   />
                </>
-              )}
-            </div>
-
+            )}
+         </div>
+            
             {/* GLOBAL COMPLIANCE HEALTH (AVERAGE) */}
             {websites.length > 0 && !loading && (
-               <Card id="compliance-health" className="border-primary/20 bg-primary/5">
-                  <CardHeader>
-                    <CardTitle className="text-primary flex items-center gap-2">
-                       <Shield className="h-5 w-5" />
-                       Compliance Health (Network Average)
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                     {(() => {
+               <Card id="compliance-health" className="border-none bg-gradient-to-br from-slate-900 to-slate-800 text-white overflow-hidden relative shadow-2xl">
+                  {/* Decorative background elements */}
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -mr-32 -mt-32" />
+                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl -ml-24 -mb-24" />
+                  
+                  <CardContent className="pt-8 pb-10 relative z-10">
+                      {(() => {
                         const sitesWithScores = websites.filter(s => s.complianceScore != null);
                         const avgScore = sitesWithScores.length > 0 
                           ? Math.round(sitesWithScores.reduce((acc, s) => acc + (s.complianceScore || 0), 0) / sitesWithScores.length)
@@ -970,50 +968,109 @@ export default function CookiesManagement() {
                           : [];
 
                         return (
-                          <div className="flex flex-col md:flex-row items-center gap-8">
-                             <div className="flex flex-col items-center justify-center" data-tour="compliance-gauge">
-                                <div className={`relative h-32 w-32 flex items-center justify-center rounded-full border-8 ${avgScore >= 80 ? 'border-green-500 text-green-600' : avgScore >= 50 ? 'border-yellow-500 text-yellow-600' : 'border-red-500 text-red-600'}`}>
-                                   <div className="text-3xl font-bold">{avgScore}%</div>
+                          <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 items-start">
+                             {/* Left Column: Score & Grade */}
+                             <div className="lg:col-span-4 flex flex-col items-center text-center space-y-6" data-tour="compliance-gauge">
+                                <div className="space-y-2">
+                                  <h3 className="text-xl font-bold tracking-tight flex items-center justify-center gap-2">
+                                    <Shield className="h-6 w-6 text-primary" />
+                                    Compliance Health
+                                  </h3>
+                                  <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Network Average Across {sitesWithScores.length} Sites</p>
                                 </div>
-                                <div className="mt-4 flex items-center gap-2">
-                                  <Badge variant="outline" className={`bg-background ${avgRisk === 'LOW' ? 'text-green-600 border-green-200' : avgRisk === 'MEDIUM' ? 'text-yellow-600 border-yellow-200' : 'text-red-600 border-red-200'}`}>{avgRisk} RISK</Badge>
-                                  <Badge variant="outline" className="bg-background">GRADE {avgGrade}</Badge>
-                                </div>
-                                <p className="text-[10px] text-muted-foreground mt-2 uppercase font-bold tracking-tighter">Based on {sitesWithScores.length} Websites</p>
-                             </div>
-                             <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <div className="space-y-4" data-tour="check-items-left">
-                                  {aggregateIndicators.slice(0, 5).map((ind: any) => (
-                                    <div key={ind.id} className="flex items-start gap-2 text-sm bg-background/50 p-3 rounded-lg border">
-                                       {ind.passed ? <CheckCircle className="h-4 w-4 text-green-500 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />}
-                                       <div className="flex-1">
-                                         <div className="font-semibold flex justify-between items-center">
-                                           {ind.name} 
-                                           <span className="text-xs font-normal text-muted-foreground">{ind.score}/{ind.weight}</span>
-                                         </div>
-                                         <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{ind.details}</div>
-                                       </div>
+
+                                <div className="relative group">
+                                  {/* Progress Ring */}
+                                  <div className="h-48 w-48 rounded-full border-[12px] border-slate-700 flex items-center justify-center relative transition-transform duration-500 group-hover:scale-105">
+                                    <div 
+                                      className={`absolute inset-0 rounded-full border-[12px] transition-all duration-1000 ${
+                                        avgScore >= 80 ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.3)]' : 
+                                        avgScore >= 50 ? 'border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 
+                                        'border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.3)]'
+                                      }`}
+                                      style={{ 
+                                        clipPath: `inset(0 0 0 0)`, // Simplified for demonstration, ideally use SVG circle-dasharray
+                                        opacity: 0.8
+                                      }}
+                                    />
+                                    <div className="flex flex-col items-center">
+                                      <span className="text-5xl font-black text-white leading-none">{avgScore}%</span>
+                                      <span className="text-slate-400 text-xs font-bold mt-1 uppercase tracking-tighter">Overall Score</span>
                                     </div>
-                                  ))}
+                                  </div>
+                                  
+                                  {/* Floating Badge */}
+                                  <div className="absolute -top-2 -right-2 h-14 w-14 bg-primary rounded-2xl flex items-center justify-center shadow-2xl rotate-12 transform group-hover:rotate-0 transition-transform duration-300">
+                                    <div className="text-center">
+                                      <div className="text-[10px] font-bold text-primary-foreground leading-none">GRADE</div>
+                                      <div className="text-2xl font-black text-primary-foreground leading-none">{avgGrade}</div>
+                                    </div>
+                                  </div>
                                 </div>
-                                <div className="space-y-4" data-tour="check-items-right">
-                                  {aggregateIndicators.slice(5).map((ind: any) => (
-                                    <div key={ind.id} className="flex items-start gap-2 text-sm bg-background/50 p-3 rounded-lg border">
-                                       {ind.passed ? <CheckCircle className="h-4 w-4 text-green-500 shrink-0 mt-0.5" /> : <XCircle className="h-4 w-4 text-red-500 shrink-0 mt-0.5" />}
-                                       <div className="flex-1">
-                                         <div className="font-semibold flex justify-between items-center">
-                                           {ind.name} 
-                                           <span className="text-xs font-normal text-muted-foreground">{ind.score}/{ind.weight}</span>
-                                         </div>
-                                         <div className="text-xs text-muted-foreground mt-1 line-clamp-2">{ind.details}</div>
-                                       </div>
+
+                                <div className="flex flex-col items-center gap-3 w-full">
+                                  <div className={`px-6 py-2 rounded-full text-xs font-bold border flex items-center gap-2 ${
+                                    avgRisk === 'LOW' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 
+                                    avgRisk === 'MEDIUM' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 
+                                    'bg-red-500/10 text-red-400 border-red-500/20'
+                                  }`}>
+                                    <div className={`h-2 w-2 rounded-full animate-pulse ${
+                                      avgRisk === 'LOW' ? 'bg-green-400' : avgRisk === 'MEDIUM' ? 'bg-yellow-400' : 'bg-red-400'
+                                    }`} />
+                                    {avgRisk} RISK PROFILE
+                                  </div>
+                                  <p className="text-slate-500 text-[10px] text-center max-w-[200px]">
+                                    Compliance scores are weighted based on legal severity and technical audit results.
+                                  </p>
+                                </div>
+                             </div>
+
+                             {/* Right Column: Check Items */}
+                             <div className="lg:col-span-8">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-4" data-tour="check-items-left">
+                                  {/* Categorized Display */}
+                                  {aggregateIndicators.map((ind: any) => (
+                                    <div 
+                                      key={ind.id} 
+                                      className={`group p-4 rounded-xl border transition-all duration-300 hover:translate-x-1 ${
+                                        ind.passed 
+                                          ? 'bg-slate-800/40 border-slate-700/50 hover:border-green-500/30' 
+                                          : 'bg-red-500/5 border-red-500/10 hover:border-red-500/30'
+                                      }`}
+                                    >
+                                      <div className="flex items-start justify-between gap-3 mb-2">
+                                        <div className="flex items-center gap-3">
+                                          <div className={`p-2 rounded-lg transition-colors ${
+                                            ind.passed ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                                          }`}>
+                                            {ind.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
+                                          </div>
+                                          <div>
+                                            <h4 className="text-sm font-bold text-slate-100">{ind.name}</h4>
+                                            <p className="text-[10px] text-slate-500 font-medium">{ind.details}</p>
+                                          </div>
+                                        </div>
+                                        <div className="text-right">
+                                          <div className={`text-xs font-black ${ind.passed ? 'text-green-400' : 'text-red-400'}`}>
+                                            {ind.score}<span className="text-[10px] text-slate-500 font-normal">/{ind.weight}</span>
+                                          </div>
+                                        </div>
+                                      </div>
+                                      
+                                      {/* Progress mini-bar */}
+                                      <div className="h-1.5 w-full bg-slate-700/50 rounded-full mt-3 overflow-hidden">
+                                        <div 
+                                          className={`h-full rounded-full transition-all duration-1000 ${ind.passed ? 'bg-green-500' : 'bg-red-500'}`}
+                                          style={{ width: `${(ind.score / ind.weight) * 100}%` }}
+                                        />
+                                      </div>
                                     </div>
                                   ))}
                                 </div>
                              </div>
                           </div>
                         );
-                     })()}
+                      })()}
                   </CardContent>
                </Card>
             )}
