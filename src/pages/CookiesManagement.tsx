@@ -231,7 +231,7 @@ export default function CookiesManagement() {
     {
       title: "Cookie Inventory",
       content: "Here is your global cookie repository. You can manage every single tracker detected across your sites.",
-      targetSelector: '[data-tour="inventory-section"]'
+      targetSelector: '[data-tour="inventory-tab"]'
     },
     {
       title: "Inventory Filters",
@@ -251,7 +251,7 @@ export default function CookiesManagement() {
     {
       title: "Consent Records",
       content: "A detailed log of every user's consent choice, providing a full audit trail for GDPR and CCPA compliance.",
-      targetSelector: '[data-tour="consents-section"]'
+      targetSelector: '[data-tour="consents-tab"]'
     },
     {
       title: "Historical Activity",
@@ -261,7 +261,7 @@ export default function CookiesManagement() {
     {
       title: "Banner Installation",
       content: "Simply copy this script and paste it into your website's <head> to activate the consent banner.",
-      targetSelector: '[data-tour="script-installation"]'
+      targetSelector: '[data-tour="config-tab"]'
     },
     {
       title: "Live Verification",
@@ -893,15 +893,15 @@ export default function CookiesManagement() {
               <PieChart className="h-4 w-4" />
               <span className="hidden sm:inline">Overview</span>
             </TabsTrigger>
-            <TabsTrigger value="inventory" className="flex items-center gap-2 py-2.5">
+            <TabsTrigger value="inventory" className="flex items-center gap-2 py-2.5" data-tour="inventory-tab">
               <Cookie className="h-4 w-4" />
               <span className="hidden sm:inline">Cookie Inventory</span>
             </TabsTrigger>
-            <TabsTrigger value="consents" className="flex items-center gap-2 py-2.5">
+            <TabsTrigger value="consents" className="flex items-center gap-2 py-2.5" data-tour="consents-tab">
               <CheckCircle className="h-4 w-4" />
               <span className="hidden sm:inline">Cookie Consents</span>
             </TabsTrigger>
-            <TabsTrigger value="config" className="flex items-center gap-2 py-2.5">
+            <TabsTrigger value="config" className="flex items-center gap-2 py-2.5" data-tour="config-tab">
               <Settings className="h-4 w-4" />
               <span className="hidden sm:inline">Configuration</span>
             </TabsTrigger>
