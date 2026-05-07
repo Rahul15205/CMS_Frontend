@@ -901,7 +901,7 @@ export default function CookiesManagement() {
                     title="Total Cookies"
                     value={metrics?.totalCookies || inventory.length}
                     icon={<Cookie className="h-4 w-4" />}
-                    trend={{ value: 5, direction: "up", label: "this week" }}
+                    trend={metrics?.kpiTrends?.cookies}
                     data-tour="total-cookies"
                   />
                   <KPICard
@@ -914,14 +914,14 @@ export default function CookiesManagement() {
                     title="Active Consents"
                     value={metrics?.activeConsents || "0"}
                     icon={<CheckCircle className="h-4 w-4" />}
-                    trend={{ value: 12, direction: "up" }}
+                    trend={metrics?.kpiTrends?.consents}
                     data-tour="active-consents"
                   />
                   <KPICard
                     title="Opt-out Rate"
                     value={`${metrics?.optOutRate || 0}%`}
                     icon={<XCircle className="h-4 w-4" />}
-                    trend={{ value: 0.5, direction: "down" }}
+                    trend={metrics?.kpiTrends?.optOut}
                     data-tour="opt-out-rate"
                   />
                </>
