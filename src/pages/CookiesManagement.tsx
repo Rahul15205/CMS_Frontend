@@ -259,18 +259,28 @@ export default function CookiesManagement() {
       targetSelector: '[data-tour="consent-logs-table"]'
     },
     {
-      title: "Banner Installation",
-      content: "Simply copy this script and paste it into your website's <head> to activate the consent banner.",
+      title: "Global Configuration",
+      content: "This is your central hub for managing all protected websites and global compliance settings.",
       targetSelector: '[data-tour="config-tab"]'
     },
     {
+      title: "Website Management",
+      content: "Add new websites to your portfolio and monitor their individual scanning schedules and compliance status.",
+      targetSelector: '[data-tour="websites-list"]'
+    },
+    {
+      title: "Banner Installation",
+      content: "For each website, you'll find a unique integration script. Just copy and paste it into your site's <head> to go live.",
+      targetSelector: '[data-tour="script-installation"]'
+    },
+    {
       title: "Live Verification",
-      content: "Use this tool to verify if your script is correctly connected and working on your live site.",
+      content: "Once installed, use this tool to instantly verify that your banner is correctly connected and protecting users.",
       targetSelector: '[data-tour="verify-installation"]'
     },
     {
       title: "Banner Customization",
-      content: "Design your banner to match your brand. Change colors, positions, and text in real-time.",
+      content: "Finally, tailor the banner's design, colors, and positioning to perfectly match your brand's aesthetic.",
       targetSelector: '[data-tour="banner-customization"]'
     }
   ];
@@ -1501,7 +1511,7 @@ export default function CookiesManagement() {
                   {!loading && websites.length === 0 ? (
                     <EmptyState onAction={openAddWebsiteDialog} />
                   ) : (
-                    <div className="border rounded-lg overflow-hidden">
+                    <div className="border rounded-lg overflow-hidden" data-tour="websites-list">
                       <Table>
                         <TableHeader>
                           <TableRow className="bg-muted/50">
@@ -1685,7 +1695,7 @@ export default function CookiesManagement() {
                       </Select>
                     </div>
 
-                    <div className="space-y-3">
+                    <div className="space-y-3" data-tour="script-installation">
                       <Label>2. Copy & Paste Script</Label>
                       <div className="relative">
                         <div className="bg-slate-950 text-slate-50 p-4 rounded-xl font-mono text-sm border shadow-xl overflow-x-auto pr-12">
