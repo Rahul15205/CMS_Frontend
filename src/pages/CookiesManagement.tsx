@@ -187,6 +187,16 @@ export default function CookiesManagement() {
     }
   }, []);
 
+  // Auto-switch tabs based on the tour step
+  useEffect(() => {
+    if (!isTourOpen) return;
+    
+    if (tourStep >= 0 && tourStep <= 5) setActiveTab("overview");
+    else if (tourStep >= 6 && tourStep <= 9) setActiveTab("inventory");
+    else if (tourStep >= 10 && tourStep <= 11) setActiveTab("consents");
+    else if (tourStep >= 12) setActiveTab("config");
+  }, [tourStep, isTourOpen]);
+
   const tourSteps: TourStep[] = [
     {
       title: "Quick Metrics",
@@ -267,14 +277,7 @@ export default function CookiesManagement() {
 
   const nextTourStep = () => {
     if (tourStep < tourSteps.length - 1) {
-      const nextStep = tourStep + 1;
-      setTourStep(nextStep);
-      
-      // Auto-switch tabs based on the next step
-      if (nextStep >= 0 && nextStep <= 5) setActiveTab("overview");
-      else if (nextStep >= 6 && nextStep <= 9) setActiveTab("inventory");
-      else if (nextStep >= 10 && nextStep <= 11) setActiveTab("consents");
-      else if (nextStep >= 12) setActiveTab("config");
+      setTourStep(prev => prev + 1);
     } else {
       setIsTourOpen(false);
       localStorage.setItem("hasSeenCookieTour", "true");
@@ -283,14 +286,7 @@ export default function CookiesManagement() {
 
   const prevTourStep = () => {
     if (tourStep > 0) {
-      const prevStep = tourStep - 1;
-      setTourStep(prevStep);
-      
-      // Auto-switch tabs based on the previous step
-      if (prevStep >= 0 && prevStep <= 5) setActiveTab("overview");
-      else if (prevStep >= 6 && prevStep <= 9) setActiveTab("inventory");
-      else if (prevStep >= 10 && prevStep <= 11) setActiveTab("consents");
-      else if (prevStep >= 12) setActiveTab("config");
+      setTourStep(prev => prev - 1);
     }
   };
 
