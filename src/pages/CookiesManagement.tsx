@@ -220,13 +220,33 @@ export default function CookiesManagement() {
     },
     {
       title: "Cookie Inventory",
-      content: "Manage every single cookie detected on your site. You can edit their descriptions and categories here.",
+      content: "Here is your global cookie repository. You can manage every single tracker detected across your sites.",
       targetSelector: '[data-tour="inventory-section"]'
     },
     {
+      title: "Inventory Filters",
+      content: "Filter by specific websites to focus on their unique cookie fingerprints.",
+      targetSelector: '[data-tour="inventory-filter"]'
+    },
+    {
+      title: "Advanced Search & Export",
+      content: "Search for specific cookies or export your entire inventory as a professional compliance report.",
+      targetSelector: '[data-tour="inventory-actions"]'
+    },
+    {
+      title: "Detailed Audit",
+      content: "Review domains, expiration dates, and descriptions to ensure everything is correctly categorized.",
+      targetSelector: '[data-tour="inventory-table"]'
+    },
+    {
       title: "Consent Records",
-      content: "A detailed log of every user's consent choice, providing a full audit trail for GDPR compliance.",
+      content: "A detailed log of every user's consent choice, providing a full audit trail for GDPR and CCPA compliance.",
       targetSelector: '[data-tour="consents-section"]'
+    },
+    {
+      title: "Historical Activity",
+      content: "Monitor live consent updates, including geographic origin and specific category preferences.",
+      targetSelector: '[data-tour="consent-logs-table"]'
     },
     {
       title: "Banner Installation",
@@ -239,7 +259,7 @@ export default function CookiesManagement() {
       targetSelector: '[data-tour="verify-installation"]'
     },
     {
-      title: "Customization",
+      title: "Banner Customization",
       content: "Design your banner to match your brand. Change colors, positions, and text in real-time.",
       targetSelector: '[data-tour="banner-customization"]'
     }
@@ -251,9 +271,10 @@ export default function CookiesManagement() {
       setTourStep(nextStep);
       
       // Auto-switch tabs based on the next step
-      if (nextStep === 6) setActiveTab("inventory");
-      else if (nextStep === 7) setActiveTab("consents");
-      else if (nextStep === 8) setActiveTab("config");
+      if (nextStep >= 0 && nextStep <= 5) setActiveTab("overview");
+      else if (nextStep >= 6 && nextStep <= 9) setActiveTab("inventory");
+      else if (nextStep >= 10 && nextStep <= 11) setActiveTab("consents");
+      else if (nextStep >= 12) setActiveTab("config");
     } else {
       setIsTourOpen(false);
       localStorage.setItem("hasSeenCookieTour", "true");
@@ -266,10 +287,10 @@ export default function CookiesManagement() {
       setTourStep(prevStep);
       
       // Auto-switch tabs based on the previous step
-      if (prevStep < 6) setActiveTab("overview");
-      else if (prevStep === 6) setActiveTab("inventory");
-      else if (prevStep === 7) setActiveTab("consents");
-      else if (prevStep >= 8) setActiveTab("config");
+      if (prevStep >= 0 && prevStep <= 5) setActiveTab("overview");
+      else if (prevStep >= 6 && prevStep <= 9) setActiveTab("inventory");
+      else if (prevStep >= 10 && prevStep <= 11) setActiveTab("consents");
+      else if (prevStep >= 12) setActiveTab("config");
     }
   };
 
@@ -1181,7 +1202,7 @@ export default function CookiesManagement() {
                     <SectionTitle>Inventory Filter</SectionTitle>
                     <p className="text-sm text-muted-foreground">Select a website to view its specific cookies.</p>
                   </div>
-                  <Select value={selectedWebsiteId} onValueChange={setSelectedWebsiteId}>
+                  <Select value={selectedWebsiteId} onValueChange={setSelectedWebsiteId} data-tour="inventory-filter">
                     <SelectTrigger className="w-full md:w-[300px]">
                       <Globe className="h-4 w-4 mr-2 text-muted-foreground" />
                       <SelectValue placeholder="All Websites" />
@@ -1199,7 +1220,7 @@ export default function CookiesManagement() {
               <div className="dashboard-card">
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
                   <SectionTitle>Detected Cookies</SectionTitle>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2" data-tour="inventory-actions">
                     <div className="relative">
                       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                       <Input placeholder="Search cookies..." className="pl-9 w-[250px]" />
@@ -1220,7 +1241,7 @@ export default function CookiesManagement() {
                 </div>
 
                 <div className="border rounded-lg overflow-hidden">
-                  <Table>
+                  <Table data-tour="inventory-table">
                     <TableHeader>
                       <TableRow className="bg-muted/50">
                         <TableHead>Name</TableHead>
@@ -1345,7 +1366,7 @@ export default function CookiesManagement() {
               <div className="dashboard-card">
                 <div className="border rounded-lg overflow-hidden">
                   <div className="max-h-[600px] overflow-y-auto custom-scrollbar">
-                    <Table>
+                    <Table data-tour="consent-logs-table">
                       <TableHeader className="sticky top-0 bg-background z-10">
                         <TableRow className="bg-muted/50 shadow-sm">
                           <TableHead>User Identifier</TableHead>
