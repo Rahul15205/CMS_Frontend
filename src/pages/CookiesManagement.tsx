@@ -1208,18 +1208,20 @@ export default function CookiesManagement() {
                     <SectionTitle>Inventory Filter</SectionTitle>
                     <p className="text-sm text-muted-foreground">Select a website to view its specific cookies.</p>
                   </div>
-                  <Select value={selectedWebsiteId} onValueChange={setSelectedWebsiteId} data-tour="inventory-filter">
-                    <SelectTrigger className="w-full md:w-[300px]">
-                      <Globe className="h-4 w-4 mr-2 text-muted-foreground" />
-                      <SelectValue placeholder="All Websites" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Global Inventory (All Sites)</SelectItem>
-                      {websites.map(site => (
-                        <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div data-tour="inventory-filter">
+                    <Select value={selectedWebsiteId} onValueChange={setSelectedWebsiteId}>
+                      <SelectTrigger className="w-full md:w-[300px]">
+                        <Globe className="h-4 w-4 mr-2 text-muted-foreground" />
+                        <SelectValue placeholder="All Websites" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Global Inventory (All Sites)</SelectItem>
+                        {websites.map(site => (
+                          <SelectItem key={site.id} value={site.id}>{site.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
               </div>
 

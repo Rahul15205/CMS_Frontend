@@ -315,14 +315,16 @@ export function DashboardLayout({
 export function PageSection({
   children,
   className,
-  id
+  id,
+  ...props
 }: {
   children: ReactNode;
   className?: string;
   id?: string;
+  [key: string]: any;
 }) {
   return (
-    <section id={id} className={cn("space-y-4", className)}>
+    <section id={id} className={cn("space-y-4", className)} {...props}>
       {children}
     </section>
   );
