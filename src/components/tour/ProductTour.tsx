@@ -112,9 +112,11 @@ export const ProductTour: React.FC<ProductTourProps> = ({
             }
             
             const viewportWidth = window.innerWidth;
+            const viewportHeight = window.innerHeight;
             const tooltipWidth = Math.min(350, viewportWidth - 40);
+            const tooltipHeight = 200; // Estimated max height
             const padding = 20;
-            const isBottomHalf = targetRect.top > window.innerHeight * 0.6;
+            
             const targetCenter = targetRect.left + targetRect.width / 2;
             
             // Calculate and clamp left position
@@ -125,11 +127,41 @@ export const ProductTour: React.FC<ProductTourProps> = ({
             if (leftPos < padding) {
               leftPos = padding;
             }
+
+            // Vertical positioning
+            let topPos;
+            let transform = 'none';
+
+            // If the target is very tall (like a table), don't stick to its bottom
+            const isTallElement = targetRect.height > viewportHeight * 0.7;
+            
+            if (isTallElement) {
+              // For tall elements, place it in the middle or top-ish area of the viewport
+              topPos = viewportHeight / 2;
+              transform = 'translateY(-50%)';
+              // If it overlaps the target center too much, adjust it
+            } else {
+              const spaceBelow = viewportHeight - targetRect.bottom;
+              const spaceAbove = targetRect.top;
+
+              if (spaceBelow > tooltipHeight + padding) {
+                // Prefer below
+                topPos = targetRect.bottom + 10;
+              } else if (spaceAbove > tooltipHeight + padding) {
+                // Place above
+                topPos = targetRect.top - 10;
+                transform = 'translateY(-100%)';
+              } else {
+                // Fallback to center if it doesn't fit anywhere
+                topPos = viewportHeight / 2;
+                transform = 'translateY(-50%)';
+              }
+            }
             
             return {
               left: leftPos,
-              top: isBottomHalf ? targetRect.top - 20 : targetRect.bottom + 20,
-              transform: isBottomHalf ? 'translateY(-100%)' : 'none',
+              top: topPos,
+              transform: transform,
               position: 'fixed',
               width: tooltipWidth,
               zIndex: 150
