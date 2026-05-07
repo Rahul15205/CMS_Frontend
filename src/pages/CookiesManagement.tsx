@@ -927,13 +927,12 @@ export default function CookiesManagement() {
                </>
             )}
          </div>
-            
-            {/* GLOBAL COMPLIANCE HEALTH (AVERAGE) */}
+              {/* GLOBAL COMPLIANCE HEALTH (AVERAGE) */}
             {websites.length > 0 && !loading && (
-               <Card id="compliance-health" className="border-none bg-gradient-to-br from-slate-900 to-slate-800 text-white overflow-hidden relative shadow-2xl">
+               <Card id="compliance-health" className="border border-primary/20 bg-gradient-to-br from-white to-slate-50 overflow-hidden relative shadow-lg">
                   {/* Decorative background elements */}
-                  <div className="absolute top-0 right-0 w-64 h-64 bg-primary/10 rounded-full blur-3xl -mr-32 -mt-32" />
-                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-500/10 rounded-full blur-3xl -ml-24 -mb-24" />
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-primary/5 rounded-full blur-3xl -mr-32 -mt-32" />
+                  <div className="absolute bottom-0 left-0 w-48 h-48 bg-blue-500/5 rounded-full blur-3xl -ml-24 -mb-24" />
                   
                   <CardContent className="pt-8 pb-10 relative z-10">
                       {(() => {
@@ -972,54 +971,54 @@ export default function CookiesManagement() {
                              {/* Left Column: Score & Grade */}
                              <div className="lg:col-span-4 flex flex-col items-center text-center space-y-6" data-tour="compliance-gauge">
                                 <div className="space-y-2">
-                                  <h3 className="text-xl font-bold tracking-tight flex items-center justify-center gap-2">
+                                  <h3 className="text-xl font-bold tracking-tight flex items-center justify-center gap-2 text-foreground">
                                     <Shield className="h-6 w-6 text-primary" />
                                     Compliance Health
                                   </h3>
-                                  <p className="text-slate-400 text-xs font-medium uppercase tracking-widest">Network Average Across {sitesWithScores.length} Sites</p>
+                                  <p className="text-muted-foreground text-xs font-medium uppercase tracking-widest">Network Average Across {sitesWithScores.length} Sites</p>
                                 </div>
 
                                 <div className="relative group">
                                   {/* Progress Ring */}
-                                  <div className="h-48 w-48 rounded-full border-[12px] border-slate-700 flex items-center justify-center relative transition-transform duration-500 group-hover:scale-105">
+                                  <div className="h-48 w-48 rounded-full border-[12px] border-slate-100 flex items-center justify-center relative transition-transform duration-500 group-hover:scale-105 bg-white shadow-inner">
                                     <div 
                                       className={`absolute inset-0 rounded-full border-[12px] transition-all duration-1000 ${
-                                        avgScore >= 80 ? 'border-green-500 shadow-[0_0_20px_rgba(34,197,94,0.3)]' : 
-                                        avgScore >= 50 ? 'border-yellow-500 shadow-[0_0_20px_rgba(234,179,8,0.3)]' : 
-                                        'border-red-500 shadow-[0_0_20px_rgba(239,68,68,0.3)]'
+                                        avgScore >= 80 ? 'border-green-500 shadow-[0_0_15px_rgba(34,197,94,0.2)]' : 
+                                        avgScore >= 50 ? 'border-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.2)]' : 
+                                        'border-red-500 shadow-[0_0_15px_rgba(239,68,68,0.2)]'
                                       }`}
                                       style={{ 
-                                        clipPath: `inset(0 0 0 0)`, // Simplified for demonstration, ideally use SVG circle-dasharray
-                                        opacity: 0.8
+                                        clipPath: `inset(0 0 0 0)`,
+                                        opacity: 1
                                       }}
                                     />
                                     <div className="flex flex-col items-center">
-                                      <span className="text-5xl font-black text-white leading-none">{avgScore}%</span>
-                                      <span className="text-slate-400 text-xs font-bold mt-1 uppercase tracking-tighter">Overall Score</span>
+                                      <span className="text-5xl font-black text-foreground leading-none">{avgScore}%</span>
+                                      <span className="text-muted-foreground text-xs font-bold mt-1 uppercase tracking-tighter">Overall Score</span>
                                     </div>
                                   </div>
                                   
                                   {/* Floating Badge */}
-                                  <div className="absolute -top-2 -right-2 h-14 w-14 bg-primary rounded-2xl flex items-center justify-center shadow-2xl rotate-12 transform group-hover:rotate-0 transition-transform duration-300">
-                                    <div className="text-center">
-                                      <div className="text-[10px] font-bold text-primary-foreground leading-none">GRADE</div>
-                                      <div className="text-2xl font-black text-primary-foreground leading-none">{avgGrade}</div>
+                                  <div className="absolute -top-2 -right-2 h-14 w-14 bg-primary rounded-2xl flex items-center justify-center shadow-lg rotate-12 transform group-hover:rotate-0 transition-transform duration-300">
+                                    <div className="text-center text-white">
+                                      <div className="text-[10px] font-bold leading-none">GRADE</div>
+                                      <div className="text-2xl font-black leading-none">{avgGrade}</div>
                                     </div>
                                   </div>
                                 </div>
 
                                 <div className="flex flex-col items-center gap-3 w-full">
                                   <div className={`px-6 py-2 rounded-full text-xs font-bold border flex items-center gap-2 ${
-                                    avgRisk === 'LOW' ? 'bg-green-500/10 text-green-400 border-green-500/20' : 
-                                    avgRisk === 'MEDIUM' ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/20' : 
-                                    'bg-red-500/10 text-red-400 border-red-500/20'
+                                    avgRisk === 'LOW' ? 'bg-green-50 text-green-600 border-green-200' : 
+                                    avgRisk === 'MEDIUM' ? 'bg-yellow-50 text-yellow-600 border-yellow-200' : 
+                                    'bg-red-50 text-red-600 border-red-200'
                                   }`}>
                                     <div className={`h-2 w-2 rounded-full animate-pulse ${
-                                      avgRisk === 'LOW' ? 'bg-green-400' : avgRisk === 'MEDIUM' ? 'bg-yellow-400' : 'bg-red-400'
+                                      avgRisk === 'LOW' ? 'bg-green-500' : avgRisk === 'MEDIUM' ? 'bg-yellow-500' : 'bg-red-500'
                                     }`} />
                                     {avgRisk} RISK PROFILE
                                   </div>
-                                  <p className="text-slate-500 text-[10px] text-center max-w-[200px]">
+                                  <p className="text-muted-foreground text-[10px] text-center max-w-[200px]">
                                     Compliance scores are weighted based on legal severity and technical audit results.
                                   </p>
                                 </div>
@@ -1034,31 +1033,31 @@ export default function CookiesManagement() {
                                       key={ind.id} 
                                       className={`group p-4 rounded-xl border transition-all duration-300 hover:translate-x-1 ${
                                         ind.passed 
-                                          ? 'bg-slate-800/40 border-slate-700/50 hover:border-green-500/30' 
-                                          : 'bg-red-500/5 border-red-500/10 hover:border-red-500/30'
+                                          ? 'bg-white border-slate-200 hover:border-green-500/30' 
+                                          : 'bg-red-50/30 border-red-100 hover:border-red-500/30'
                                       }`}
                                     >
                                       <div className="flex items-start justify-between gap-3 mb-2">
                                         <div className="flex items-center gap-3">
                                           <div className={`p-2 rounded-lg transition-colors ${
-                                            ind.passed ? 'bg-green-500/10 text-green-400' : 'bg-red-500/10 text-red-400'
+                                            ind.passed ? 'bg-green-50 text-green-600' : 'bg-red-50 text-red-600'
                                           }`}>
                                             {ind.passed ? <CheckCircle className="h-4 w-4" /> : <XCircle className="h-4 w-4" />}
                                           </div>
                                           <div>
-                                            <h4 className="text-sm font-bold text-slate-100">{ind.name}</h4>
-                                            <p className="text-[10px] text-slate-500 font-medium">{ind.details}</p>
+                                            <h4 className="text-sm font-bold text-foreground">{ind.name}</h4>
+                                            <p className="text-[10px] text-muted-foreground font-medium">{ind.details}</p>
                                           </div>
                                         </div>
                                         <div className="text-right">
-                                          <div className={`text-xs font-black ${ind.passed ? 'text-green-400' : 'text-red-400'}`}>
-                                            {ind.score}<span className="text-[10px] text-slate-500 font-normal">/{ind.weight}</span>
+                                          <div className={`text-xs font-black ${ind.passed ? 'text-green-600' : 'text-red-600'}`}>
+                                            {ind.score}<span className="text-[10px] text-muted-foreground font-normal">/{ind.weight}</span>
                                           </div>
                                         </div>
                                       </div>
                                       
                                       {/* Progress mini-bar */}
-                                      <div className="h-1.5 w-full bg-slate-700/50 rounded-full mt-3 overflow-hidden">
+                                      <div className="h-1.5 w-full bg-slate-100 rounded-full mt-3 overflow-hidden">
                                         <div 
                                           className={`h-full rounded-full transition-all duration-1000 ${ind.passed ? 'bg-green-500' : 'bg-red-500'}`}
                                           style={{ width: `${(ind.score / ind.weight) * 100}%` }}

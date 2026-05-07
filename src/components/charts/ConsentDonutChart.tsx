@@ -19,15 +19,15 @@ export function ConsentDonutChart({ data, title, className }: ConsentDonutChartP
       {title && (
         <h3 className="text-sm font-semibold text-foreground mb-4">{title}</h3>
       )}
-      <div className="min-h-[380px] flex-grow relative flex flex-col">
-        <ResponsiveContainer width="100%" height="300">
+      <div className="h-80 flex-grow relative">
+        <ResponsiveContainer width="100%" height="100%">
           <PieChart>
             <Pie
               data={data}
               cx="50%"
               cy="50%"
-              innerRadius={70}
-              outerRadius={100}
+              innerRadius={65}
+              outerRadius={90}
               paddingAngle={4}
               dataKey="value"
             >
@@ -53,15 +53,15 @@ export function ConsentDonutChart({ data, title, className }: ConsentDonutChartP
               iconType="circle"
               iconSize={8}
               formatter={(value) => (
-                <span className="text-[11px] text-muted-foreground font-medium">{value}</span>
+                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight">{value}</span>
               )}
             />
           </PieChart>
         </ResponsiveContainer>
-        {/* Centered Total Label - Positioned relative to the pie (which is at top/center) */}
-        <div className="absolute top-[135px] left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none">
-          <p className="text-2xl font-bold text-foreground leading-none">{total.toLocaleString()}</p>
-          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter mt-1">Total</p>
+        {/* Centered Total Label */}
+        <div className="absolute top-[40%] left-1/2 -translate-x-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none">
+          <p className="text-3xl font-black text-foreground leading-none">{total.toLocaleString()}</p>
+          <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest mt-1">Total</p>
         </div>
       </div>
     </div>
