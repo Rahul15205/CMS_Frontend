@@ -168,6 +168,7 @@ export default function CookiesManagement() {
   const [previewDevice, setPreviewDevice] = useState("desktop");
   const [isPreviewDialogOpen, setIsPreviewDialogOpen] = useState(false);
   const [selectedWebsiteId, setSelectedWebsiteId] = useState<string>("all");
+  const [inventorySearchQuery, setInventorySearchQuery] = useState("");
   const [isSavingBanner, setIsSavingBanner] = useState(false);
   const [isTourOpen, setIsTourOpen] = useState(false);
   const [tourStep, setTourStep] = useState(0);
@@ -804,6 +805,46 @@ export default function CookiesManagement() {
     setIsAddCookieOpen(true);
   };
 
+  const filteredInventory = inventory.filter((cookie) => {
+    const selectedSite = websites.find((site) => site.id === selectedWebsiteId);
+
+    if (selectedWebsiteId !== "all" && selectedSite) {
+      let selectedHostname = selectedSite.url;
+
+      try {
+        selectedHostname = new URL(selectedSite.url).hostname;
+      } catch {
+        selectedHostname = selectedSite.url;
+      }
+
+      const cookieDomain = String(cookie.domain || "").toLowerCase();
+      const siteUrl = String(selectedSite.url || "").toLowerCase();
+      const siteHostname = String(selectedHostname || "").toLowerCase();
+      const matchesWebsite =
+        cookieDomain.includes(siteHostname) ||
+        cookieDomain.includes(siteUrl);
+
+      if (!matchesWebsite) return false;
+    }
+
+    const query = inventorySearchQuery.trim().toLowerCase();
+    if (!query) return true;
+
+    const categoryName =
+      cookie.category?.name ||
+      categories.find((category) => category.id === (cookie.categoryId || cookie.category))?.name ||
+      cookie.category ||
+      "";
+
+    return [
+      cookie.name,
+      cookie.domain,
+      categoryName,
+      cookie.expiration,
+      cookie.description,
+    ].some((value) => String(value || "").toLowerCase().includes(query));
+  });
+
   const handleSaveBanner = async (bannerData: any) => {
     try {
       const created = await cookieBannersService.create(bannerData);
@@ -1231,7 +1272,12 @@ export default function CookiesManagement() {
                   <div className="flex items-center gap-2" data-tour="inventory-actions">
                     <div className="relative">
                       <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                      <Input placeholder="Search cookies..." className="pl-9 w-[250px]" />
+                      <Input
+                        placeholder="Search cookies..."
+                        className="pl-9 w-[250px]"
+                        value={inventorySearchQuery}
+                        onChange={(event) => setInventorySearchQuery(event.target.value)}
+                      />
                     </div>
                     <Button variant="outline" onClick={handleExportCSV}>
                       <Download className="h-4 w-4 mr-2" />
@@ -1267,21 +1313,8 @@ export default function CookiesManagement() {
                             <TableCell colSpan={6}><Skeleton className="h-8 w-full" /></TableCell>
                           </TableRow>
                         ))
-                      ) : inventory.filter(c => {
-                        if (selectedWebsiteId === 'all') return true;
-                        const selectedSite = websites.find(w => w.id === selectedWebsiteId);
-                        if (!selectedSite) return true;
-                        // Match domain or URL
-                        return c.domain.includes(new URL(selectedSite.url).hostname) || c.domain.includes(selectedSite.url);
-                      }).length > 0 ? (
-                        inventory
-                          .filter(c => {
-                            if (selectedWebsiteId === 'all') return true;
-                            const selectedSite = websites.find(w => w.id === selectedWebsiteId);
-                            if (!selectedSite) return true;
-                            return c.domain.includes(new URL(selectedSite.url).hostname) || c.domain.includes(selectedSite.url);
-                          })
-                          .map((cookie) => (
+                      ) : filteredInventory.length > 0 ? (
+                        filteredInventory.map((cookie) => (
                             <TableRow key={cookie.id}>
                               <TableCell className="font-medium">{cookie.name}</TableCell>
                               <TableCell className="text-muted-foreground">{cookie.domain}</TableCell>
