@@ -861,6 +861,12 @@ export default function CookiesManagement() {
   };
 
   // ... existing handlers
+  const selectedScanResults = Array.isArray(selectedSiteForDetails?.scanResults)
+    ? selectedSiteForDetails.scanResults as any[]
+    : [];
+  const selectedScanDebugEntry = selectedScanResults.find((item: any) => item?.id === "crawl_debug");
+  const selectedScanDebug = selectedScanDebugEntry?.debug;
+  const selectedScanIndicators = selectedScanResults.filter((item: any) => item?.id !== "crawl_debug");
 
   return (
     <>
@@ -1014,14 +1020,16 @@ export default function CookiesManagement() {
 
                         // Aggregate indicators
                         const aggregateIndicators = sitesWithScores.length > 0 && sitesWithScores[0].scanResults 
-                          ? (sitesWithScores[0].scanResults as any[]).map(baseInd => {
+                          ? (sitesWithScores[0].scanResults as any[])
+                            .filter(baseInd => baseInd?.id !== "crawl_debug")
+                            .map(baseInd => {
                               const totalIndScore = sitesWithScores.reduce((acc, s) => {
-                                const ind = (s.scanResults as any[])?.find(i => i.id === baseInd.id);
+                                const ind = (s.scanResults as any[])?.find(i => i.id === baseInd.id && i.id !== "crawl_debug");
                                 return acc + (ind?.score || 0);
                               }, 0);
                               const avgIndScore = Math.round(totalIndScore / sitesWithScores.length);
                               const totalPassed = sitesWithScores.filter(s => {
-                                const ind = (s.scanResults as any[])?.find(i => i.id === baseInd.id);
+                                const ind = (s.scanResults as any[])?.find(i => i.id === baseInd.id && i.id !== "crawl_debug");
                                 return ind?.passed;
                               }).length;
 
@@ -2305,7 +2313,7 @@ export default function CookiesManagement() {
       />
       {/* Scan Details Dialog */}
       <Dialog open={isDetailsOpen} onOpenChange={setIsDetailsOpen}>
-        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <div className="flex items-center gap-4">
               <div className={`h-12 w-12 rounded-full flex items-center justify-center border-4 ${
@@ -2353,6 +2361,102 @@ export default function CookiesManagement() {
               </Card>
             </div>
 
+            {/* Scan Trace */}
+            {selectedScanDebug && (
+              <div className="space-y-4">
+                <SectionTitle className="text-base flex items-center gap-2">
+                  <Search className="h-4 w-4" />
+                  Scan Trace
+                </SectionTitle>
+
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                  {[
+                    ["Queued", selectedScanDebug.totals?.queuedUnique ?? selectedScanDebug.totals?.queued ?? 0],
+                    ["Attempted", selectedScanDebug.totals?.attempted ?? 0],
+                    ["Crawled", selectedScanDebug.totals?.crawledUnique ?? selectedScanDebug.totals?.crawled ?? 0],
+                    ["Skipped", selectedScanDebug.totals?.skipped ?? 0],
+                    ["Base Domain", selectedScanDebug.baseDomain || "-"],
+                  ].map(([label, value]) => (
+                    <div key={label} className="rounded-lg border bg-muted/20 p-3">
+                      <p className="text-[10px] uppercase font-bold tracking-wider text-muted-foreground">{label}</p>
+                      <p className="text-sm font-semibold truncate" title={String(value)}>{value}</p>
+                    </div>
+                  ))}
+                </div>
+
+                {(selectedScanDebug.truncated?.crawled || selectedScanDebug.truncated?.skipped) && (
+                  <p className="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    Debug list is truncated after {selectedScanDebug.truncated?.maxEntriesPerList || 0} entries per list to keep reports lightweight.
+                  </p>
+                )}
+
+                <div className="grid md:grid-cols-2 gap-4">
+                  <div className="border rounded-xl overflow-hidden bg-card">
+                    <div className="px-4 py-3 border-b bg-muted/20 flex items-center justify-between">
+                      <span className="text-sm font-semibold">Crawled Pages</span>
+                      <Badge variant="secondary">{selectedScanDebug.crawled?.length || 0}</Badge>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto divide-y">
+                      {(selectedScanDebug.crawled || []).length > 0 ? (
+                        (selectedScanDebug.crawled || []).map((item: any, index: number) => (
+                          <div key={`${item.finalUrl || item.url}-${index}`} className="p-3 space-y-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <a
+                                href={item.finalUrl || item.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-xs text-blue-600 hover:underline break-all"
+                              >
+                                {item.finalUrl || item.url}
+                              </a>
+                              <Badge variant="outline" className="text-[10px] shrink-0">{item.status || "OK"}</Badge>
+                            </div>
+                            <div className="flex flex-wrap gap-1">
+                              {(item.pageTypes || []).map((type: string) => (
+                                <Badge key={type} variant="secondary" className="text-[9px]">{type}</Badge>
+                              ))}
+                            </div>
+                            <p className="text-[10px] text-muted-foreground truncate" title={item.source}>
+                              Source: {item.source || "-"}
+                            </p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-6 text-center text-xs text-muted-foreground">No crawled page trace stored.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="border rounded-xl overflow-hidden bg-card">
+                    <div className="px-4 py-3 border-b bg-muted/20 flex items-center justify-between">
+                      <span className="text-sm font-semibold">Skipped URLs</span>
+                      <Badge variant="secondary">{selectedScanDebug.skipped?.length || 0}</Badge>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto divide-y">
+                      {(selectedScanDebug.skipped || []).length > 0 ? (
+                        (selectedScanDebug.skipped || []).map((item: any, index: number) => (
+                          <div key={`${item.url}-${index}`} className="p-3 space-y-1">
+                            <div className="flex items-start justify-between gap-2">
+                              <span className="text-xs break-all">{item.url || "-"}</span>
+                              <Badge variant="outline" className="text-[10px] shrink-0">{item.status || "skip"}</Badge>
+                            </div>
+                            <p className="text-[10px] text-red-600 font-medium break-all">
+                              {item.reason || "skipped"}
+                            </p>
+                            <p className="text-[10px] text-muted-foreground truncate" title={item.source}>
+                              Source: {item.source || "-"}
+                            </p>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-6 text-center text-xs text-muted-foreground">No skipped URL trace stored.</div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Breakdown */}
             <div className="space-y-4">
               <SectionTitle className="text-base flex items-center gap-2">
@@ -2361,8 +2465,8 @@ export default function CookiesManagement() {
               </SectionTitle>
               
               <div className="border rounded-xl divide-y bg-card overflow-hidden">
-                {selectedSiteForDetails?.scanResults ? (
-                  (selectedSiteForDetails.scanResults as any[]).map((indicator: any) => (
+                {selectedScanIndicators.length > 0 ? (
+                  selectedScanIndicators.map((indicator: any) => (
                     <div key={indicator.id} className="p-4 hover:bg-muted/10 transition-colors">
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex items-center gap-3">
