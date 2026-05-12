@@ -129,7 +129,7 @@ export function ConsentWidgetManager() {
       toast({ title: "Validation Error", description: "Name, Application, and Template are required.", variant: "destructive" });
       return;
     }
-    const payload = { ...form, status: status || form.status || "WIDGET_DRAFT" };
+    const payload = { ...form, status: (status || form.status || "WIDGET_DRAFT") as ConsentWidgetConfig["status"] };
     if (editingWidget?.id) {
       updateMutation.mutate({ id: editingWidget.id, data: payload });
     } else {
