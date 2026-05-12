@@ -13,6 +13,7 @@ import {
   History,
   Layers,
   AlertCircle,
+  Shield,
 } from "lucide-react";
 import {
   Select,
@@ -42,6 +43,7 @@ import { ConsentTemplate, DEFAULT_TEMPLATE } from "@/components/consent/types";
 import { ConsentUsageTraceability } from "@/components/consent/ConsentUsageTraceability";
 import { ConsentVersionHistory } from "@/components/consent/ConsentVersionHistory";
 import { CrossApplicationUsage } from "@/components/consent/CrossApplicationUsage";
+import { ConsentWidgetManager } from "@/components/consent-widget/ConsentWidgetManager";
 
 // Consent templates are loaded through the real consent service
 
@@ -229,12 +231,18 @@ export default function ConsentManagement() {
                   <span>Cross-App</span>
                 </div>
               </SelectItem>
+              <SelectItem value="widget">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4" />
+                  <span>Widget</span>
+                </div>
+              </SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {/* Desktop Tabs List */}
-        <TabsList className="hidden sm:grid w-full grid-cols-6 h-auto p-1 bg-muted/50">
+        <TabsList className="hidden sm:grid w-full grid-cols-7 h-auto p-1 bg-muted/50">
           <TabsTrigger value="analytics" className="flex items-center gap-2 py-2.5">
             <PieChart className="h-4 w-4" />
             <span className="hidden sm:inline">Analytics</span>
@@ -258,6 +266,10 @@ export default function ConsentManagement() {
           <TabsTrigger value="crossapp" className="flex items-center gap-2 py-2.5">
             <Layers className="h-4 w-4" />
             <span className="hidden sm:inline">Cross-App</span>
+          </TabsTrigger>
+          <TabsTrigger value="widget" className="flex items-center gap-2 py-2.5">
+            <Shield className="h-4 w-4" />
+            <span className="hidden sm:inline">Widget</span>
           </TabsTrigger>
         </TabsList>
 
@@ -331,6 +343,10 @@ export default function ConsentManagement() {
 
         <TabsContent value="crossapp" className="m-0 focus-visible:ring-0">
           <CrossApplicationUsage />
+        </TabsContent>
+
+        <TabsContent value="widget" className="m-0 focus-visible:ring-0">
+          <ConsentWidgetManager />
         </TabsContent>
       </Tabs>
     </DashboardLayout>
