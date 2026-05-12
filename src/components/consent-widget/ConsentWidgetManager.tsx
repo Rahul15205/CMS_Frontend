@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { consentWidgetService } from "@/services/consentWidgetService";
 import { consentService } from "@/services/consentService";
@@ -53,6 +53,9 @@ export function ConsentWidgetManager() {
   const [showEmbedDialog, setShowEmbedDialog] = useState(false);
   const [embedWidgetId, setEmbedWidgetId] = useState<string>("");
   const [embedAppId, setEmbedAppId] = useState<string>("");
+  const [showCreateApp, setShowCreateApp] = useState(false);
+  const [newAppName, setNewAppName] = useState("");
+  const [newAppDesc, setNewAppDesc] = useState("");
 
   // Form state
   const [form, setForm] = useState<Partial<ConsentWidgetConfig>>(DEFAULT_WIDGET_CONFIG);
@@ -68,7 +71,7 @@ export function ConsentWidgetManager() {
     queryFn: () => consentService.getTemplates(),
   });
 
-  const { data: appsData } = useQuery({
+  const { data: appsData, refetch: refetchApps } = useQuery({
     queryKey: ["applications"],
     queryFn: () => consentService.getApplications(),
   });
@@ -96,6 +99,23 @@ export function ConsentWidgetManager() {
       closeBuilder();
     },
     onError: (err: any) => toast({ title: "Error", description: err?.response?.data?.message || "Failed to update widget", variant: "destructive" }),
+  });
+
+  const createAppMutation = useMutation({
+    mutationFn: async (data: { name: string; description?: string }) => {
+      const res = await (await import("@/lib/api")).default.post("/api/v1/applications", data);
+      return res.data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["applications"] });
+      refetchApps();
+      updateForm("applicationId", data.id);
+      setShowCreateApp(false);
+      setNewAppName("");
+      setNewAppDesc("");
+      toast({ title: "Application Created", description: `"${data.name}" created and selected.` });
+    },
+    onError: (err: any) => toast({ title: "Error", description: err?.response?.data?.message || "Failed to create application", variant: "destructive" }),
   });
 
   const deleteMutation = useMutation({
@@ -301,6 +321,22 @@ export function ConsentWidgetManager() {
                       ))}
                     </SelectContent>
                   </Select>
+                  {!showCreateApp ? (
+                    <Button variant="link" size="sm" className="px-0 h-auto mt-1 text-xs" onClick={() => setShowCreateApp(true)}>
+                      <Plus className="h-3 w-3 mr-1" />Create New Application
+                    </Button>
+                  ) : (
+                    <div className="mt-2 p-3 border rounded-lg bg-muted/30 space-y-2">
+                      <Input placeholder="Application Name *" value={newAppName} onChange={(e) => setNewAppName(e.target.value)} />
+                      <Input placeholder="Description (optional)" value={newAppDesc} onChange={(e) => setNewAppDesc(e.target.value)} />
+                      <div className="flex gap-2">
+                        <Button size="sm" disabled={!newAppName.trim() || createAppMutation.isPending} onClick={() => createAppMutation.mutate({ name: newAppName.trim(), description: newAppDesc.trim() || undefined })}>
+                          {createAppMutation.isPending ? "Creating..." : "Create"}
+                        </Button>
+                        <Button size="sm" variant="ghost" onClick={() => { setShowCreateApp(false); setNewAppName(""); setNewAppDesc(""); }}>Cancel</Button>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div>
                   <Label>Consent Template *</Label>
