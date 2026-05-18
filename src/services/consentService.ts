@@ -9,36 +9,62 @@ import { ConsentTemplate, TemplateStatus, ConsentVersion, ConsentDeployment, Dep
  */
 function mapBackendTemplate(backendTemplate: any): ConsentTemplate {
   const wizardFields = backendTemplate.wizardFields || {};
-  
+
+  // Default structures to ensure nested fields always exist
+  const defaultRetention = { period: '', justification: '', autoDelete: false, postWithdrawalRules: '' };
+  const defaultSecurity = {
+    encryptionAtRest: true, encryptionInTransit: true, accessControls: true,
+    monitoringLogging: true, incidentResponse: true, certifications: [], additionalMeasures: []
+  };
+  const defaultWithdrawal = { method: '', effect: '', rightsLink: '', processingTimeline: '' };
+
   return {
-    ...wizardFields,
+    // --- Core Backend Fields (top-level columns) ---
     id: backendTemplate.id,
     name: backendTemplate.title || wizardFields.name || '',
     description: backendTemplate.description || wizardFields.description || '',
     status: (backendTemplate.status?.toLowerCase() === 'published' ? 'active' : (backendTemplate.status?.toLowerCase() || 'draft')) as TemplateStatus,
     type: (backendTemplate.type?.toLowerCase() || wizardFields.type || 'explicit') as ConsentType,
-    noExpiry: backendTemplate.noExpiry !== undefined ? backendTemplate.noExpiry : wizardFields.noExpiry,
-    ageThreshold: backendTemplate.ageThreshold !== undefined ? backendTemplate.ageThreshold : wizardFields.ageThreshold,
+    version: wizardFields.version || backendTemplate.versions?.[0]?.versionNumber?.toString() || '1.0',
+    noExpiry: backendTemplate.noExpiry !== undefined ? backendTemplate.noExpiry : (wizardFields.noExpiry ?? true),
+    validityStart: wizardFields.validityStart || backendTemplate.validityStart || undefined,
+    validityEnd: wizardFields.validityEnd || backendTemplate.validityEnd || undefined,
+    validityDuration: wizardFields.validityDuration || backendTemplate.validityDuration || undefined,
+    ageThreshold: backendTemplate.ageThreshold !== undefined ? backendTemplate.ageThreshold : (wizardFields.ageThreshold ?? 18),
     consentGivenBy: (backendTemplate.consentGivenBy?.toLowerCase() || wizardFields.consentGivenBy || 'self') as any,
     mechanism: (backendTemplate.mechanism?.toLowerCase() || wizardFields.mechanism || 'checkbox') as any,
-    separateConsents: backendTemplate.separateConsents !== undefined ? backendTemplate.separateConsents : wizardFields.separateConsents,
-    withdrawVisible: backendTemplate.withdrawVisible !== undefined ? backendTemplate.withdrawVisible : wizardFields.withdrawVisible,
-    dataSharing: backendTemplate.dataSharing !== undefined ? backendTemplate.dataSharing : wizardFields.dataSharing,
+    mechanismType: wizardFields.mechanismType || wizardFields.mechanism || backendTemplate.mechanism?.toLowerCase() || 'checkbox',
+    doubleOptIn: wizardFields.doubleOptIn ?? false,
+    separateConsents: backendTemplate.separateConsents !== undefined ? backendTemplate.separateConsents : (wizardFields.separateConsents ?? true),
+    withdrawVisible: backendTemplate.withdrawVisible !== undefined ? backendTemplate.withdrawVisible : (wizardFields.withdrawVisible ?? true),
+    dataSharing: backendTemplate.dataSharing !== undefined ? backendTemplate.dataSharing : (wizardFields.dataSharing ?? false),
     privacyNoticeRef: backendTemplate.privacyNoticeRef || wizardFields.privacyNoticeRef || '',
-    auditTrailEnabled: backendTemplate.auditTrailEnabled !== undefined ? backendTemplate.auditTrailEnabled : wizardFields.auditTrailEnabled,
+    auditTrailEnabled: backendTemplate.auditTrailEnabled !== undefined ? backendTemplate.auditTrailEnabled : (wizardFields.auditTrailEnabled ?? true),
     defaultLanguage: backendTemplate.defaultLanguage || wizardFields.defaultLanguage || 'en',
     supportedLanguages: backendTemplate.supportedLanguages || wizardFields.supportedLanguages || ['en'],
-    createdAt: backendTemplate.createdAt,
-    updatedAt: backendTemplate.updatedAt,
-    latestVersionId: backendTemplate.versions?.[0]?.id,
-    createdBy: backendTemplate.creator?.name || backendTemplate.createdBy || 'System',
-    // Ensure arrays exist and are mapped to uppercase to stay consistent with Enums and Wizard state
+    language: wizardFields.language || backendTemplate.defaultLanguage || 'en',
+    tags: wizardFields.tags || [],
+    customRegulationName: wizardFields.customRegulationName || '',
+    purposeTitle: wizardFields.purposeTitle || '',
+    purposeDescription: wizardFields.purposeDescription || '',
+    lawfulBasis: wizardFields.lawfulBasis || '',
+    // --- Enums (normalized to uppercase for consistency) ---
     regulations: (backendTemplate.regulations || wizardFields.regulations || []).map((r: string) => r.toUpperCase() as any),
     targetUserCategory: (backendTemplate.targetUserCategory || wizardFields.targetUserCategory || []).map((c: string) => c.toUpperCase()),
+    // --- Nested Complex Objects (from wizardFields, with safe fallbacks) ---
     purposes: wizardFields.purposes || [],
     dataCategories: wizardFields.dataCategories || [],
     thirdParties: wizardFields.thirdParties || [],
     subProcessors: wizardFields.subProcessors || [],
+    retention: { ...defaultRetention, ...(wizardFields.retention || {}) },
+    security: { ...defaultSecurity, ...(wizardFields.security || {}) },
+    withdrawal: { ...defaultWithdrawal, ...(wizardFields.withdrawal || {}) },
+    // --- Metadata ---
+    createdAt: backendTemplate.createdAt,
+    updatedAt: backendTemplate.updatedAt,
+    createdBy: backendTemplate.creator?.name || backendTemplate.createdBy || 'System',
+    updatedBy: wizardFields.updatedBy || backendTemplate.creator?.name || 'System',
+    latestVersionId: backendTemplate.versions?.[0]?.id,
   };
 }
 
@@ -185,7 +211,15 @@ export const consentService = {
    */
   saveTemplate: async (template: Partial<ConsentTemplate>): Promise<ConsentTemplate> => {
     const status = template.status?.toUpperCase();
-    
+
+    // Extract only wizard-specific data for the wizardFields JSON column
+    // Exclude backend-managed metadata fields to avoid data pollution
+    const {
+      id: _id, createdAt: _ca, updatedAt: _ua, createdBy: _cb, updatedBy: _ub,
+      latestVersionId: _lvi,
+      ...wizardData
+    } = template as any;
+
     // Map enums to UPPERCASE for backend columns
     const payload = {
       title: template.name,
@@ -205,7 +239,8 @@ export const consentService = {
       auditTrailEnabled: template.auditTrailEnabled,
       defaultLanguage: template.defaultLanguage,
       supportedLanguages: template.supportedLanguages,
-      wizardFields: template, // Keep everything in wizardFields for backward compatibility
+      // Store full wizard data (without metadata) for complex nested fields
+      wizardFields: wizardData,
     };
 
     let result: ConsentTemplate;
