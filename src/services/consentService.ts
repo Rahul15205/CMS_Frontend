@@ -25,7 +25,9 @@ function mapBackendTemplate(backendTemplate: any): ConsentTemplate {
     description: backendTemplate.description || wizardFields.description || '',
     status: (backendTemplate.status?.toLowerCase() === 'published' ? 'active' : (backendTemplate.status?.toLowerCase() || 'draft')) as TemplateStatus,
     type: (backendTemplate.type?.toLowerCase() || wizardFields.type || 'explicit') as ConsentType,
-    version: wizardFields.version || backendTemplate.versions?.[0]?.versionNumber?.toString() || '1.0',
+    version: backendTemplate.versions?.[0]?.versionNumber 
+      ? `${backendTemplate.versions[0].versionNumber}.0` 
+      : (wizardFields.version || '1.0'),
     noExpiry: backendTemplate.noExpiry !== undefined ? backendTemplate.noExpiry : (wizardFields.noExpiry ?? true),
     validityStart: wizardFields.validityStart || backendTemplate.validityStart || undefined,
     validityEnd: wizardFields.validityEnd || backendTemplate.validityEnd || undefined,
@@ -216,7 +218,7 @@ export const consentService = {
     // Exclude backend-managed metadata fields to avoid data pollution
     const {
       id: _id, createdAt: _ca, updatedAt: _ua, createdBy: _cb, updatedBy: _ub,
-      latestVersionId: _lvi,
+      latestVersionId: _lvi, version: _version,
       ...wizardData
     } = template as any;
 
