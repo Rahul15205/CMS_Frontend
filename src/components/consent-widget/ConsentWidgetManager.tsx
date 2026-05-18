@@ -164,7 +164,7 @@ export function ConsentWidgetManager() {
   };
 
   const copyScript = () => {
-    const script = `<script src="${window.location.origin}/api/v1/public/consent/widget-script/${embedAppId}" defer></script>`;
+    const script = `<script src="${window.location.origin}/api/v1/public/consent/widget-script/${embedWidgetId}" defer></script>`;
     navigator.clipboard.writeText(script);
     toast({ title: "Copied!", description: "Embed script copied to clipboard." });
   };
@@ -516,7 +516,7 @@ export function ConsentWidgetManager() {
               <Label className="mb-2 block">1. Add this script to your HTML</Label>
               <div className="relative">
                 <div className="bg-slate-950 text-emerald-400 p-4 rounded-xl font-mono text-sm border shadow-xl overflow-x-auto pr-12">
-                  <pre className="whitespace-pre-wrap break-all">{`<script src="${window.location.origin}/api/v1/public/consent/widget-script/${embedAppId}" defer></script>`}</pre>
+                  <pre className="whitespace-pre-wrap break-all">{`<script src="${window.location.origin}/api/v1/public/consent/widget-script/${embedWidgetId}" defer></script>`}</pre>
                 </div>
                 <Button size="icon" variant="ghost" className="absolute top-3 right-3 text-slate-400 hover:text-white hover:bg-white/10" onClick={copyScript}>
                   <Copy className="h-4 w-4" />
