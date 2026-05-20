@@ -446,6 +446,7 @@ export function ConsentUsageTraceability() {
           <TableHeader>
             <TableRow className="bg-muted/50">
               <TableHead>User Identifier</TableHead>
+              <TableHead>IP Address</TableHead>
               <TableHead>Consent Template</TableHead>
               <TableHead>Version</TableHead>
               <TableHead>Purpose</TableHead>
@@ -459,7 +460,7 @@ export function ConsentUsageTraceability() {
           <TableBody>
             {isLoadingUsage ? (
               <TableRow>
-                <TableCell colSpan={9} className="h-24 text-center">
+                <TableCell colSpan={10} className="h-24 text-center">
                   <RefreshCw className="h-6 w-6 animate-spin mx-auto mb-2" />
                   Loading records...
                 </TableCell>
@@ -471,6 +472,9 @@ export function ConsentUsageTraceability() {
                     <Users className="h-4 w-4 text-muted-foreground" />
                     <span className="font-mono text-sm">{record.userIdentifier}</span>
                   </div>
+                </TableCell>
+                <TableCell>
+                  <span className="font-mono text-xs text-muted-foreground">{record.ipAddress || "192.168.1.xxx"}</span>
                 </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">

@@ -93,6 +93,7 @@ interface DeploymentConfigFormProps {
 }
 
 function DeploymentConfigForm({ initialData, templates, applications, onDeploy, onCancel, isLoading }: DeploymentConfigFormProps) {
+  const isEditing = !!initialData?.id;
   const [config, setConfig] = useState({
     templateId: initialData?.templateId || templates[0]?.id || "",
     applicationId: initialData?.applicationId || applications[0]?.id || "",
@@ -106,9 +107,12 @@ function DeploymentConfigForm({ initialData, templates, applications, onDeploy, 
     approvalRequired: initialData?.approvalRequired ?? true,
     rollbackAllowed: initialData?.rollbackAllowed ?? true,
     lockAfterActivation: initialData?.lockAfterActivation ?? false,
+    status: (initialData?.status || "deployed") as string,
   });
 
-  const selectedTemplate = templates.find((template) => template.id === config.templateId);
+  // Only show non-archived templates in the dropdown
+  const activeTemplates = templates.filter(t => t.status !== "archived");
+  const selectedTemplate = activeTemplates.find((template) => template.id === config.templateId);
 
   return (
     <div className="space-y-6 py-2">
@@ -124,7 +128,7 @@ function DeploymentConfigForm({ initialData, templates, applications, onDeploy, 
                 <SelectValue placeholder="Select template" />
               </SelectTrigger>
               <SelectContent>
-                {templates.map((template) => (
+                {activeTemplates.map((template) => (
                   <SelectItem key={template.id} value={template.id}>
                     {template.name} (v{template.version})
                   </SelectItem>
@@ -249,6 +253,27 @@ function DeploymentConfigForm({ initialData, templates, applications, onDeploy, 
             />
           </div>
         </div>
+
+        {/* Status override — visible only when editing */}
+        {isEditing && (
+          <div className="space-y-2">
+            <Label className="text-sm font-semibold">Deployment Status</Label>
+            <Select
+              value={config.status}
+              onValueChange={(v) => setConfig({ ...config, status: v })}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Select status" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="deployed">Deployed</SelectItem>
+                <SelectItem value="pending">Pending</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+                <SelectItem value="rolled-back">Rolled Back</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       <DialogFooter>
@@ -312,22 +337,31 @@ export function ConsentDeployment({ templates }: ConsentDeploymentProps) {
   // Mutations
   const deployMutation = useMutation({
     mutationFn: (config: any) => {
+      if (editingDeployment) {
+        // UPDATE existing deployment
+        return consentService.updateDeployment(editingDeployment.id, {
+          region: config.region,
+          platform: config.platform,
+          userSegment: config.userSegment,
+          approvalRequired: config.approvalRequired,
+          rollbackAllowed: config.rollbackAllowed,
+          deploymentMode: config.deploymentMode,
+          activationDate: config.activationDate || undefined,
+          status: config.status,
+        });
+      }
+
+      // CREATE new deployment
       const selected = templates.find(t => t.id === config.templateId);
-      
       if (!selected?.latestVersionId) {
         throw new Error("This template has no published versions. Please publish a version before deploying.");
       }
-
       const payload = {
         ...config,
         templateName: selected.name,
         versionId: selected.latestVersionId,
         isActive: true,
       };
-      
-      if (editingDeployment) {
-        // ... update logic
-      }
       return consentService.createDeployment(payload);
     },
     onSuccess: () => {

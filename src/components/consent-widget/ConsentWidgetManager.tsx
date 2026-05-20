@@ -27,11 +27,21 @@ import {
 } from "@/components/ui/sheet";
 import {
   Plus, Code, Eye, Edit, Trash2, Copy, CheckCircle, Settings,
-  Palette, Layout, Globe, Shield, BarChart3, ExternalLink, Zap,
+  Palette, Layout, Globe, Shield, BarChart3, ExternalLink, Zap, AlertTriangle,
 } from "lucide-react";
 import {
   Tooltip, TooltipContent, TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 // ─── Status Badge Helper ──────────────────────────────────
 function getWidgetStatusBadge(status: string) {
@@ -56,6 +66,7 @@ export function ConsentWidgetManager() {
   const [showCreateApp, setShowCreateApp] = useState(false);
   const [newAppName, setNewAppName] = useState("");
   const [newAppDesc, setNewAppDesc] = useState("");
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
   // Form state
   const [form, setForm] = useState<Partial<ConsentWidgetConfig>>(DEFAULT_WIDGET_CONFIG);
@@ -280,6 +291,17 @@ export function ConsentWidgetManager() {
                           }}><Zap className="h-3.5 w-3.5 mr-1" />Activate</Button>
                         </TooltipTrigger><TooltipContent>Activate widget</TooltipContent></Tooltip>
                       )}
+
+                      <Tooltip><TooltipTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeleteConfirmId(widget.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </TooltipTrigger><TooltipContent>Archive widget</TooltipContent></Tooltip>
                     </div>
                   </CardContent>
                 </Card>
@@ -343,7 +365,7 @@ export function ConsentWidgetManager() {
                   <Select value={form.templateId || ""} onValueChange={(v) => updateForm("templateId", v)}>
                     <SelectTrigger><SelectValue placeholder="Select a consent template" /></SelectTrigger>
                     <SelectContent>
-                      {templates.map((t: any) => (
+                      {templates.filter((t: any) => t.status !== "archived").map((t: any) => (
                         <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
                       ))}
                     </SelectContent>
@@ -351,11 +373,10 @@ export function ConsentWidgetManager() {
                 </div>
               </div>
             </div>
-
             {/* Display Settings */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2"><Layout className="h-4 w-4" />Display Settings</h3>
-              <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-sm font-semibold flex items-center gap-2"><Layout className="h-4 w-4" />Display & Design</h3>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
                   <Label>Display Mode</Label>
                   <Select value={form.displayMode || "POPUP"} onValueChange={(v) => updateForm("displayMode", v)}>
@@ -368,7 +389,7 @@ export function ConsentWidgetManager() {
                   </Select>
                 </div>
                 <div>
-                  <Label>Trigger</Label>
+                  <Label>Trigger Mode</Label>
                   <Select value={form.trigger || "MANUAL"} onValueChange={(v) => updateForm("trigger", v)}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -379,122 +400,76 @@ export function ConsentWidgetManager() {
                   </Select>
                 </div>
               </div>
-            </div>
-
-            {/* Branding */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2"><Palette className="h-4 w-4" />Branding</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <Label>Theme Color</Label>
                   <div className="flex gap-2">
-                    <input type="color" value={form.themeColor || "#10b981"} onChange={(e) => updateForm("themeColor", e.target.value)} className="h-9 w-12 rounded border cursor-pointer" />
-                    <Input value={form.themeColor || ""} onChange={(e) => updateForm("themeColor", e.target.value)} className="flex-1" />
+                    <Input type="color" value={form.themeColor || "#000000"} onChange={(e) => updateForm("themeColor", e.target.value)} className="w-12 h-10 p-1" />
+                    <Input value={form.themeColor || ""} onChange={(e) => updateForm("themeColor", e.target.value)} placeholder="#000000" className="flex-1 text-xs" />
                   </div>
                 </div>
                 <div>
                   <Label>Background</Label>
                   <div className="flex gap-2">
-                    <input type="color" value={form.backgroundColor || "#ffffff"} onChange={(e) => updateForm("backgroundColor", e.target.value)} className="h-9 w-12 rounded border cursor-pointer" />
-                    <Input value={form.backgroundColor || ""} onChange={(e) => updateForm("backgroundColor", e.target.value)} className="flex-1" />
+                    <Input type="color" value={form.backgroundColor || "#ffffff"} onChange={(e) => updateForm("backgroundColor", e.target.value)} className="w-12 h-10 p-1" />
+                    <Input value={form.backgroundColor || ""} onChange={(e) => updateForm("backgroundColor", e.target.value)} placeholder="#ffffff" className="flex-1 text-xs" />
                   </div>
                 </div>
                 <div>
                   <Label>Text Color</Label>
                   <div className="flex gap-2">
-                    <input type="color" value={form.textColor || "#111827"} onChange={(e) => updateForm("textColor", e.target.value)} className="h-9 w-12 rounded border cursor-pointer" />
-                    <Input value={form.textColor || ""} onChange={(e) => updateForm("textColor", e.target.value)} className="flex-1" />
-                  </div>
-                </div>
-                <div>
-                  <Label>Button Text</Label>
-                  <div className="flex gap-2">
-                    <input type="color" value={form.buttonTextColor || "#ffffff"} onChange={(e) => updateForm("buttonTextColor", e.target.value)} className="h-9 w-12 rounded border cursor-pointer" />
-                    <Input value={form.buttonTextColor || ""} onChange={(e) => updateForm("buttonTextColor", e.target.value)} className="flex-1" />
+                    <Input type="color" value={form.textColor || "#000000"} onChange={(e) => updateForm("textColor", e.target.value)} className="w-12 h-10 p-1" />
+                    <Input value={form.textColor || ""} onChange={(e) => updateForm("textColor", e.target.value)} placeholder="#000000" className="flex-1 text-xs" />
                   </div>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <Label>Border Radius (px)</Label>
-                  <Input type="number" value={form.borderRadius || 12} onChange={(e) => updateForm("borderRadius", parseInt(e.target.value) || 0)} />
-                </div>
-                <div>
-                  <Label>Font Size (px)</Label>
-                  <Input type="number" value={form.fontSize || 14} onChange={(e) => updateForm("fontSize", parseInt(e.target.value) || 14)} />
-                </div>
-              </div>
-              <div>
-                <Label>Logo URL (optional)</Label>
-                <Input value={form.logoUrl || ""} onChange={(e) => updateForm("logoUrl", e.target.value)} placeholder="https://example.com/logo.png" />
-              </div>
             </div>
-
-            {/* Content */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2"><Globe className="h-4 w-4" />Content</h3>
-              <div>
-                <Label>Heading</Label>
-                <Input value={form.heading || ""} onChange={(e) => updateForm("heading", e.target.value)} />
-              </div>
-              <div>
-                <Label>Description</Label>
-                <Textarea value={form.description || ""} onChange={(e) => updateForm("description", e.target.value)} rows={3} />
-              </div>
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <Label>Accept Button</Label>
-                  <Input value={form.acceptAllText || ""} onChange={(e) => updateForm("acceptAllText", e.target.value)} />
-                </div>
-                <div>
-                  <Label>Reject Button</Label>
-                  <Input value={form.rejectAllText || ""} onChange={(e) => updateForm("rejectAllText", e.target.value)} />
-                </div>
-                <div>
-                  <Label>Save Button</Label>
-                  <Input value={form.savePrefsText || ""} onChange={(e) => updateForm("savePrefsText", e.target.value)} />
-                </div>
-              </div>
-            </div>
-
-            {/* Data Collection */}
-            <div className="space-y-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2"><Shield className="h-4 w-4" />Data Collection</h3>
+            {/* Content Customization */}
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-sm font-semibold flex items-center gap-2"><Palette className="h-4 w-4" />Content & Texts</h3>
               <div className="space-y-3">
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div><Label className="mb-0">Collect Name</Label><p className="text-xs text-muted-foreground">Ask for user's name</p></div>
-                  <Switch checked={form.collectName || false} onCheckedChange={(v) => updateForm("collectName", v)} />
-                </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div><Label className="mb-0">Collect Email</Label><p className="text-xs text-muted-foreground">Ask for email address</p></div>
-                  <Switch checked={form.collectEmail !== false} onCheckedChange={(v) => updateForm("collectEmail", v)} />
-                </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div><Label className="mb-0">Collect Phone</Label><p className="text-xs text-muted-foreground">Ask for phone number</p></div>
-                  <Switch checked={form.collectPhone || false} onCheckedChange={(v) => updateForm("collectPhone", v)} />
-                </div>
-                <div className="flex items-center justify-between p-3 border rounded-lg">
-                  <div><Label className="mb-0">Require All Purposes</Label><p className="text-xs text-muted-foreground">Make all purposes mandatory</p></div>
-                  <Switch checked={form.requireAllPurposes || false} onCheckedChange={(v) => updateForm("requireAllPurposes", v)} />
-                </div>
-              </div>
-              <div className="flex items-center justify-between p-3 border rounded-lg">
-                <div><Label className="mb-0">Show Privacy Link</Label><p className="text-xs text-muted-foreground">Display privacy policy link</p></div>
-                <Switch checked={form.showPrivacyLink !== false} onCheckedChange={(v) => updateForm("showPrivacyLink", v)} />
-              </div>
-              {form.showPrivacyLink && (
                 <div>
-                  <Label>Privacy Policy URL</Label>
-                  <Input value={form.privacyPolicyUrl || ""} onChange={(e) => updateForm("privacyPolicyUrl", e.target.value)} placeholder="https://example.com/privacy" />
+                  <Label>Heading</Label>
+                  <Input value={form.heading || ""} onChange={(e) => updateForm("heading", e.target.value)} placeholder="e.g. We value your privacy" />
                 </div>
-              )}
+                <div>
+                  <Label>Description</Label>
+                  <Textarea value={form.description || ""} onChange={(e) => updateForm("description", e.target.value)} placeholder="Explain why consent is being collected" rows={3} />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label>Accept Button Text</Label>
+                    <Input value={form.acceptAllText || ""} onChange={(e) => updateForm("acceptAllText", e.target.value)} placeholder="e.g. Accept All" />
+                  </div>
+                  <div>
+                    <Label>Reject Button Text</Label>
+                    <Input value={form.rejectAllText || ""} onChange={(e) => updateForm("rejectAllText", e.target.value)} placeholder="e.g. Reject All" />
+                  </div>
+                </div>
+              </div>
             </div>
-
-            {/* Actions */}
-            <div className="flex gap-3 pt-4 border-t sticky bottom-0 bg-background pb-4">
+            {/* Fields Collection */}
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-sm font-semibold flex items-center gap-2"><Shield className="h-4 w-4" />Fields & Behaviors</h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div className="flex items-center justify-between border p-3 rounded-lg bg-muted/20">
+                  <Label className="cursor-pointer" htmlFor="w-name">Collect Name</Label>
+                  <Switch id="w-name" checked={form.collectName || false} onCheckedChange={(v) => updateForm("collectName", v)} />
+                </div>
+                <div className="flex items-center justify-between border p-3 rounded-lg bg-muted/20">
+                  <Label className="cursor-pointer" htmlFor="w-email">Collect Email</Label>
+                  <Switch id="w-email" checked={form.collectEmail !== false} onCheckedChange={(v) => updateForm("collectEmail", v)} />
+                </div>
+                <div className="flex items-center justify-between border p-3 rounded-lg bg-muted/20">
+                  <Label className="cursor-pointer" htmlFor="w-phone">Collect Phone</Label>
+                  <Switch id="w-phone" checked={form.collectPhone || false} onCheckedChange={(v) => updateForm("collectPhone", v)} />
+                </div>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-6 border-t">
               <Button variant="outline" onClick={closeBuilder} className="flex-1">Cancel</Button>
-              <Button variant="secondary" onClick={() => handleSave("WIDGET_DRAFT")} className="flex-1" disabled={createMutation.isPending || updateMutation.isPending}>
-                Save Draft
+              <Button onClick={() => handleSave("WIDGET_DRAFT")} variant="secondary" className="flex-1" disabled={createMutation.isPending || updateMutation.isPending}>
+                Save as Draft
               </Button>
               <Button onClick={() => handleSave("WIDGET_ACTIVE")} className="flex-1" disabled={createMutation.isPending || updateMutation.isPending}>
                 {editingWidget ? "Update & Activate" : "Create & Activate"}
@@ -539,6 +514,35 @@ export function ConsentWidgetManager() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ─── Delete Confirmation Dialog ─────────────────── */}
+      <AlertDialog open={!!deleteConfirmId} onOpenChange={(open) => !open && setDeleteConfirmId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              Archive Widget?
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to archive this consent widget? It will no longer serve public consent requests.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (deleteConfirmId) {
+                  deleteMutation.mutate(deleteConfirmId);
+                  setDeleteConfirmId(null);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Confirm
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

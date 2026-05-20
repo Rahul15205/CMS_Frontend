@@ -188,11 +188,11 @@ export default function ConsentManagement() {
   return (
     <DashboardLayout title="Consent Management">
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        {/* Mobile Tab Selector */}
+        {/* Mobile Tabs Selector */}
         <div className="sm:hidden mb-4">
           <Select value={activeTab} onValueChange={setActiveTab}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select view" />
+              <SelectValue placeholder="Select Tab" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="analytics">
@@ -207,10 +207,10 @@ export default function ConsentManagement() {
                   <span>Templates</span>
                 </div>
               </SelectItem>
-              <SelectItem value="deployment">
+              <SelectItem value="distribution">
                 <div className="flex items-center gap-2">
                   <Send className="h-4 w-4" />
-                  <span>Deployment</span>
+                  <span>Distribution</span>
                 </div>
               </SelectItem>
               <SelectItem value="usage">
@@ -231,18 +231,12 @@ export default function ConsentManagement() {
                   <span>Cross-App</span>
                 </div>
               </SelectItem>
-              <SelectItem value="widget">
-                <div className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  <span>Widget</span>
-                </div>
-              </SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {/* Desktop Tabs List */}
-        <TabsList className="hidden sm:grid w-full grid-cols-7 h-auto p-1 bg-muted/50">
+        <TabsList className="hidden sm:grid w-full grid-cols-6 h-auto p-1 bg-muted/50">
           <TabsTrigger value="analytics" className="flex items-center gap-2 py-2.5">
             <PieChart className="h-4 w-4" />
             <span className="hidden sm:inline">Analytics</span>
@@ -251,9 +245,9 @@ export default function ConsentManagement() {
             <FileText className="h-4 w-4" />
             <span className="hidden sm:inline">Templates</span>
           </TabsTrigger>
-          <TabsTrigger value="deployment" className="flex items-center gap-2 py-2.5">
+          <TabsTrigger value="distribution" className="flex items-center gap-2 py-2.5">
             <Send className="h-4 w-4" />
-            <span className="hidden sm:inline">Deployment</span>
+            <span className="hidden sm:inline">Distribution</span>
           </TabsTrigger>
           <TabsTrigger value="usage" className="flex items-center gap-2 py-2.5">
             <Activity className="h-4 w-4" />
@@ -266,10 +260,6 @@ export default function ConsentManagement() {
           <TabsTrigger value="crossapp" className="flex items-center gap-2 py-2.5">
             <Layers className="h-4 w-4" />
             <span className="hidden sm:inline">Cross-App</span>
-          </TabsTrigger>
-          <TabsTrigger value="widget" className="flex items-center gap-2 py-2.5">
-            <Shield className="h-4 w-4" />
-            <span className="hidden sm:inline">Widget</span>
           </TabsTrigger>
         </TabsList>
 
@@ -329,8 +319,23 @@ export default function ConsentManagement() {
           </AlertDialogContent>
         </AlertDialog>
 
-        <TabsContent value="deployment" className="m-0 focus-visible:ring-0">
-          <ConsentDeployment templates={templates} />
+        <TabsContent value="distribution" className="m-0 focus-visible:ring-0">
+          <div className="space-y-6">
+            <Tabs defaultValue="deployments" className="w-full">
+              <div className="flex justify-between items-center border-b pb-2 mb-4">
+                <TabsList className="bg-muted/80 p-0.5 h-9">
+                  <TabsTrigger value="deployments" className="text-xs px-4 py-1.5">Consent Deployments</TabsTrigger>
+                  <TabsTrigger value="widgets" className="text-xs px-4 py-1.5">Consent Widgets</TabsTrigger>
+                </TabsList>
+              </div>
+              <TabsContent value="deployments" className="mt-0">
+                <ConsentDeployment templates={templates} />
+              </TabsContent>
+              <TabsContent value="widgets" className="mt-0">
+                <ConsentWidgetManager />
+              </TabsContent>
+            </Tabs>
+          </div>
         </TabsContent>
 
         <TabsContent value="usage" className="m-0 focus-visible:ring-0">
@@ -343,10 +348,6 @@ export default function ConsentManagement() {
 
         <TabsContent value="crossapp" className="m-0 focus-visible:ring-0">
           <CrossApplicationUsage />
-        </TabsContent>
-
-        <TabsContent value="widget" className="m-0 focus-visible:ring-0">
-          <ConsentWidgetManager />
         </TabsContent>
       </Tabs>
     </DashboardLayout>

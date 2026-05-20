@@ -229,6 +229,7 @@ export interface DeploymentLog {
 export interface ConsentUsageRecord {
   id: string;
   userIdentifier: string;
+  ipAddress?: string;
   templateId: string;
   templateName?: string;
   version: string;

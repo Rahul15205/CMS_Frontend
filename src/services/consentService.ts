@@ -132,9 +132,10 @@ function mapBackendUsageRecord(record: any): ConsentUsageRecord {
   return {
     id: record.id,
     userIdentifier: record.userIdentifier,
+    ipAddress: record.ipAddress || undefined,
     templateId: record.templateId,
     templateName: record.template?.title || 'Unknown Template',
-    version: record.versionCaptured || '1.0',
+    version: record.versionCaptured || record.version || '1.0',
     purposeMapped: record.purposeMapped || 'General',
     systemApp: record.systemApp || 'Main App',
     consentDateTime: record.consentDateTime,
@@ -342,6 +343,22 @@ export const consentService = {
    */
   rollbackDeployment: async (id: string): Promise<ConsentDeployment> => {
     const res = await api.put(`/api/v1/consent-deployments/${id}/rollback`);
+    return mapBackendDeployment(res.data);
+  },
+
+  /**
+   * Update an existing deployment (status, region, platform, etc.).
+   */
+  updateDeployment: async (id: string, data: any): Promise<ConsentDeployment> => {
+    const payload = {
+      ...data,
+      deploymentMode: data.deploymentMode?.toUpperCase(),
+      activationDate: data.activationDate || undefined,
+      platform: Array.isArray(data.platform) ? data.platform.map((p: string) => p.trim()) : data.platform,
+      // Map frontend lowercase status to backend uppercase enum
+      status: data.status?.toUpperCase().replace('-', '_'),
+    };
+    const res = await api.put(`/api/v1/consent-deployments/${id}`, payload);
     return mapBackendDeployment(res.data);
   },
 
