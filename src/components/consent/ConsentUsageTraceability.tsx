@@ -39,18 +39,6 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-
-// Using live data only
-
-const systemsUsingConsent = [
-  { name: "Email Platform", consentTemplates: 2, lastEvent: "2 hours ago" },
-  { name: "CRM System", consentTemplates: 3, lastEvent: "1 hour ago" },
-  { name: "Analytics Dashboard", consentTemplates: 1, lastEvent: "30 min ago" },
-  { name: "Core Application", consentTemplates: 4, lastEvent: "5 min ago" },
-  { name: "Partner Portal", consentTemplates: 1, lastEvent: "3 hours ago" },
-];
-
 import {
   Dialog,
   DialogContent,
@@ -60,10 +48,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea"; // Assuming Textarea exists
 import { Settings } from "lucide-react";
-
-// Local SystemConfig interface removed - using the imported one from ./types
 
 function SystemConfigurationDialog({
   open,
@@ -197,7 +182,7 @@ const getStatusBadge = (status: ConsentUsageRecord["consentStatus"]) => {
       return <Badge className="bg-success/10 text-success border-success/20">Active</Badge>;
     case "withdrawn":
       return <Badge className="bg-destructive/10 text-destructive border-destructive/20">Withdrawn</Badge>;
-    case "expired":
+    default:
       return <Badge variant="secondary">Expired</Badge>;
   }
 };
@@ -210,6 +195,7 @@ export function ConsentUsageTraceability() {
   const [systemFilter, setSystemFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<string>("all");
   const [showConfigDialog, setShowConfigDialog] = useState(false);
+  const [selectedRecord, setSelectedRecord] = useState<ConsentUsageRecord | null>(null);
 
   // Queries
   const { data: usageData, isLoading: isLoadingUsage } = useQuery({
@@ -217,7 +203,6 @@ export function ConsentUsageTraceability() {
     queryFn: () => consentService.getUsageRecords({
       search: searchQuery,
       status: statusFilter === "all" ? undefined : statusFilter,
-      // Note: Backend might not support system filter yet in records, but mapping it anyway
     }),
   });
 
@@ -508,7 +493,12 @@ export function ConsentUsageTraceability() {
                   </div>
                 </TableCell>
                 <TableCell className="text-right">
-                  <Button variant="ghost" size="sm">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="hover:bg-emerald-50 text-emerald-600 hover:text-emerald-700 dark:hover:bg-emerald-950/30"
+                    onClick={() => setSelectedRecord(record)}
+                  >
                     <Eye className="h-4 w-4" />
                   </Button>
                 </TableCell>
@@ -523,6 +513,72 @@ export function ConsentUsageTraceability() {
         <p>Showing {records.length} of {totalRecordsCount} records</p>
         <p className="text-xs">User identifiers are pseudonymized for privacy</p>
       </div>
+
+      {/* Details Receipt Dialog */}
+      <Dialog open={!!selectedRecord} onOpenChange={(open) => !open && setSelectedRecord(null)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-emerald-600">
+              <Eye className="h-5 w-5" />
+              Consent Usage Receipt
+            </DialogTitle>
+            <DialogDescription>
+              Detailed cryptographic audit receipt for the recorded consent event.
+            </DialogDescription>
+          </DialogHeader>
+          {selectedRecord && (
+            <div className="grid gap-4 py-4 text-sm">
+              <div className="grid grid-cols-3 items-center gap-4 border-b pb-2">
+                <span className="font-semibold text-muted-foreground">User Identifier</span>
+                <span className="col-span-2 font-mono break-all text-foreground">{selectedRecord.userIdentifier}</span>
+              </div>
+              <div className="grid grid-cols-3 items-center gap-4 border-b pb-2">
+                <span className="font-semibold text-muted-foreground">IP Address</span>
+                <span className="col-span-2 font-mono text-foreground">{selectedRecord.ipAddress || "192.168.1.xxx"}</span>
+              </div>
+              <div className="grid grid-cols-3 items-center gap-4 border-b pb-2">
+                <span className="font-semibold text-muted-foreground">Consent Template</span>
+                <span className="col-span-2 text-foreground font-medium">{selectedRecord.templateName || "Website Signin"}</span>
+              </div>
+              <div className="grid grid-cols-3 items-center gap-4 border-b pb-2">
+                <span className="font-semibold text-muted-foreground">Version</span>
+                <span className="col-span-2 font-mono text-foreground">v{selectedRecord.version}</span>
+              </div>
+              <div className="grid grid-cols-3 items-center gap-4 border-b pb-2">
+                <span className="font-semibold text-muted-foreground">System / App</span>
+                <span className="col-span-2 text-foreground">{selectedRecord.systemApp}</span>
+              </div>
+              <div className="grid grid-cols-3 items-center gap-4 border-b pb-2">
+                <span className="font-semibold text-muted-foreground">Purpose Mapped</span>
+                <div className="col-span-2">
+                  <Badge variant="outline" className="text-xs bg-muted/50 font-normal">
+                    {selectedRecord.purposeMapped}
+                  </Badge>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 items-center gap-4 border-b pb-2">
+                <span className="font-semibold text-muted-foreground">Consent Date</span>
+                <span className="col-span-2 text-foreground">
+                  {new Date(selectedRecord.consentDateTime).toLocaleString()}
+                </span>
+              </div>
+              <div className="grid grid-cols-3 items-center gap-4 border-b pb-2">
+                <span className="font-semibold text-muted-foreground">Status</span>
+                <span className="col-span-2">{getStatusBadge(selectedRecord.consentStatus)}</span>
+              </div>
+              <div className="grid grid-cols-3 items-center gap-4">
+                <span className="font-semibold text-muted-foreground">Last Audited</span>
+                <span className="col-span-2 text-foreground">
+                  {new Date(selectedRecord.lastValidation).toLocaleString()}
+                </span>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSelectedRecord(null)}>Close Receipt</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
