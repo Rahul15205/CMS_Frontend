@@ -633,7 +633,7 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                         <DialogTitle className="text-2xl font-extrabold font-['Plus_Jakarta_Sans'] mb-2">Reset Password</DialogTitle>
                         <DialogDescription className="text-base text-muted-foreground leading-relaxed">
                             {forgotStep === "request"
-                                ? "Enter your registered email address to receive a 7-character OTP."
+                                ? "We will send a 7-character OTP to your registered email address."
                                 : forgotStep === "verify"
                                     ? "Enter the OTP sent to your email to verify your request."
                                     : "OTP verified. Choose a new password."}
