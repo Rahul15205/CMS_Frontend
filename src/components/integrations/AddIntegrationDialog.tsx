@@ -28,6 +28,8 @@ import {
   Globe,
   Settings,
   Loader2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -116,6 +118,7 @@ export function AddIntegrationDialog({ open, onOpenChange, onAdd }: AddIntegrati
   const { toast } = useToast();
   const [step, setStep] = useState(1);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const [formData, setFormData] = useState({
     type: "",
@@ -139,6 +142,7 @@ export function AddIntegrationDialog({ open, onOpenChange, onAdd }: AddIntegrati
       syncFrequency: "realtime",
     });
     setIsConnecting(false);
+    setShowApiKey(false);
   };
 
   const handleClose = (open: boolean) => {
@@ -319,13 +323,27 @@ export function AddIntegrationDialog({ open, onOpenChange, onAdd }: AddIntegrati
                       ? "Bearer Token"
                       : "Username:Password"}
                   </Label>
-                  <Input
-                    id="apiKey"
-                    type="password"
-                    placeholder="Enter credentials..."
-                    value={formData.apiKey}
-                    onChange={(e) => setFormData((prev) => ({ ...prev, apiKey: e.target.value }))}
-                  />
+                  <div className="relative">
+                    <Input
+                      id="apiKey"
+                      type={showApiKey ? "text" : "password"}
+                      placeholder="Enter credentials..."
+                      value={formData.apiKey}
+                      className="pr-10"
+                      onChange={(e) => setFormData((prev) => ({ ...prev, apiKey: e.target.value }))}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground transition-colors"
+                    >
+                      {showApiKey ? (
+                        <EyeOff className="h-4 w-4" />
+                      ) : (
+                        <Eye className="h-4 w-4" />
+                      )}
+                    </button>
+                  </div>
                 </div>
               )}
 

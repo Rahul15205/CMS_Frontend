@@ -22,7 +22,7 @@ import {
     TooltipContent,
     TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Info } from "lucide-react";
+import { Info, Eye, EyeOff } from "lucide-react";
 import { useState, useEffect } from "react";
 
 interface AddWebsiteDialogProps {
@@ -50,6 +50,7 @@ export function AddWebsiteDialog({
         loginUsername: "",
         loginPassword: "",
     });
+    const [showLoginPassword, setShowLoginPassword] = useState(false);
 
     useEffect(() => {
         if (initialData) {
@@ -73,6 +74,7 @@ export function AddWebsiteDialog({
                 loginPassword: "",
             });
         }
+        setShowLoginPassword(false);
     }, [initialData, open]);
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -251,14 +253,28 @@ export function AddWebsiteDialog({
                                         </div>
                                         <div className="space-y-2">
                                             <Label htmlFor="loginPassword">Password</Label>
-                                            <Input
-                                                id="loginPassword"
-                                                type="password"
-                                                placeholder="••••••••"
-                                                value={formData.loginPassword}
-                                                onChange={(e) => setFormData({ ...formData, loginPassword: e.target.value })}
-                                                required={formData.scanBehindLogin}
-                                            />
+                                            <div className="relative">
+                                                <Input
+                                                    id="loginPassword"
+                                                    type={showLoginPassword ? "text" : "password"}
+                                                    placeholder="••••••••"
+                                                    value={formData.loginPassword}
+                                                    className="pr-10"
+                                                    onChange={(e) => setFormData({ ...formData, loginPassword: e.target.value })}
+                                                    required={formData.scanBehindLogin}
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowLoginPassword(!showLoginPassword)}
+                                                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground transition-colors"
+                                                >
+                                                    {showLoginPassword ? (
+                                                        <EyeOff className="h-4 w-4" />
+                                                    ) : (
+                                                        <Eye className="h-4 w-4" />
+                                                    )}
+                                                </button>
+                                            </div>
                                         </div>
                                     </div>
                                 </div>

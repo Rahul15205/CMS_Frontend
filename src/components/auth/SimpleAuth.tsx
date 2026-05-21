@@ -16,7 +16,9 @@ import {
     MapPin,
     Sun,
     Moon,
-    Cookie
+    Cookie,
+    Eye,
+    EyeOff
 } from "lucide-react";
 import { useDashboard } from "@/contexts/DashboardContext";
 import { toast } from "sonner";
@@ -51,12 +53,16 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
     const [submitting, setSubmitting] = useState(false);
     const [inputUsername, setInputUsername] = useState("");
     const [inputPassword, setInputPassword] = useState("");
+    const [showLoginPassword, setShowLoginPassword] = useState(false);
     const [showHelpDialog, setShowHelpDialog] = useState(false);
 
     // Password reset state
     const [currentPassword, setCurrentPassword] = useState("");
     const [newPassword, setNewPassword] = useState("");
     const [confirmPassword, setConfirmPassword] = useState("");
+    const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+    const [showNewPassword, setShowNewPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [resetSubmitting, setResetSubmitting] = useState(false);
 
     const handleLogin = async (e: React.FormEvent) => {
@@ -177,14 +183,22 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                                                 </div>
                                                 <Input
                                                     id="currentPassword"
-                                                    type="password"
+                                                    type={showCurrentPassword ? "text" : "password"}
                                                     placeholder="Enter temporary password"
-                                                    className="h-14 pl-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
+                                                    className="h-14 pl-12 pr-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
                                                     value={currentPassword}
                                                     onChange={(e) => setCurrentPassword(e.target.value)}
                                                     disabled={resetSubmitting}
                                                     required
                                                 />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                                                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                                                    disabled={resetSubmitting}
+                                                >
+                                                    {showCurrentPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                                </button>
                                             </div>
                                         </div>
 
@@ -196,14 +210,22 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                                                 </div>
                                                 <Input
                                                     id="newPassword"
-                                                    type="password"
+                                                    type={showNewPassword ? "text" : "password"}
                                                     placeholder="Minimum 8 characters"
-                                                    className="h-14 pl-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
+                                                    className="h-14 pl-12 pr-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
                                                     value={newPassword}
                                                     onChange={(e) => setNewPassword(e.target.value)}
                                                     disabled={resetSubmitting}
                                                     required
                                                 />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowNewPassword(!showNewPassword)}
+                                                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                                                    disabled={resetSubmitting}
+                                                >
+                                                    {showNewPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                                </button>
                                             </div>
                                         </div>
 
@@ -215,14 +237,22 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                                                 </div>
                                                 <Input
                                                     id="confirmPassword"
-                                                    type="password"
+                                                    type={showConfirmPassword ? "text" : "password"}
                                                     placeholder="Re-enter new password"
-                                                    className="h-14 pl-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
+                                                    className="h-14 pl-12 pr-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
                                                     value={confirmPassword}
                                                     onChange={(e) => setConfirmPassword(e.target.value)}
                                                     disabled={resetSubmitting}
                                                     required
                                                 />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                                                    className="absolute inset-y-0 right-0 pr-4 flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                                                    disabled={resetSubmitting}
+                                                >
+                                                    {showConfirmPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                                </button>
                                             </div>
                                         </div>
 
@@ -388,14 +418,22 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                                         </div>
                                         <Input
                                             id="password"
-                                            type="password"
+                                            type={showLoginPassword ? "text" : "password"}
                                             placeholder="Enter your password"
-                                            className="h-14 pl-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
+                                            className="h-14 pl-12 pr-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
                                             value={inputPassword}
                                             onChange={(e) => setInputPassword(e.target.value)}
                                             disabled={submitting}
                                             required
                                         />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowLoginPassword(!showLoginPassword)}
+                                            className="absolute inset-y-0 right-0 pr-4 flex items-center text-muted-foreground hover:text-foreground transition-colors"
+                                            disabled={submitting}
+                                        >
+                                            {showLoginPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                                        </button>
                                     </div>
                                 </div>
 

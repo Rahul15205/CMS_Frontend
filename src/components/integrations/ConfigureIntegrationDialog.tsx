@@ -25,6 +25,8 @@ import {
   Plug,
   Globe,
   Key,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
@@ -76,6 +78,7 @@ export function ConfigureIntegrationDialog({
   const { toast } = useToast();
   const [isTesting, setIsTesting] = useState(false);
   const [testResult, setTestResult] = useState<"idle" | "success" | "error">("idle");
+  const [showApiKey, setShowApiKey] = useState(false);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -238,14 +241,28 @@ export function ConfigureIntegrationDialog({
                   ? "Bearer Token"
                   : "Credentials"}
               </Label>
-              <Input
-                id="config-key"
-                type="password"
-                value={formData.apiKey}
-                onChange={(e) =>
-                  setFormData((prev) => ({ ...prev, apiKey: e.target.value }))
-                }
-              />
+              <div className="relative">
+                <Input
+                  id="config-key"
+                  type={showApiKey ? "text" : "password"}
+                  value={formData.apiKey}
+                  className="pr-10"
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, apiKey: e.target.value }))
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowApiKey(!showApiKey)}
+                  className="absolute inset-y-0 right-0 flex items-center pr-3 text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {showApiKey ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
           )}
 
