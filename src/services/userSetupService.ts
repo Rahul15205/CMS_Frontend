@@ -36,7 +36,25 @@ export const usersService = {
 
   updateStatus: async (id: string, status: string) => {
     if (!FEATURE_FLAGS.users) return null;
-    const res = await api.put(`/api/v1/users/${id}/status`, { status });
+    const res = await api.put(`/api/v1/users/${id}/status`, { status: status.toUpperCase() });
+    return res.data;
+  },
+
+  endSessions: async (id: string) => {
+    if (!FEATURE_FLAGS.users) return null;
+    const res = await api.post(`/api/v1/users/${id}/end-sessions`);
+    return res.data;
+  },
+
+  resetMfa: async (id: string) => {
+    if (!FEATURE_FLAGS.users) return null;
+    const res = await api.post(`/api/v1/users/${id}/reset-mfa`);
+    return res.data;
+  },
+
+  sendPasswordReset: async (id: string) => {
+    if (!FEATURE_FLAGS.users) return null;
+    const res = await api.post(`/api/v1/users/${id}/send-password-reset`);
     return res.data;
   },
 };

@@ -226,7 +226,7 @@ export function UserManagement({ onEditUser }: UserManagementProps) {
       },
       resetPassword: {
         title: "Reset Password",
-        description: `A password reset link will be sent to ${user.email}.`,
+        description: `A password reset OTP will be sent to ${user.email}.`,
       },
       resendInvite: {
         title: "Resend Invitation",
@@ -685,16 +685,43 @@ export function UserManagement({ onEditUser }: UserManagementProps) {
               const { type, user } = confirmAction;
               try {
                 let modifications = {};
-                if (type === "lock") modifications = { status: "locked" };
-                if (type === "unlock") modifications = { status: "active" };
-                if (type === "disable") modifications = { status: "disabled" };
-                if (type === "enable") modifications = { status: "active" };
-                if (type === "suspend") modifications = { status: "suspended" };
-                if (type === "revokeApi") modifications = { apiAccess: { ...user.apiAccess, enabled: false, scopes: [] } };
-                if (type === "resetMfa") modifications = { mfaEnabled: false };
-                if (type === "transferTenant") modifications = { tenantId: "4", tenantName: "Transferred Tenant" };
 
-                if (Object.keys(modifications).length > 0) {
+                if (type === "lock") {
+                  await usersService.updateStatus(user.id, "locked");
+                  modifications = { status: "locked" };
+                }
+                if (type === "unlock") {
+                  await usersService.updateStatus(user.id, "active");
+                  modifications = { status: "active" };
+                }
+                if (type === "disable") {
+                  await usersService.updateStatus(user.id, "disabled");
+                  modifications = { status: "disabled" };
+                }
+                if (type === "enable") {
+                  await usersService.updateStatus(user.id, "active");
+                  modifications = { status: "active" };
+                }
+                if (type === "suspend") {
+                  await usersService.updateStatus(user.id, "suspended");
+                  modifications = { status: "suspended" };
+                }
+                if (type === "endSession") {
+                  await usersService.endSessions(user.id);
+                }
+                if (type === "resetMfa") {
+                  await usersService.resetMfa(user.id);
+                  modifications = { mfaEnabled: false };
+                }
+                if (type === "resetPassword") {
+                  await usersService.sendPasswordReset(user.id);
+                }
+                if (type === "revokeApi") {
+                  modifications = { apiAccess: { ...user.apiAccess, enabled: false, scopes: [] } };
+                  await usersService.update(user.id, modifications);
+                }
+                if (type === "transferTenant") {
+                  modifications = { tenantId: "4", tenantName: "Transferred Tenant" };
                   await usersService.update(user.id, modifications);
                 }
 
