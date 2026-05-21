@@ -113,7 +113,13 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
     };
 
     const openForgotPasswordDialog = () => {
-        setForgotEmail(inputUsername);
+        const email = inputUsername.trim();
+        if (!email) {
+            toast.error("Please enter your registered email address first");
+            return;
+        }
+
+        setForgotEmail(email);
         setForgotOtp("");
         setForgotNewPassword("");
         setForgotConfirmPassword("");
@@ -645,11 +651,10 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                                     <Input
                                         id="forgotEmail"
                                         type="email"
-                                        placeholder="Enter your email"
-                                        className="h-14 pl-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
+                                        className="h-14 pl-12 bg-secondary/50 border-border rounded-2xl transition-all"
                                         value={forgotEmail}
-                                        onChange={(e) => setForgotEmail(e.target.value)}
-                                        disabled={forgotSubmitting}
+                                        readOnly
+                                        disabled
                                         required
                                     />
                                 </div>
