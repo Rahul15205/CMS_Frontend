@@ -94,6 +94,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
   const [loading, setLoading] = useState(false);
   const [liveRoles, setLiveRoles] = useState<any[]>([]);
   const { toast } = useToast();
+  const assignableRoles = liveRoles.filter((role) => !role.grantsUserSetup || role.name === "Admin");
 
   useEffect(() => {
     const fetchRoles = async () => {
@@ -354,7 +355,7 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
                   <SelectValue placeholder="Add role..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {(liveRoles.length > 0 ? liveRoles.map(r => r.name) : availableRoles)
+                  {(liveRoles.length > 0 ? assignableRoles.map(r => r.name) : availableRoles)
                     .filter((r) => !formData.roles.includes(r))
                     .map((role) => (
                       <SelectItem key={role} value={role}>

@@ -60,7 +60,6 @@ const modules = [
   "Integrations",
   "Security",
   "Settings",
-  "User Setup",
   "Reports",
   "Logs",
 ];

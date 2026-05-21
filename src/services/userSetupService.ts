@@ -76,7 +76,6 @@ const backendToFrontendModule: Record<string, string> = {
   INTEGRATIONS:        'Integrations',
   SECURITY:            'Security',
   SETTINGS:            'Settings',
-  USER_SETUP:          'User Setup',
   REPORTS:             'Reports',
   LOGS:                'Logs',
 };
@@ -110,6 +109,10 @@ function mapBackendRoleToFrontend(role: any) {
 
   // Overlay actual values from the backend permissions array
   const permsArray: any[] = Array.isArray(role.permissions) ? role.permissions : [];
+  const grantsUserSetup = permsArray.some((p: any) =>
+    p.module === 'USER_SETUP' &&
+    (p.view || p.create || p.edit || p.approve || p.export || p.configure || p.admin)
+  );
   permsArray.forEach((p: any) => {
     const friendlyName = backendToFrontendModule[p.module];
     if (friendlyName) {
@@ -129,6 +132,7 @@ function mapBackendRoleToFrontend(role: any) {
     ...role,
     status:      (role.status as string)?.toLowerCase() ?? 'active',
     permissions: permDict,
+    grantsUserSetup,
     usersCount:  role.usersCount ?? role._count?.users ?? 0,
     createdAt:   role.createdAt ?? new Date().toISOString(),
     description: role.description ?? '',
@@ -152,7 +156,7 @@ function mapFrontendRoleToBackend(data: any) {
     mappedPermissions = Object.entries(permissions)
       .map(([moduleFriendly, perms]: [string, any]) => {
         const backendModule = frontendToBackendModule[moduleFriendly];
-        if (!backendModule) return null; // skip unknown modules
+        if (!backendModule || backendModule === 'USER_SETUP') return null; // skip unknown/restricted modules
         return {
           module:    backendModule,
           view:      !!perms?.view,
