@@ -55,6 +55,13 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
     const [inputPassword, setInputPassword] = useState("");
     const [showLoginPassword, setShowLoginPassword] = useState(false);
     const [showHelpDialog, setShowHelpDialog] = useState(false);
+    const [showForgotDialog, setShowForgotDialog] = useState(false);
+    const [forgotStep, setForgotStep] = useState<"request" | "reset">("request");
+    const [forgotEmail, setForgotEmail] = useState("");
+    const [forgotOtp, setForgotOtp] = useState("");
+    const [forgotNewPassword, setForgotNewPassword] = useState("");
+    const [forgotConfirmPassword, setForgotConfirmPassword] = useState("");
+    const [forgotSubmitting, setForgotSubmitting] = useState(false);
 
     // Password reset state
     const [currentPassword, setCurrentPassword] = useState("");
@@ -102,6 +109,65 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
             toast.error(errorMsg);
         } finally {
             setResetSubmitting(false);
+        }
+    };
+
+    const openForgotPasswordDialog = () => {
+        setForgotEmail(inputUsername);
+        setForgotOtp("");
+        setForgotNewPassword("");
+        setForgotConfirmPassword("");
+        setForgotStep("request");
+        setShowForgotDialog(true);
+    };
+
+    const handleForgotPasswordRequest = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!forgotEmail.trim()) {
+            toast.error("Please enter your email address");
+            return;
+        }
+
+        setForgotSubmitting(true);
+        try {
+            await authService.forgotPassword(forgotEmail.trim());
+            toast.success("If this email is registered, a reset OTP has been sent.");
+            setForgotStep("reset");
+        } catch (error: any) {
+            const errorMsg = error?.response?.data?.message || "Could not send OTP. Please try again.";
+            toast.error(errorMsg);
+        } finally {
+            setForgotSubmitting(false);
+        }
+    };
+
+    const handleForgotPasswordReset = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (forgotOtp.trim().length !== 7) {
+            toast.error("OTP must be 7 characters");
+            return;
+        }
+        if (forgotNewPassword !== forgotConfirmPassword) {
+            toast.error("New passwords do not match");
+            return;
+        }
+        if (forgotNewPassword.length < 8) {
+            toast.error("New password must be at least 8 characters long");
+            return;
+        }
+
+        setForgotSubmitting(true);
+        try {
+            await authService.resetPassword(forgotEmail.trim(), forgotOtp.trim(), forgotNewPassword);
+            toast.success("Password reset successfully. Please sign in.");
+            setInputUsername(forgotEmail.trim());
+            setInputPassword("");
+            setShowForgotDialog(false);
+        } catch (error: any) {
+            const errorMsg = error?.response?.data?.message || "Failed to reset password. Please try again.";
+            toast.error(errorMsg);
+        } finally {
+            setForgotSubmitting(false);
         }
     };
 
@@ -410,7 +476,13 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                                 <div className="space-y-2">
                                     <div className="flex justify-between items-center ml-1">
                                         <Label htmlFor="password" className="text-xs font-bold text-card-foreground/60 uppercase tracking-widest">Password</Label>
-                                        <button type="button" className="text-xs font-bold text-primary hover:text-primary/80 transition-colors">Forgot password?</button>
+                                        <button
+                                            type="button"
+                                            onClick={openForgotPasswordDialog}
+                                            className="text-xs font-bold text-primary hover:text-primary/80 transition-colors"
+                                        >
+                                            Forgot password?
+                                        </button>
                                     </div>
                                     <div className="relative group">
                                         <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
@@ -526,6 +598,112 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                             Got it, thanks!
                         </Button>
                     </div>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog open={showForgotDialog} onOpenChange={setShowForgotDialog}>
+                <DialogContent className="sm:max-w-md rounded-3xl border-none shadow-2xl">
+                    <DialogHeader>
+                        <DialogTitle className="text-2xl font-extrabold font-['Plus_Jakarta_Sans'] mb-2">Reset Password</DialogTitle>
+                        <DialogDescription className="text-base text-muted-foreground leading-relaxed">
+                            {forgotStep === "request"
+                                ? "Enter your registered email address to receive a 7-character OTP."
+                                : "Enter the OTP sent to your email and choose a new password."}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    {forgotStep === "request" ? (
+                        <form onSubmit={handleForgotPasswordRequest} className="space-y-4 mt-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="forgotEmail" className="text-xs font-bold text-card-foreground/60 uppercase tracking-widest ml-1">Email Address</Label>
+                                <div className="relative group">
+                                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                        <Mail className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                    </div>
+                                    <Input
+                                        id="forgotEmail"
+                                        type="email"
+                                        placeholder="Enter your email"
+                                        className="h-14 pl-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
+                                        value={forgotEmail}
+                                        onChange={(e) => setForgotEmail(e.target.value)}
+                                        disabled={forgotSubmitting}
+                                        required
+                                    />
+                                </div>
+                            </div>
+                            <Button type="submit" className="w-full h-12 rounded-xl font-bold bg-primary hover:bg-primary/90" disabled={forgotSubmitting}>
+                                {forgotSubmitting ? (
+                                    <span className="flex items-center gap-2">
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                        Sending OTP...
+                                    </span>
+                                ) : "Send OTP"}
+                            </Button>
+                        </form>
+                    ) : (
+                        <form onSubmit={handleForgotPasswordReset} className="space-y-4 mt-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="forgotOtp" className="text-xs font-bold text-card-foreground/60 uppercase tracking-widest ml-1">7 Character OTP</Label>
+                                <Input
+                                    id="forgotOtp"
+                                    type="text"
+                                    placeholder="A7B9C2D"
+                                    className="h-14 text-center text-lg font-bold tracking-[0.35em] uppercase bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
+                                    value={forgotOtp}
+                                    onChange={(e) => setForgotOtp(e.target.value.toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 7))}
+                                    disabled={forgotSubmitting}
+                                    maxLength={7}
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="forgotNewPassword" className="text-xs font-bold text-card-foreground/60 uppercase tracking-widest ml-1">New Password</Label>
+                                <Input
+                                    id="forgotNewPassword"
+                                    type="password"
+                                    placeholder="Minimum 8 characters"
+                                    className="h-14 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
+                                    value={forgotNewPassword}
+                                    onChange={(e) => setForgotNewPassword(e.target.value)}
+                                    disabled={forgotSubmitting}
+                                    required
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label htmlFor="forgotConfirmPassword" className="text-xs font-bold text-card-foreground/60 uppercase tracking-widest ml-1">Confirm Password</Label>
+                                <Input
+                                    id="forgotConfirmPassword"
+                                    type="password"
+                                    placeholder="Re-enter new password"
+                                    className="h-14 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
+                                    value={forgotConfirmPassword}
+                                    onChange={(e) => setForgotConfirmPassword(e.target.value)}
+                                    disabled={forgotSubmitting}
+                                    required
+                                />
+                            </div>
+
+                            <div className="flex gap-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-12 flex-1 rounded-xl font-bold"
+                                    onClick={() => setForgotStep("request")}
+                                    disabled={forgotSubmitting}
+                                >
+                                    Resend OTP
+                                </Button>
+                                <Button type="submit" className="h-12 flex-1 rounded-xl font-bold bg-primary hover:bg-primary/90" disabled={forgotSubmitting}>
+                                    {forgotSubmitting ? (
+                                        <Loader2 className="w-4 h-4 animate-spin" />
+                                    ) : "Reset"}
+                                </Button>
+                            </div>
+                        </form>
+                    )}
                 </DialogContent>
             </Dialog>
         </div>
