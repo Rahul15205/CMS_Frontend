@@ -56,7 +56,7 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
     const [showLoginPassword, setShowLoginPassword] = useState(false);
     const [showHelpDialog, setShowHelpDialog] = useState(false);
     const [showForgotDialog, setShowForgotDialog] = useState(false);
-    const [forgotStep, setForgotStep] = useState<"request" | "reset">("request");
+    const [forgotStep, setForgotStep] = useState<"request" | "verify" | "reset">("request");
     const [forgotEmail, setForgotEmail] = useState("");
     const [forgotOtp, setForgotOtp] = useState("");
     const [forgotNewPassword, setForgotNewPassword] = useState("");
@@ -132,9 +132,29 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
         try {
             await authService.forgotPassword(forgotEmail.trim());
             toast.success("If this email is registered, a reset OTP has been sent.");
-            setForgotStep("reset");
+            setForgotStep("verify");
         } catch (error: any) {
             const errorMsg = error?.response?.data?.message || "Could not send OTP. Please try again.";
+            toast.error(errorMsg);
+        } finally {
+            setForgotSubmitting(false);
+        }
+    };
+
+    const handleForgotOtpVerify = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (forgotOtp.trim().length !== 7) {
+            toast.error("OTP must be 7 characters");
+            return;
+        }
+
+        setForgotSubmitting(true);
+        try {
+            await authService.verifyResetOtp(forgotEmail.trim(), forgotOtp.trim());
+            toast.success("OTP verified. Set your new password.");
+            setForgotStep("reset");
+        } catch (error: any) {
+            const errorMsg = error?.response?.data?.message || "Invalid or expired OTP";
             toast.error(errorMsg);
         } finally {
             setForgotSubmitting(false);
@@ -608,7 +628,9 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                         <DialogDescription className="text-base text-muted-foreground leading-relaxed">
                             {forgotStep === "request"
                                 ? "Enter your registered email address to receive a 7-character OTP."
-                                : "Enter the OTP sent to your email and choose a new password."}
+                                : forgotStep === "verify"
+                                    ? "Enter the OTP sent to your email to verify your request."
+                                    : "OTP verified. Choose a new password."}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -641,8 +663,8 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                                 ) : "Send OTP"}
                             </Button>
                         </form>
-                    ) : (
-                        <form onSubmit={handleForgotPasswordReset} className="space-y-4 mt-4">
+                    ) : forgotStep === "verify" ? (
+                        <form onSubmit={handleForgotOtpVerify} className="space-y-4 mt-4">
                             <div className="space-y-2">
                                 <Label htmlFor="forgotOtp" className="text-xs font-bold text-card-foreground/60 uppercase tracking-widest ml-1">7 Character OTP</Label>
                                 <Input
@@ -657,7 +679,28 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                                     required
                                 />
                             </div>
-
+                            <div className="flex gap-3">
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    className="h-12 flex-1 rounded-xl font-bold"
+                                    onClick={() => setForgotStep("request")}
+                                    disabled={forgotSubmitting}
+                                >
+                                    Resend OTP
+                                </Button>
+                                <Button type="submit" className="h-12 flex-1 rounded-xl font-bold bg-primary hover:bg-primary/90" disabled={forgotSubmitting}>
+                                    {forgotSubmitting ? (
+                                        <span className="flex items-center gap-2">
+                                            <Loader2 className="w-4 h-4 animate-spin" />
+                                            Verifying...
+                                        </span>
+                                    ) : "Verify OTP"}
+                                </Button>
+                            </div>
+                        </form>
+                    ) : (
+                        <form onSubmit={handleForgotPasswordReset} className="space-y-4 mt-4">
                             <div className="space-y-2">
                                 <Label htmlFor="forgotNewPassword" className="text-xs font-bold text-card-foreground/60 uppercase tracking-widest ml-1">New Password</Label>
                                 <Input
@@ -691,10 +734,10 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
                                     type="button"
                                     variant="outline"
                                     className="h-12 flex-1 rounded-xl font-bold"
-                                    onClick={() => setForgotStep("request")}
+                                    onClick={() => setForgotStep("verify")}
                                     disabled={forgotSubmitting}
                                 >
-                                    Resend OTP
+                                    Back
                                 </Button>
                                 <Button type="submit" className="h-12 flex-1 rounded-xl font-bold bg-primary hover:bg-primary/90" disabled={forgotSubmitting}>
                                     {forgotSubmitting ? (
