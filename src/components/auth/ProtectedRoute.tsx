@@ -3,6 +3,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
+import { navItems } from '@/components/layout/AppSidebar';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -19,6 +20,19 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, permis
 
   const hasAccess = canAccess(permissionKey, 'view');
 
+  const handleBackToDashboard = () => {
+    // Find the first module in navItems that the user can access
+    const firstAllowedItem = navItems.find(item => 
+      !item.permissionKey || canAccess(item.permissionKey, 'view')
+    );
+    
+    if (firstAllowedItem) {
+      navigate(firstAllowedItem.path);
+    } else {
+      navigate('/');
+    }
+  };
+
   if (!hasAccess) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[70vh] px-4 text-center font-['Inter']">
@@ -32,7 +46,7 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, permis
           You do not have the required permissions to view the <span className="font-semibold text-foreground">"{permissionKey.replace('_', ' ')}"</span> module. Please contact your system administrator if you believe this is an error.
         </p>
         <Button 
-          onClick={() => navigate('/')}
+          onClick={handleBackToDashboard}
           className="flex items-center gap-2 px-6 h-12 rounded-xl font-bold bg-primary hover:bg-primary/90 text-white shadow-lg transition-transform hover:scale-[1.02] active:scale-[0.98]"
         >
           <ArrowLeft className="w-4 h-4" />

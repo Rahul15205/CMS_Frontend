@@ -29,7 +29,7 @@ import {
   TooltipTrigger,
 } from "@/components/ui/tooltip";
 
-interface NavItem {
+export interface NavItem {
   title: string;
   icon: React.ElementType;
   path: string;
@@ -37,7 +37,7 @@ interface NavItem {
   permissionKey?: string;
 }
 
-const navItems: NavItem[] = [
+export const navItems: NavItem[] = [
   { title: "Dashboard", icon: LayoutDashboard, path: "/", group: "main", permissionKey: "DASHBOARD" },
   { title: "Consent Management", icon: FileCheck, path: "/consent", group: "main", permissionKey: "CONSENT_MANAGEMENT" },
   { title: "Rights Management", icon: Scale, path: "/rights", group: "main", permissionKey: "RIGHTS_MANAGEMENT" },
