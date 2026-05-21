@@ -99,6 +99,7 @@ function NavItemComponent({ item, collapsed }: { item: NavItem; collapsed: boole
 export function SidebarContent({ collapsed, onNavItemClick }: { collapsed?: boolean, onNavItemClick?: () => void }) {
   const { canAccess, user, currentRole, logout } = useAuth();
   const groupOrder = ["main", "operations", "system", "admin"];
+  const displayName = user?.name || user?.username || "User";
 
   // Filter items based on permissions
   const visibleItems = navItems.filter(item => {
@@ -168,11 +169,11 @@ export function SidebarContent({ collapsed, onNavItemClick }: { collapsed?: bool
         {user && !collapsed && (
           <div className="px-3 py-2 mb-2 flex items-center gap-3 bg-white/5 rounded-lg border border-white/5 shadow-sm">
             <div className="h-8 w-8 rounded-full bg-[#1dd05e]/20 flex items-center justify-center text-[#1dd05e] font-bold border border-[#1dd05e]/30 flex-shrink-0">
-              {user.username.charAt(0).toUpperCase()}
+              {displayName.charAt(0).toUpperCase()}
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="font-medium text-white text-sm truncate" title={user.username}>
-                {user.username}
+              <span className="font-medium text-white text-sm truncate" title={displayName}>
+                {displayName}
               </span>
               <span className="text-[10px] text-white/50 uppercase tracking-widest truncate">
                 {currentRole?.name}
