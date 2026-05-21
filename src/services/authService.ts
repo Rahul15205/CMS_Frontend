@@ -45,6 +45,7 @@ const normalizeUser = (user: any) => {
       lastLogin: user?.lastLogin || null,
       aadhaarVerified: user?.aadhaarVerified || false,
       permissions: user?.permissions || {},
+      mustResetPassword: user?.mustResetPassword || false,
     },
     roles,
   };
@@ -86,5 +87,10 @@ export const authService = {
 
     const res = await api.get('/api/v1/auth/me');
     return normalizeUser(res.data);
+  },
+
+  changePassword: async (oldPassword: string, newPassword: string) => {
+    const res = await api.post('/api/v1/auth/change-password', { oldPassword, newPassword });
+    return res.data;
   }
 };

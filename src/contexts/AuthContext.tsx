@@ -7,12 +7,14 @@ interface AuthContextType {
     isAuthenticated: boolean;
     isLoading: boolean;
     user: { 
+        id?: string;
         username: string; 
         name?: string; 
         roleId: string; 
         tenantName?: string; 
         lastLogin?: string;
         aadhaarVerified?: boolean;
+        mustResetPassword?: boolean;
     } | null;
     currentRole: Role | null;
     roles: Role[];
@@ -20,6 +22,7 @@ interface AuthContextType {
     login: (usernameOrEmail: string, password: string, roleId?: string) => Promise<void>;
     logout: () => void;
     canAccess: (module: string, permission: keyof ModulePermissions[string]) => boolean;
+    setMustResetPassword: (val: boolean) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -28,12 +31,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const [isAuthenticated, setIsAuthenticated] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [user, setUser] = useState<{ 
+        id?: string;
         username: string; 
         name?: string; 
         roleId: string; 
         tenantName?: string; 
         lastLogin?: string;
         aadhaarVerified?: boolean;
+        mustResetPassword?: boolean;
     } | null>(null);
     const [currentRole, setCurrentRole] = useState<Role | null>(null);
 
@@ -124,8 +129,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return currentRole.permissions[module][permission];
     }, [currentRole]);
 
+    const setMustResetPassword = useCallback((val: boolean) => {
+        setUser(prev => prev ? { ...prev, mustResetPassword: val } : null);
+        // Also update stored auth data
+        const stored = localStorage.getItem('cms_auth_data');
+        if (stored) {
+            try {
+                const parsed = JSON.parse(stored);
+                parsed.mustResetPassword = val;
+                localStorage.setItem('cms_auth_data', JSON.stringify(parsed));
+            } catch (e) {
+                console.error(e);
+            }
+        }
+    }, []);
+
     return (
-        <AuthContext.Provider value={{ isAuthenticated, isLoading, user, currentRole, roles, setRoles, login, logout, canAccess }}>
+        <AuthContext.Provider value={{ isAuthenticated, isLoading, user, currentRole, roles, setRoles, login, logout, canAccess, setMustResetPassword }}>
             {children}
         </AuthContext.Provider>
     );

@@ -25,6 +25,8 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Help from "./pages/Help";
 import { MainLayout } from "@/components/layout/MainLayout";
 
+import { ProtectedRoute } from "@/components/auth/ProtectedRoute";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -42,19 +44,19 @@ const App = () => (
 
                 {/* Protected Routes wrapped in MainLayout */}
                 <Route element={<MainLayout />}>
-                  <Route path="/" element={<Dashboard />} />
-                  <Route path="/consent" element={<ConsentManagement />} />
-                  <Route path="/rights" element={<RightsManagement />} />
-                  <Route path="/grievances" element={<Grievances />} />
-                  <Route path="/cookies" element={<CookiesManagement />} />
-                  <Route path="/notices" element={<Notices />} />
-                  <Route path="/configurations" element={<Configurations />} />
-                  <Route path="/integrations" element={<Integrations />} />
-                  <Route path="/security" element={<Security />} />
-                  <Route path="/settings" element={<SettingsPage />} />
-                  <Route path="/users" element={<UserSetup />} />
-                  <Route path="/reports" element={<Reports />} />
-                  <Route path="/logs" element={<Logs />} />
+                  <Route path="/" element={<ProtectedRoute permissionKey="DASHBOARD"><Dashboard /></ProtectedRoute>} />
+                  <Route path="/consent" element={<ProtectedRoute permissionKey="CONSENT_MANAGEMENT"><ConsentManagement /></ProtectedRoute>} />
+                  <Route path="/rights" element={<ProtectedRoute permissionKey="RIGHTS_MANAGEMENT"><RightsManagement /></ProtectedRoute>} />
+                  <Route path="/grievances" element={<ProtectedRoute permissionKey="GRIEVANCES"><Grievances /></ProtectedRoute>} />
+                  <Route path="/cookies" element={<ProtectedRoute permissionKey="COOKIES_MANAGEMENT"><CookiesManagement /></ProtectedRoute>} />
+                  <Route path="/notices" element={<ProtectedRoute permissionKey="NOTICES"><Notices /></ProtectedRoute>} />
+                  <Route path="/configurations" element={<ProtectedRoute permissionKey="CONFIGURATIONS"><Configurations /></ProtectedRoute>} />
+                  <Route path="/integrations" element={<ProtectedRoute permissionKey="INTEGRATIONS"><Integrations /></ProtectedRoute>} />
+                  <Route path="/security" element={<ProtectedRoute permissionKey="SECURITY"><Security /></ProtectedRoute>} />
+                  <Route path="/settings" element={<ProtectedRoute permissionKey="SETTINGS"><SettingsPage /></ProtectedRoute>} />
+                  <Route path="/users" element={<ProtectedRoute permissionKey="USER_SETUP"><UserSetup /></ProtectedRoute>} />
+                  <Route path="/reports" element={<ProtectedRoute permissionKey="REPORTS"><Reports /></ProtectedRoute>} />
+                  <Route path="/logs" element={<ProtectedRoute permissionKey="LOGS"><Logs /></ProtectedRoute>} />
                   <Route path="/help" element={<Help />} />
                 </Route>
                 <Route path="*" element={<NotFound />} />
@@ -62,7 +64,7 @@ const App = () => (
             </SimpleAuth>
           </BrowserRouter>
         </DashboardProvider>
-    </AuthProvider>
+      </AuthProvider>
     </TooltipProvider>
   </QueryClientProvider>
 );

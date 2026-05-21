@@ -117,7 +117,6 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
         mfaEnabled: formData.mfaEnabled,
         status: "ACTIVE" as any,
         accountType: "INTERNAL" as any,
-        password: "Password123!", 
         roles: formData.roles.map((r: string) => {
           const found = liveRoles.find((lr) => lr.name === r);
           return found ? found.id : r; 
@@ -125,8 +124,18 @@ export function UserEditDialog({ user, open, onOpenChange }: UserEditDialogProps
       };
 
       if (isCreationMode) {
-        await usersService.create(payload);
-        toast({ title: "User Created", description: "Successfully created user." });
+        const created = await usersService.create(payload);
+        const tempPassword = created?.tempPassword;
+        toast({
+          title: "🎉 User Created Successfully",
+          description: (
+            <div className="mt-2 p-3 bg-secondary/80 rounded-lg border border-border">
+              <p className="text-xs text-muted-foreground mb-1">Temporary Password (also emailed to user):</p>
+              <code className="text-sm font-bold font-mono select-all bg-card px-2 py-1 rounded block mt-1 border border-border text-primary">{tempPassword}</code>
+            </div>
+          ),
+          duration: 15000,
+        });
       } else if (user && user.id) {
         await usersService.update(user.id, {
           name: payload.name,

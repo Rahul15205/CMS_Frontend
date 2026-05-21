@@ -21,6 +21,7 @@ import {
 import { useDashboard } from "@/contexts/DashboardContext";
 import { toast } from "sonner";
 import { useAuth } from "@/contexts/AuthContext";
+import { authService } from "@/services/authService";
 import {
     Select,
     SelectContent,
@@ -42,7 +43,7 @@ interface SimpleAuthProps {
 }
 
 const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
-    const { isAuthenticated, isLoading: authLoading, login } = useAuth();
+    const { isAuthenticated, isLoading: authLoading, login, user, setMustResetPassword } = useAuth();
     const { config, setTheme } = useDashboard();
     const theme = config.theme;
     const navigate = useNavigate();
@@ -52,6 +53,11 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
     const [inputPassword, setInputPassword] = useState("");
     const [showHelpDialog, setShowHelpDialog] = useState(false);
 
+    // Password reset state
+    const [currentPassword, setCurrentPassword] = useState("");
+    const [newPassword, setNewPassword] = useState("");
+    const [confirmPassword, setConfirmPassword] = useState("");
+    const [resetSubmitting, setResetSubmitting] = useState(false);
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -66,11 +72,38 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
         }
     };
 
+    const handlePasswordReset = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (newPassword !== confirmPassword) {
+            toast.error("New passwords do not match");
+            return;
+        }
+        if (newPassword.length < 8) {
+            toast.error("New password must be at least 8 characters long");
+            return;
+        }
+        
+        setResetSubmitting(true);
+        try {
+            await authService.changePassword(currentPassword, newPassword);
+            toast.success("Password updated successfully!");
+            setMustResetPassword(false);
+            setCurrentPassword("");
+            setNewPassword("");
+            setConfirmPassword("");
+        } catch (error: any) {
+            const errorMsg = error?.response?.data?.message || "Failed to update password. Please try again.";
+            toast.error(errorMsg);
+        } finally {
+            setResetSubmitting(false);
+        }
+    };
+
     useEffect(() => {
-        if (isAuthenticated && (location.pathname === '/login' || location.pathname === '/logout')) {
+        if (isAuthenticated && !user?.mustResetPassword && (location.pathname === '/login' || location.pathname === '/logout')) {
             navigate('/');
         }
-    }, [isAuthenticated, location.pathname, navigate]);
+    }, [isAuthenticated, user?.mustResetPassword, location.pathname, navigate]);
 
     // Show loading while auth state is being restored
     if (authLoading) {
@@ -82,6 +115,142 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
     }
 
     if (isAuthenticated) {
+        if (user?.mustResetPassword) {
+            return (
+                <div className="h-screen overflow-hidden flex font-['Inter'] bg-background text-foreground transition-colors duration-300">
+                    {/* Left Panel - Hero Section */}
+                    <div className="hidden lg:flex lg:w-[45%] bg-[#1a2e1f] login-grid-pattern flex-col p-12 text-white relative overflow-hidden">
+                        <div className="mb-12 animate-fade-in">
+                            <img 
+                                src="https://res.cloudinary.com/dlfzzfdx0/image/upload/v1777286182/Brand_title_with_tagline-removebg-preview_jpjpet.png" 
+                                alt="Proteccio Data" 
+                                className="h-12 w-auto"
+                            />
+                        </div>
+                        <div className="relative z-10 flex-1 flex flex-col justify-center">
+                            <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 border border-white/20 mb-8 w-fit animate-slide-in">
+                                <Shield className="w-4 h-4 text-[#22c55e]" />
+                                <span className="text-[10px] font-bold tracking-widest uppercase text-[#22c55e]">Security Hardening</span>
+                            </div>
+                            <h1 className="text-4xl font-extrabold font-['Plus_Jakarta_Sans'] leading-[1.2] mb-6">
+                                Protect Your Account.
+                            </h1>
+                            <p className="text-gray-400 text-lg max-w-md mb-8">
+                                To complete your account activation, you are required to change your temporary password to a secure new password.
+                            </p>
+                        </div>
+                        <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-[#16a34a]/10 blur-[100px] rounded-full"></div>
+                    </div>
+
+                    {/* Right Panel - Force Reset Card */}
+                    <div className="w-full lg:w-[55%] flex items-center justify-center p-6 relative overflow-y-auto scrollbar-hide">
+                        <div className="absolute top-8 right-8 animate-fade-in">
+                            <Button
+                                variant="outline"
+                                size="icon"
+                                onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                                className="rounded-full w-12 h-12 bg-card border-border shadow-sm hover:bg-accent transition-all"
+                            >
+                                {theme === "dark" ? (
+                                    <Sun className="h-5 w-5 text-yellow-400" />
+                                ) : (
+                                    <Moon className="h-5 w-5 text-slate-700" />
+                                )}
+                            </Button>
+                        </div>
+
+                        <div className="w-full max-w-md animate-fade-in">
+                            <Card className="border-none shadow-xl dark:shadow-none dark:bg-card/50 bg-white rounded-3xl overflow-hidden">
+                                <CardContent className="p-8 sm:p-10">
+                                    <div className="mb-6">
+                                        <p className="text-[10px] font-bold tracking-[0.2em] text-primary uppercase mb-3">Security Requirement</p>
+                                        <h2 className="text-3xl font-extrabold font-['Plus_Jakarta_Sans'] text-card-foreground mb-2">Reset Password 🔒</h2>
+                                        <p className="text-muted-foreground">Please update your temporary password to proceed to your dashboard.</p>
+                                    </div>
+
+                                    <form onSubmit={handlePasswordReset} className="space-y-4">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="currentPassword" className="text-xs font-bold text-card-foreground/60 uppercase tracking-widest ml-1">Temporary Password</Label>
+                                            <div className="relative group">
+                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                    <Lock className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                </div>
+                                                <Input
+                                                    id="currentPassword"
+                                                    type="password"
+                                                    placeholder="Enter temporary password"
+                                                    className="h-14 pl-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
+                                                    value={currentPassword}
+                                                    onChange={(e) => setCurrentPassword(e.target.value)}
+                                                    disabled={resetSubmitting}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="newPassword" className="text-xs font-bold text-card-foreground/60 uppercase tracking-widest ml-1">New Password</Label>
+                                            <div className="relative group">
+                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                    <Lock className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                </div>
+                                                <Input
+                                                    id="newPassword"
+                                                    type="password"
+                                                    placeholder="Minimum 8 characters"
+                                                    className="h-14 pl-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
+                                                    value={newPassword}
+                                                    onChange={(e) => setNewPassword(e.target.value)}
+                                                    disabled={resetSubmitting}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="confirmPassword" className="text-xs font-bold text-card-foreground/60 uppercase tracking-widest ml-1">Confirm New Password</Label>
+                                            <div className="relative group">
+                                                <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                                                    <Lock className="h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                                                </div>
+                                                <Input
+                                                    id="confirmPassword"
+                                                    type="password"
+                                                    placeholder="Re-enter new password"
+                                                    className="h-14 pl-12 bg-secondary/50 border-border focus:border-primary focus:ring-primary/10 rounded-2xl transition-all"
+                                                    value={confirmPassword}
+                                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                                    disabled={resetSubmitting}
+                                                    required
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <Button 
+                                            type="submit" 
+                                            className="w-full h-14 bg-[#16a34a] hover:bg-[#15803d] text-white font-bold rounded-2xl shadow-lg shadow-green-200 transition-all hover:scale-[1.01] active:scale-[0.98] shimmer-btn glow-green" 
+                                            disabled={resetSubmitting}
+                                        >
+                                            {resetSubmitting ? (
+                                                <div className="flex items-center gap-2">
+                                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                                    <span>Updating Password...</span>
+                                                </div>
+                                            ) : (
+                                                <span className="flex items-center gap-2">
+                                                    Change Password & Proceed
+                                                    <ChevronRight className="w-5 h-5" />
+                                                </span>
+                                            )}
+                                        </Button>
+                                    </form>
+                                </CardContent>
+                            </Card>
+                        </div>
+                    </div>
+                </div>
+            );
+        }
         return <>{children}</>;
     }
 

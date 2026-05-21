@@ -294,7 +294,7 @@ export default function Logs() {
                   <TableHead>Action</TableHead>
                   <TableHead>Category</TableHead>
                   <TableHead>User</TableHead>
-                  <TableHead>Target</TableHead>
+                  <TableHead>Resource</TableHead>
                   <TableHead>IP Address</TableHead>
                 </TableRow>
               </TableHeader>
@@ -342,8 +342,8 @@ export default function Logs() {
                           {log.userName || "System"}
                         </div>
                       </TableCell>
-                      <TableCell className="text-sm font-mono text-muted-foreground">
-                        {log.target || "N/A"}
+                      <TableCell className="text-sm text-muted-foreground">
+                        {log.target || "—"}
                       </TableCell>
                       <TableCell className="text-sm font-mono text-muted-foreground">
                         {log.ipAddress || "Unknown"}
