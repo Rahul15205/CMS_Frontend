@@ -228,10 +228,76 @@ export const sessionsService = {
 
 // ─── Audit Logs ─────────────────────────────────────────────
 
+/**
+ * Maps backend audit log properties to the frontend AuditLog structure.
+ */
+function mapBackendAuditLogToFrontend(log: any) {
+  if (!log) return log;
+
+  // 1. Get userName: from nested user relation, otherwise fallback to top level or 'System'
+  let userName = "System";
+  if (log.user && typeof log.user === 'object' && log.user.name) {
+    userName = log.user.name;
+  } else if (log.userName) {
+    userName = log.userName;
+  }
+
+  // 2. Format details to a string to ensure no object/json structures break the UI
+  let details = "";
+  if (log.details !== null && log.details !== undefined) {
+    if (typeof log.details === "string") {
+      details = log.details;
+    } else {
+      try {
+        details = JSON.stringify(log.details);
+      } catch (e) {
+        details = String(log.details);
+      }
+    }
+  }
+
+  // 3. Category from uppercase (e.g. "SESSION") to lowercase ("session")
+  const category = log.category ? (log.category as string).toLowerCase() : "status";
+
+  // 4. Timestamp from createdAt (backend uses ISO datetime for createdAt)
+  let timestamp = "";
+  if (log.createdAt) {
+    try {
+      timestamp = new Date(log.createdAt).toLocaleString();
+    } catch (e) {
+      timestamp = String(log.createdAt);
+    }
+  } else if (log.timestamp) {
+    timestamp = log.timestamp;
+  }
+
+  // 5. Severity from uppercase to lowercase
+  const severity = log.severity ? (log.severity as string).toLowerCase() : "info";
+
+  return {
+    ...log,
+    userName,
+    details,
+    category,
+    timestamp,
+    severity,
+  };
+}
+
 export const auditLogsService = {
   getAll: async (params?: any) => {
     if (!FEATURE_FLAGS.users) return null;
     const res = await api.get('/api/v1/audit-logs', { params });
+    if (res.data) {
+      if (Array.isArray(res.data.data)) {
+        return {
+          ...res.data,
+          data: res.data.data.map(mapBackendAuditLogToFrontend),
+        };
+      } else if (Array.isArray(res.data)) {
+        return res.data.map(mapBackendAuditLogToFrontend);
+      }
+    }
     return res.data;
   },
 };

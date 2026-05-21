@@ -67,7 +67,7 @@ const getCategoryBadge = (category: string) => {
     security: "bg-destructive/10 text-destructive border-destructive/20",
   };
   return (
-    <Badge variant="outline" className={`${colors[category]} capitalize flex items-center gap-1.5 font-medium`}>
+    <Badge variant="outline" className={`${colors[category] || "bg-muted text-muted-foreground"} capitalize flex items-center gap-1.5 font-medium`}>
       {getCategoryIcon(category)}
       {category}
     </Badge>
@@ -81,6 +81,7 @@ export function AuditHistory() {
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [dateRange, setDateRange] = useState<{ from?: Date; to?: Date }>({});
   const [showFilters, setShowFilters] = useState(false);
+  
   useEffect(() => {
     const fetchLogs = async () => {
       setLoading(true);
@@ -100,9 +101,9 @@ export function AuditHistory() {
 
   const filteredLogs = logs.filter((log) => {
     const matchesSearch =
-      log.userName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.action.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      log.details.toLowerCase().includes(searchQuery.toLowerCase());
+      (log.userName || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (log.action || "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (log.details || "").toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = categoryFilter === "all" || log.category === categoryFilter;
     return matchesSearch && matchesCategory;
   });
@@ -296,15 +297,16 @@ export function AuditHistory() {
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-xs">
-                      {log.userName
+                      {(log.userName || "System")
                         .split(" ")
+                        .filter(Boolean)
                         .map((n) => n[0])
                         .join("")}
                     </div>
-                    <span className="font-medium text-sm">{log.userName}</span>
+                    <span className="font-medium text-sm">{log.userName || "System"}</span>
                   </div>
                 </TableCell>
-                <TableCell className="font-medium">{log.action}</TableCell>
+                <TableCell className="font-medium">{log.action || ""}</TableCell>
                 <TableCell>{getCategoryBadge(log.category)}</TableCell>
                 <TableCell className="text-sm text-muted-foreground max-w-xs truncate">
                   {log.details}
