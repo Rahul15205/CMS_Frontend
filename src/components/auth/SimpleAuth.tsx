@@ -95,6 +95,10 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
             toast.error("New password must be at least 8 characters long");
             return;
         }
+        if (newPassword === currentPassword) {
+            toast.error("New password cannot be the same as your temporary password");
+            return;
+        }
         
         setResetSubmitting(true);
         try {
@@ -179,6 +183,10 @@ const SimpleAuth: React.FC<SimpleAuthProps> = ({ children }) => {
         }
         if (forgotNewPassword.length < 8) {
             toast.error("New password must be at least 8 characters long");
+            return;
+        }
+        if (forgotNewPassword === inputPassword) {
+            toast.error("New password cannot be the same as your current password");
             return;
         }
 
