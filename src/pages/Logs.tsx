@@ -42,6 +42,7 @@ import { systemLogsService } from "@/services/reportsLogsSecurityService";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { useToast } from "@/components/ui/use-toast";
+import { formatLogDetails } from "@/lib/formatLogDetails";
 
 const logs = [
   {
@@ -328,11 +329,14 @@ export default function Logs() {
                       <TableCell>
                         <div>
                           <p className="font-medium text-foreground">{log.action}</p>
-                          {log.details && (
-                            <p className="text-xs text-muted-foreground truncate max-w-md">
-                              {typeof log.details === 'string' ? log.details : JSON.stringify(log.details)}
-                            </p>
-                          )}
+                          {(() => {
+                            const detailsText = formatLogDetails(log.details);
+                            return detailsText ? (
+                              <p className="text-xs text-muted-foreground truncate max-w-md">
+                                {detailsText}
+                              </p>
+                            ) : null;
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell>{getCategoryBadge(log.category)}</TableCell>

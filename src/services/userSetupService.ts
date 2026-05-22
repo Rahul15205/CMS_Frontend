@@ -6,6 +6,7 @@
 
 import api from '@/lib/api';
 import { FEATURE_FLAGS } from '@/lib/featureFlags';
+import { formatLogDetails } from '@/lib/formatLogDetails';
 
 // ─── Users ──────────────────────────────────────────────────
 
@@ -109,9 +110,11 @@ function mapBackendRoleToFrontend(role: any) {
 
   // Overlay actual values from the backend permissions array
   const permsArray: any[] = Array.isArray(role.permissions) ? role.permissions : [];
-  const grantsUserSetup = permsArray.some((p: any) =>
-    p.module === 'USER_SETUP' &&
-    (p.view || p.create || p.edit || p.approve || p.export || p.configure || p.admin)
+  /** True when role can manage User Setup (not view-only). Matches backend assign rules. */
+  const grantsUserSetup = permsArray.some(
+    (p: any) =>
+      p.module === 'USER_SETUP' &&
+      (p.create || p.edit || p.configure || p.admin),
   );
   permsArray.forEach((p: any) => {
     const friendlyName = backendToFrontendModule[p.module];
@@ -264,19 +267,7 @@ function mapBackendAuditLogToFrontend(log: any) {
     userName = log.userName;
   }
 
-  // 2. Format details to a string to ensure no object/json structures break the UI
-  let details = "";
-  if (log.details !== null && log.details !== undefined) {
-    if (typeof log.details === "string") {
-      details = log.details;
-    } else {
-      try {
-        details = JSON.stringify(log.details);
-      } catch (e) {
-        details = String(log.details);
-      }
-    }
-  }
+  const details = formatLogDetails(log.details);
 
   // 3. Category from uppercase (e.g. "SESSION") to lowercase ("session")
   const category = log.category ? (log.category as string).toLowerCase() : "status";
