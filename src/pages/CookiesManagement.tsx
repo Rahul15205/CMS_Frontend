@@ -108,6 +108,7 @@ const IconMap: Record<string, any> = {
 import { AddCookieDialog } from "@/components/cookies/AddCookieDialog";
 import { CreateBannerDialog } from "@/components/cookies/CreateBannerDialog";
 import { AddWebsiteDialog } from "@/components/cookies/AddWebsiteDialog";
+import { BannerInstallationPanel } from "@/components/cookies/BannerInstallationPanel";
 
 const EmptyState = ({ onAction }: { onAction: () => void }) => (
   <div className="flex flex-col items-center justify-center p-12 text-center border rounded-xl bg-muted/20 border-dashed my-8">
@@ -271,7 +272,7 @@ export default function CookiesManagement() {
     },
     {
       title: "Banner Installation",
-      content: "For each website, you'll find a unique integration script. Just copy and paste it into your site's <head> to go live.",
+      content: "Pick your platform — HTML, Google Tag Manager, WordPress, Shopify, Next.js, and more. Each tab gives copy-ready code for that stack.",
       targetSelector: '[data-tour="script-installation"]'
     },
     {
@@ -1714,142 +1715,63 @@ export default function CookiesManagement() {
               </PageSection>
 
             <PageSection id="script-installation" data-tour="script-installation">
-                <div className="dashboard-card mb-6">
+                <div className="dashboard-card mb-6" data-tour="script-installation">
                   <div className="mb-6">
                     <SectionTitle>Banner Installation</SectionTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Copy and paste this script into your website's <code className="bg-muted px-1 rounded">&lt;head&gt;</code> section to activate the banner.
+                      Connect your website using the method that fits your stack. The standard HTML script tag is still available — choose your platform below for tailored steps.
                     </p>
                   </div>
 
-                  <div className="space-y-6">
-                    <div className="space-y-2">
-                      <Label>1. Select Website</Label>
-                      <Select value={selectedWebsiteId} onValueChange={handleWebsiteChange}>
-                        <SelectTrigger className="w-full md:w-[400px]">
-                          <SelectValue placeholder="Choose a website to get its script" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Global Template (General)</SelectItem>
-                          {websites.map(site => (
-                            <SelectItem key={site.id} value={site.id}>{site.name} ({site.url})</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-3" data-tour="script-installation">
-                      <Label>2. Copy & Paste Script</Label>
-                      <div className="relative">
-                        <div className="bg-slate-950 text-slate-50 p-4 rounded-xl font-mono text-sm border shadow-xl overflow-x-auto pr-12">
-                          <pre>
-                            {`<script 
-    src="${window.location.origin}/api/v1/public/cookies/banner-script/${selectedWebsiteId !== 'all' ? selectedWebsiteId : 'GLOBAL_ID'}" 
-    defer
-  ></script>`}
-                          </pre>
-                        </div>
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="absolute top-3 right-3 text-slate-400 hover:text-white hover:bg-white/10"
-                          onClick={() => {
-                            const script = `<script src="${window.location.origin}/api/v1/public/cookies/banner-script/${selectedWebsiteId !== 'all' ? selectedWebsiteId : 'GLOBAL_ID'}" defer></script>`;
-                            navigator.clipboard.writeText(script);
+                  <BannerInstallationPanel
+                    websites={websites}
+                    selectedWebsiteId={selectedWebsiteId}
+                    onWebsiteChange={handleWebsiteChange}
+                    verificationStatus={verificationStatus}
+                    onVerify={() => {
+                      if (selectedWebsiteId === "all") {
+                        toast({
+                          title: "Select Website",
+                          description: "Please select a specific website to verify.",
+                          variant: "destructive",
+                        });
+                        return;
+                      }
+                      setVerificationStatus("loading");
+                      toast({
+                        title: "Verifying...",
+                        description: "Checking if the banner is installed on your website.",
+                      });
+                      cookieWebsitesService
+                        .verifyIntegration(selectedWebsiteId)
+                        .then((res) => {
+                          if (res.success) {
+                            setVerificationStatus("success");
                             toast({
-                              title: "Script Copied",
-                              description: "The integration script has been copied to your clipboard.",
+                              title: "Installation Verified!",
+                              description: res.message,
+                              className: "bg-green-50 border-green-200",
                             });
-                          }}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 pt-2" data-tour="verify-installation">
-                      <Label>3. Verify Installation</Label>
-                      <div className="flex items-center gap-4 border rounded-lg p-6 bg-muted/10 border-dashed relative overflow-hidden">
-                        <Button 
-                          variant={verificationStatus === 'success' ? "outline" : "secondary"}
-                          className={verificationStatus === 'success' ? "border-green-500 text-green-600 hover:bg-green-50" : ""}
-                          disabled={verificationStatus === 'loading'}
-                          onClick={() => {
-                            if (selectedWebsiteId === 'all') {
-                              toast({ title: "Select Website", description: "Please select a specific website to verify.", variant: "destructive" });
-                              return;
-                            }
-                            
-                            setVerificationStatus('loading');
-                            toast({ title: "Verifying...", description: "Checking if script is installed on the selected website." });
-                            
-                            cookieWebsitesService.verifyIntegration(selectedWebsiteId)
-                              .then((res) => {
-                                if (res.success) {
-                                  setVerificationStatus('success');
-                                  toast({ 
-                                    title: "Installation Verified!", 
-                                    description: res.message,
-                                    variant: "default",
-                                    className: "bg-green-50 border-green-200"
-                                  });
-                                } else {
-                                  setVerificationStatus('idle');
-                                  toast({ 
-                                    title: "Verification Failed", 
-                                    description: res.message,
-                                    variant: "destructive"
-                                  });
-                                }
-                              })
-                              .catch((err) => {
-                                setVerificationStatus('idle');
-                                toast({ 
-                                  title: "Error", 
-                                  description: "Failed to connect to the verification service. Please try again.",
-                                  variant: "destructive"
-                                });
-                              });
-                          }}
-                        >
-                          {verificationStatus === 'loading' ? (
-                            <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                          ) : verificationStatus === 'success' ? (
-                            <CheckCircle className="h-4 w-4 mr-2 text-green-500" />
-                          ) : (
-                            <Shield className="h-4 w-4 mr-2" />
-                          )}
-                          {verificationStatus === 'loading' ? "Verifying..." : verificationStatus === 'success' ? "Verified" : "Verify Installation"}
-                        </Button>
-                        
-                        <div className="flex flex-col">
-                          {verificationStatus === 'success' ? (
-                            <div className="flex items-center gap-2">
-                              <span className="text-sm font-bold text-green-600 flex items-center gap-1.5">
-                                <span className="relative flex h-2 w-2">
-                                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-                                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-                                </span>
-                                Connected & Protected
-                              </span>
-                              <span className="text-[10px] text-muted-foreground italic">(Pinging successful)</span>
-                            </div>
-                          ) : (
-                            <span className="text-sm text-muted-foreground">Click to automatically check if your website is correctly loading the script.</span>
-                          )}
-                        </div>
-                        
-                        {verificationStatus === 'success' && (
-                          <motion.div 
-                            initial={{ x: '-100%' }}
-                            animate={{ x: '100%' }}
-                            transition={{ duration: 1.5, repeat: Infinity, ease: "linear" }}
-                            className="absolute inset-y-0 w-24 bg-gradient-to-r from-transparent via-green-500/10 to-transparent skew-x-12"
-                          />
-                        )}
-                      </div>
-                    </div>
-                  </div>
+                          } else {
+                            setVerificationStatus("idle");
+                            toast({
+                              title: "Verification Failed",
+                              description: res.message,
+                              variant: "destructive",
+                            });
+                          }
+                        })
+                        .catch(() => {
+                          setVerificationStatus("idle");
+                          toast({
+                            title: "Error",
+                            description:
+                              "Failed to connect to the verification service. Please try again.",
+                            variant: "destructive",
+                          });
+                        });
+                    }}
+                  />
                 </div>
               </PageSection>
 
