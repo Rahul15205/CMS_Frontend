@@ -157,6 +157,41 @@ export function WizardStepMechanism({ data, onChange }: WizardStepMechanismProps
           />
         </div>
 
+        {/* Aadhaar eKYC */}
+        <div className="flex items-start justify-between p-4 rounded-lg border">
+          <div className="flex-1">
+            <Label htmlFor="requiresAadhaarVerification" className="font-medium cursor-pointer">
+              Require Aadhaar eKYC (OTP)
+            </Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              End user must verify with Aadhaar-linked mobile OTP before consent is saved
+            </p>
+          </div>
+          <Switch
+            id="requiresAadhaarVerification"
+            checked={!!data.requiresAadhaarVerification}
+            onCheckedChange={(checked) => onChange({ requiresAadhaarVerification: checked })}
+          />
+        </div>
+
+        {/* OTP Verification */}
+        <div className="flex items-start justify-between p-4 rounded-lg border">
+          <div className="flex-1">
+            <Label htmlFor="requiresOtpVerification" className="font-medium cursor-pointer">
+              Require OTP Verification
+            </Label>
+            <p className="text-xs text-muted-foreground mt-1">
+              User must verify email or phone OTP before consent is saved (also enabled for Digital Signature mechanism)
+            </p>
+          </div>
+          <Switch
+            id="requiresOtpVerification"
+            checked={!!data.requiresOtpVerification || data.mechanism === "signature"}
+            disabled={data.mechanism === "signature"}
+            onCheckedChange={(checked) => onChange({ requiresOtpVerification: checked })}
+          />
+        </div>
+
         {/* Withdrawal Visibility */}
         <div className="flex items-start justify-between p-4 rounded-lg border">
           <div className="flex-1">

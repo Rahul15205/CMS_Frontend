@@ -38,6 +38,17 @@ function mapBackendTemplate(backendTemplate: any): ConsentTemplate {
     mechanismType: wizardFields.mechanismType || wizardFields.mechanism || backendTemplate.mechanism?.toLowerCase() || 'checkbox',
     doubleOptIn: wizardFields.doubleOptIn ?? false,
     separateConsents: backendTemplate.separateConsents !== undefined ? backendTemplate.separateConsents : (wizardFields.separateConsents ?? true),
+    requiresOtpVerification:
+      backendTemplate.requiresOtpVerification !== undefined
+        ? backendTemplate.requiresOtpVerification
+        : (wizardFields.requiresOtpVerification ??
+          (backendTemplate.mechanism?.toUpperCase() === 'SIGNATURE' ||
+            wizardFields.mechanism === 'signature')),
+    requiresAadhaarVerification:
+      backendTemplate.requiresAadhaarVerification !== undefined
+        ? backendTemplate.requiresAadhaarVerification
+        : (wizardFields.requiresAadhaarVerification ??
+          wizardFields.verificationMethod === 'aadhaar_ekyc'),
     withdrawVisible: backendTemplate.withdrawVisible !== undefined ? backendTemplate.withdrawVisible : (wizardFields.withdrawVisible ?? true),
     dataSharing: backendTemplate.dataSharing !== undefined ? backendTemplate.dataSharing : (wizardFields.dataSharing ?? false),
     privacyNoticeRef: backendTemplate.privacyNoticeRef || wizardFields.privacyNoticeRef || '',
@@ -236,6 +247,9 @@ export const consentService = {
       consentGivenBy: template.consentGivenBy?.toUpperCase(),
       mechanism: template.mechanism?.toUpperCase(),
       separateConsents: template.separateConsents,
+      requiresOtpVerification:
+        template.requiresOtpVerification ?? template.mechanism === 'signature',
+      requiresAadhaarVerification: template.requiresAadhaarVerification ?? false,
       withdrawVisible: template.withdrawVisible,
       dataSharing: template.dataSharing,
       privacyNoticeRef: template.privacyNoticeRef,

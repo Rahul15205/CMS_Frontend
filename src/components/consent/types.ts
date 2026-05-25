@@ -141,6 +141,8 @@ export interface ConsentTemplate {
   mechanismType?: string; // Wizard compatibility (can be same as mechanism)
   doubleOptIn?: boolean; // Wizard compatibility
   separateConsents: boolean;
+  requiresOtpVerification?: boolean;
+  requiresAadhaarVerification?: boolean;
   withdrawVisible: boolean;
 
   // Data Sharing
