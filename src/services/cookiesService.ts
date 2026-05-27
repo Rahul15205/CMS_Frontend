@@ -75,6 +75,25 @@ export const cookieWebsitesService = {
     const res = await api.post(`/api/v1/cookies/verify/${id}`);
     return res.data;
   },
+
+  /** Downloads the Proteccio-style cookie compliance report as PDF */
+  downloadComplianceReportPdf: async (id: string, websiteName: string) => {
+    const res = await api.get(`/api/v1/cookies/websites/${id}/compliance-report`, {
+      responseType: 'blob',
+      timeout: 120_000,
+    });
+    const safeName = websiteName.replace(/[^\w.-]+/g, '_') || 'website';
+    const blob = new Blob([res.data], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Cookie_Compliance_${safeName}.pdf`;
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  },
 };
 
 export const cookieBannersService = {
@@ -97,7 +116,7 @@ export const cookieBannersService = {
 };
 
 export const cookieConsentLogsService = {
-  getAll: async (params?: any) => {
+  getAll: async (params?: { websiteId?: string; limit?: number }) => {
     const res = await api.get('/api/v1/cookies/consent-logs', { params });
     return unwrapList(res.data);
   },

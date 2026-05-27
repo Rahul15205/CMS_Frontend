@@ -394,12 +394,29 @@ export const consentService = {
     limit?: number;
     offset?: number;
   }): Promise<{ data: ConsentUsageRecord[]; total: number }> => {
-    const res = await api.get('/api/v1/consent/usage-records', { params });
-    const { data, total } = res.data;
+    const apiParams = {
+      ...params,
+      limit: params?.limit ?? 500,
+      status: params?.status
+        ? params.status.toUpperCase()
+        : undefined,
+    };
+    const res = await api.get('/api/v1/consent/usage-records', { params: apiParams });
+    const payload = res.data;
+    const rows = Array.isArray(payload)
+      ? payload
+      : Array.isArray(payload?.data)
+        ? payload.data
+        : [];
+
+    const total =
+      payload?.meta?.total ??
+      payload?.total ??
+      rows.length;
 
     return {
-      data: data.map(mapBackendUsageRecord),
-      total
+      data: rows.map(mapBackendUsageRecord),
+      total,
     };
   },
 

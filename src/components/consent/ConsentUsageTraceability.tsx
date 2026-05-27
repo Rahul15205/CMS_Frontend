@@ -198,12 +198,14 @@ export function ConsentUsageTraceability() {
   const [selectedRecord, setSelectedRecord] = useState<ConsentUsageRecord | null>(null);
 
   // Queries
-  const { data: usageData, isLoading: isLoadingUsage } = useQuery({
+  const { data: usageData, isLoading: isLoadingUsage, refetch: refetchUsage } = useQuery({
     queryKey: ["consent-usage", searchQuery, statusFilter, systemFilter],
     queryFn: () => consentService.getUsageRecords({
-      search: searchQuery,
+      search: searchQuery || undefined,
       status: statusFilter === "all" ? undefined : statusFilter,
+      limit: 500,
     }),
+    refetchOnWindowFocus: true,
   });
 
   const { data: systemsData } = useQuery({
@@ -414,7 +416,7 @@ export function ConsentUsageTraceability() {
           </Select>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={() => refetchUsage()}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Refresh
           </Button>

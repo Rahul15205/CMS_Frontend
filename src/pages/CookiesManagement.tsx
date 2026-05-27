@@ -310,6 +310,10 @@ export default function CookiesManagement() {
 
   const { toast } = useToast();
 
+  const filteredConsentLogs = consentLogs.filter(
+    (log) => selectedWebsiteId === 'all' || log.websiteId === selectedWebsiteId,
+  );
+
   const fetchData = useCallback(async (silent = false) => {
     if (!silent) setLoading(true);
     try {
@@ -317,7 +321,10 @@ export default function CookiesManagement() {
         cookieCategoriesService.getAll(),
         cookieInventoryService.getAll(),
         cookieWebsitesService.getAll(),
-        cookieConsentLogsService.getAll({ limit: 500 }),
+        cookieConsentLogsService.getAll({
+          limit: 500,
+          websiteId: selectedWebsiteId !== 'all' ? selectedWebsiteId : undefined,
+        }),
         cookieBannersService.getAll(),
         cookieComplianceService.getMetrics(selectedWebsiteId)
       ]);
@@ -511,30 +518,48 @@ export default function CookiesManagement() {
     }
   };
 
-  const handleGenerateReport = (website: any) => {
-    reportsService.create({
-      name: `Cookie Compliance - ${website.name}`,
-      reportType: "COMPLIANCE",
-      format: "PDF",
-      parameters: {
-        websiteId: website.id,
-        websiteName: website.name,
-        websiteUrl: website.url,
-        module: "COOKIES_MANAGEMENT",
-        email: website.email,
-      },
-    }).then(() => {
+  const handleGenerateReport = async (website: any) => {
+    if (!website.lastScan) {
       toast({
-        title: "Report Queued",
-        description: "Cookie compliance report generation has started. Download it from Reports once processing completes.",
-      });
-    }).catch(() => {
-      toast({
-        title: "Error",
-        description: "Failed to queue compliance report.",
+        title: "Scan Required",
+        description: "Run a compliance scan on this website before generating the report.",
         variant: "destructive",
       });
-    });
+      return;
+    }
+
+    try {
+      toast({
+        title: "Generating PDF",
+        description: "Compliance report is being prepared. Download will start shortly.",
+      });
+      await cookieWebsitesService.downloadComplianceReportPdf(website.id, website.name);
+      toast({
+        title: "Report Downloaded",
+        description: "Cookie compliance PDF has been saved to your device.",
+      });
+
+      reportsService.create({
+        name: `Cookie Compliance - ${website.name}`,
+        reportType: "COMPLIANCE",
+        format: "PDF",
+        parameters: {
+          websiteId: website.id,
+          websiteName: website.name,
+          websiteUrl: website.url,
+          module: "COOKIES_MANAGEMENT",
+          email: website.email,
+        },
+      }).catch(() => {
+        /* optional email queue — report already shown in browser */
+      });
+    } catch {
+      toast({
+        title: "Error",
+        description: "Failed to generate compliance report. Ensure a scan has completed.",
+        variant: "destructive",
+      });
+    }
   };
 
   // Language content mapping
@@ -1204,8 +1229,8 @@ export default function CookiesManagement() {
                           </TableRow>
                         </TableHeader>
                         <TableBody>
-                          {consentLogs.length > 0 ? (
-                            consentLogs.map((log) => (
+                          {filteredConsentLogs.length > 0 ? (
+                            filteredConsentLogs.slice(0, 5).map((log) => (
                               <TableRow key={log.id}>
                                 <TableCell className="font-medium text-xs">{log.userId}</TableCell>
                                 <TableCell className="text-xs">{log.region}</TableCell>
