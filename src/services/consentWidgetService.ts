@@ -9,6 +9,13 @@ function mapBackendWidget(data: any): ConsentWidgetConfig {
     applicationName: data.application?.name || 'Unknown App',
     templateName: data.template?.title || 'Unknown Template',
     templateType: data.template?.type || 'EXPLICIT',
+    latestVersionId: data.latestVersionId ?? data.template?.versions?.[0]?.id ?? null,
+    latestVersionNumber: data.latestVersionNumber ?? data.template?.versions?.[0]?.versionNumber ?? null,
+    deployedVersionNumber: data.deployedVersionNumber ?? null,
+    deployedVersionId: data.deployedVersionId ?? null,
+    deploymentId: data.deploymentId ?? null,
+    deploymentRegion: data.deploymentRegion ?? null,
+    deploymentPlatform: data.deploymentPlatform ?? [],
   };
 }
 
@@ -60,5 +67,19 @@ export const consentWidgetService = {
   getWidgetAnalytics: async (widgetId: string): Promise<WidgetAnalytics> => {
     const res = await api.get(`/api/v1/consent-widgets/${widgetId}/analytics`);
     return res.data;
+  },
+
+  /**
+   * Publish & go live: deploys consent version to the application and activates the widget.
+   */
+  publishWidget: async (
+    id: string,
+    options?: { versionId?: string; region?: string; platform?: string[] },
+  ): Promise<{ widget: ConsentWidgetConfig; deployment: { versionNumber: number } }> => {
+    const res = await api.post(`/api/v1/consent-widgets/${id}/publish`, options ?? {});
+    return {
+      widget: mapBackendWidget(res.data.widget),
+      deployment: res.data.deployment,
+    };
   },
 };

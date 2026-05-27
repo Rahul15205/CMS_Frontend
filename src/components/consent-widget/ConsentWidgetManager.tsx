@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { consentWidgetService } from "@/services/consentWidgetService";
 import { consentService } from "@/services/consentService";
@@ -26,8 +26,8 @@ import {
   Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription,
 } from "@/components/ui/sheet";
 import {
-  Plus, Code, Eye, Edit, Trash2, Copy, CheckCircle, Settings,
-  Palette, Layout, Globe, Shield, BarChart3, ExternalLink, Zap, AlertTriangle,
+  Plus, Code, Edit, Trash2, Copy, CheckCircle, Settings,
+  Palette, Layout, Shield, Zap, AlertTriangle, Rocket,
 } from "lucide-react";
 import {
   Tooltip, TooltipContent, TooltipTrigger,
@@ -67,6 +67,9 @@ export function ConsentWidgetManager() {
   const [newAppName, setNewAppName] = useState("");
   const [newAppDesc, setNewAppDesc] = useState("");
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [publishVersionId, setPublishVersionId] = useState<string>("");
+  const [publishRegion, setPublishRegion] = useState("India");
+  const [isPublishing, setIsPublishing] = useState(false);
 
   // Form state
   const [form, setForm] = useState<Partial<ConsentWidgetConfig>>(DEFAULT_WIDGET_CONFIG);
@@ -89,6 +92,27 @@ export function ConsentWidgetManager() {
 
   const templates = templatesData?.data || [];
   const applications = appsData?.data || [];
+
+  const { data: versionsData } = useQuery({
+    queryKey: ["consent-versions", form.templateId],
+    queryFn: () =>
+      consentService.getConsentVersions({
+        templateId: form.templateId!,
+        limit: 30,
+      }),
+    enabled: !!form.templateId && showBuilder,
+  });
+  const templateVersions = versionsData?.data || [];
+
+  useEffect(() => {
+    if (!showBuilder || templateVersions.length === 0) return;
+    const preferred =
+      editingWidget?.deployedVersionId &&
+      templateVersions.some((v) => v.id === editingWidget.deployedVersionId)
+        ? editingWidget.deployedVersionId
+        : templateVersions[0]?.id;
+    if (preferred) setPublishVersionId(preferred);
+  }, [showBuilder, form.templateId, templateVersions, editingWidget?.deployedVersionId]);
 
   // Mutations
   const createMutation = useMutation({
@@ -153,6 +177,8 @@ export function ConsentWidgetManager() {
     setShowBuilder(false);
     setEditingWidget(null);
     setForm({ ...DEFAULT_WIDGET_CONFIG });
+    setPublishVersionId("");
+    setPublishRegion("India");
   };
 
   const handleSave = (status?: string) => {
@@ -168,6 +194,83 @@ export function ConsentWidgetManager() {
     }
   };
 
+  const handlePublish = async () => {
+    if (!form.name || !form.applicationId || !form.templateId) {
+      toast({
+        title: "Validation Error",
+        description: "Name, Application, and Template are required before publishing.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (!publishVersionId && templateVersions.length === 0) {
+      toast({
+        title: "No version to deploy",
+        description: "Publish the consent template first (Templates tab), then publish the widget here.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsPublishing(true);
+    try {
+      const draftPayload = { ...form, status: "WIDGET_DRAFT" as ConsentWidgetConfig["status"] };
+      let widgetId = editingWidget?.id;
+      if (widgetId) {
+        await consentWidgetService.updateWidget(widgetId, draftPayload);
+      } else {
+        const created = await consentWidgetService.createWidget(draftPayload);
+        widgetId = created.id;
+      }
+
+      const result = await consentWidgetService.publishWidget(widgetId!, {
+        versionId: publishVersionId || undefined,
+        region: publishRegion.trim() || "India",
+        platform: ["Web"],
+      });
+
+      queryClient.invalidateQueries({ queryKey: ["consent-widgets"] });
+      queryClient.invalidateQueries({ queryKey: ["consent-deployments"] });
+      toast({
+        title: "Published & Live",
+        description: `Widget is active with consent version v${result.deployment.versionNumber}.`,
+      });
+      closeBuilder();
+    } catch (err: any) {
+      toast({
+        title: "Publish failed",
+        description: err?.response?.data?.message || err?.message || "Could not publish widget",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
+  const handleQuickPublish = async (widget: ConsentWidgetConfig) => {
+    setIsPublishing(true);
+    try {
+      const result = await consentWidgetService.publishWidget(widget.id, {
+        versionId: widget.latestVersionId || undefined,
+        region: widget.deploymentRegion || "India",
+        platform: widget.deploymentPlatform?.length ? widget.deploymentPlatform : ["Web"],
+      });
+      queryClient.invalidateQueries({ queryKey: ["consent-widgets"] });
+      toast({
+        title: "Published",
+        description: `Now live on v${result.deployment.versionNumber}.`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Publish failed",
+        description: err?.response?.data?.message || "Could not publish",
+        variant: "destructive",
+      });
+    } finally {
+      setIsPublishing(false);
+    }
+  };
+
   const openEmbed = (widget: ConsentWidgetConfig) => {
     setEmbedWidgetId(widget.id);
     setEmbedAppId(widget.applicationId);
@@ -175,7 +278,7 @@ export function ConsentWidgetManager() {
   };
 
   const copyScript = () => {
-    const script = `<script src="${window.location.origin}/api/v1/public/consent/widget-script/${embedWidgetId}" defer></script>`;
+    const script = `<script src="${window.location.origin}/api/v1/public/consent/widget-script/${embedAppId}" defer></script>`;
     navigator.clipboard.writeText(script);
     toast({ title: "Copied!", description: "Embed script copied to clipboard." });
   };
@@ -192,9 +295,9 @@ export function ConsentWidgetManager() {
       <PageSection>
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
           <div>
-            <SectionTitle>Embeddable Consent Widgets</SectionTitle>
+            <SectionTitle>Widgets & Publishing</SectionTitle>
             <p className="text-sm text-muted-foreground mt-1">
-              Create and manage consent collection widgets that can be embedded on any website.
+              One flow: configure your widget, publish a consent version to your app, and embed — no separate deployment tab.
             </p>
           </div>
           <Button onClick={() => openBuilder()} className="gap-2">
@@ -274,6 +377,16 @@ export function ConsentWidgetManager() {
                         <span className="text-muted-foreground">Trigger</span>
                         <Badge variant="outline" className="text-xs">{TRIGGER_MODES.find(t => t.value === widget.trigger)?.label || widget.trigger}</Badge>
                       </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Live version</span>
+                        {widget.deployedVersionNumber != null ? (
+                          <Badge className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
+                            v{widget.deployedVersionNumber}
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs text-amber-600">Not published</Badge>
+                        )}
+                      </div>
                     </div>
                     <div className="flex gap-2 pt-3 border-t">
                       <Tooltip><TooltipTrigger asChild>
@@ -284,12 +397,17 @@ export function ConsentWidgetManager() {
                         <Button variant="outline" size="sm" className="flex-1" onClick={() => openEmbed(widget)}><Code className="h-3.5 w-3.5 mr-1" />Embed</Button>
                       </TooltipTrigger><TooltipContent>Get embed code</TooltipContent></Tooltip>
 
-                      {widget.status === "WIDGET_DRAFT" && (
+                      {(widget.status === "WIDGET_DRAFT" || widget.deployedVersionNumber == null) && (
                         <Tooltip><TooltipTrigger asChild>
-                          <Button size="sm" className="flex-1" onClick={() => {
-                            updateMutation.mutate({ id: widget.id, data: { status: "WIDGET_ACTIVE" as any } });
-                          }}><Zap className="h-3.5 w-3.5 mr-1" />Activate</Button>
-                        </TooltipTrigger><TooltipContent>Activate widget</TooltipContent></Tooltip>
+                          <Button
+                            size="sm"
+                            className="flex-1"
+                            disabled={isPublishing}
+                            onClick={() => handleQuickPublish(widget)}
+                          >
+                            <Rocket className="h-3.5 w-3.5 mr-1" />Publish
+                          </Button>
+                        </TooltipTrigger><TooltipContent>Deploy version & go live</TooltipContent></Tooltip>
                       )}
 
                       <Tooltip><TooltipTrigger asChild>
@@ -362,7 +480,13 @@ export function ConsentWidgetManager() {
                 </div>
                 <div>
                   <Label>Consent Template *</Label>
-                  <Select value={form.templateId || ""} onValueChange={(v) => updateForm("templateId", v)}>
+                  <Select
+                    value={form.templateId || ""}
+                    onValueChange={(v) => {
+                      updateForm("templateId", v);
+                      setPublishVersionId("");
+                    }}
+                  >
                     <SelectTrigger><SelectValue placeholder="Select a consent template" /></SelectTrigger>
                     <SelectContent>
                       {templates.filter((t: any) => t.status !== "archived").map((t: any) => (
@@ -466,13 +590,76 @@ export function ConsentWidgetManager() {
                 </div>
               </div>
             </div>
+
+            {/* Publish & Go Live (replaces separate Deployment tab) */}
+            <div className="space-y-4 pt-4 border-t">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Rocket className="h-4 w-4 text-primary" />
+                Publish & Go Live
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Deploys the selected consent version to your application and activates the widget. Users will see this version immediately.
+              </p>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label>Consent version to deploy *</Label>
+                  <Select
+                    value={publishVersionId}
+                    onValueChange={setPublishVersionId}
+                    disabled={!form.templateId || templateVersions.length === 0}
+                  >
+                    <SelectTrigger>
+                      <SelectValue
+                        placeholder={
+                          !form.templateId
+                            ? "Select a template first"
+                            : templateVersions.length === 0
+                              ? "No versions — publish template first"
+                              : "Select version"
+                        }
+                      />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {templateVersions.map((v) => (
+                        <SelectItem key={v.id} value={v.id}>
+                          v{v.version} {v.status ? `(${v.status})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Region</Label>
+                  <Input
+                    value={publishRegion}
+                    onChange={(e) => setPublishRegion(e.target.value)}
+                    placeholder="India"
+                  />
+                </div>
+                <div>
+                  <Label>Platform</Label>
+                  <Input value="Web" disabled className="bg-muted/40" />
+                </div>
+              </div>
+            </div>
+
             <div className="flex gap-3 pt-6 border-t">
               <Button variant="outline" onClick={closeBuilder} className="flex-1">Cancel</Button>
-              <Button onClick={() => handleSave("WIDGET_DRAFT")} variant="secondary" className="flex-1" disabled={createMutation.isPending || updateMutation.isPending}>
+              <Button
+                onClick={() => handleSave("WIDGET_DRAFT")}
+                variant="secondary"
+                className="flex-1"
+                disabled={createMutation.isPending || updateMutation.isPending || isPublishing}
+              >
                 Save as Draft
               </Button>
-              <Button onClick={() => handleSave("WIDGET_ACTIVE")} className="flex-1" disabled={createMutation.isPending || updateMutation.isPending}>
-                {editingWidget ? "Update & Activate" : "Create & Activate"}
+              <Button
+                onClick={handlePublish}
+                className="flex-1"
+                disabled={createMutation.isPending || updateMutation.isPending || isPublishing}
+              >
+                <Rocket className="h-4 w-4 mr-2" />
+                {isPublishing ? "Publishing…" : editingWidget ? "Update & Publish" : "Create & Publish"}
               </Button>
             </div>
           </div>
@@ -491,7 +678,7 @@ export function ConsentWidgetManager() {
               <Label className="mb-2 block">1. Add this script to your HTML</Label>
               <div className="relative">
                 <div className="bg-slate-950 text-emerald-400 p-4 rounded-xl font-mono text-sm border shadow-xl overflow-x-auto pr-12">
-                  <pre className="whitespace-pre-wrap break-all">{`<script src="${window.location.origin}/api/v1/public/consent/widget-script/${embedWidgetId}" defer></script>`}</pre>
+                  <pre className="whitespace-pre-wrap break-all">{`<script src="${window.location.origin}/api/v1/public/consent/widget-script/${embedAppId}" defer></script>`}</pre>
                 </div>
                 <Button size="icon" variant="ghost" className="absolute top-3 right-3 text-slate-400 hover:text-white hover:bg-white/10" onClick={copyScript}>
                   <Copy className="h-4 w-4" />

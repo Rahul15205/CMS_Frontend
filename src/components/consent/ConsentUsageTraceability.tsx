@@ -198,6 +198,8 @@ export function ConsentUsageTraceability() {
   const [selectedRecord, setSelectedRecord] = useState<ConsentUsageRecord | null>(null);
 
   // Queries
+  const [isSyncing, setIsSyncing] = useState(false);
+
   const { data: usageData, isLoading: isLoadingUsage, refetch: refetchUsage } = useQuery({
     queryKey: ["consent-usage", searchQuery, statusFilter, systemFilter],
     queryFn: () => consentService.getUsageRecords({
@@ -207,6 +209,31 @@ export function ConsentUsageTraceability() {
     }),
     refetchOnWindowFocus: true,
   });
+
+  const handleRefreshUsage = async () => {
+    setIsSyncing(true);
+    try {
+      const result = await consentService.syncUsageFromConsents({
+        since: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString(),
+      });
+      await refetchUsage();
+      if (result.created > 0) {
+        toast({
+          title: "Usage synced",
+          description: `Added ${result.created} missing record(s) from consent history.`,
+        });
+      }
+    } catch {
+      toast({
+        title: "Sync failed",
+        description: "Could not sync usage from consent records. Showing latest data.",
+        variant: "destructive",
+      });
+      await refetchUsage();
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const { data: systemsData } = useQuery({
     queryKey: ["system-configs"],
@@ -416,9 +443,9 @@ export function ConsentUsageTraceability() {
           </Select>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => refetchUsage()}>
-            <RefreshCw className="h-4 w-4 mr-2" />
-            Refresh
+          <Button variant="outline" size="sm" onClick={handleRefreshUsage} disabled={isSyncing || isLoadingUsage}>
+            <RefreshCw className={`h-4 w-4 mr-2 ${isSyncing ? "animate-spin" : ""}`} />
+            {isSyncing ? "Syncing…" : "Refresh"}
           </Button>
           <Button variant="outline" size="sm">
             <Download className="h-4 w-4 mr-2" />

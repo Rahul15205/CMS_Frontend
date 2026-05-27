@@ -56,6 +56,15 @@ export interface ConsentWidgetConfig {
   // Status
   status: WidgetStatus;
 
+  // Publishing (merged deployment flow)
+  latestVersionId?: string | null;
+  latestVersionNumber?: number | null;
+  deployedVersionId?: string | null;
+  deployedVersionNumber?: number | null;
+  deploymentId?: string | null;
+  deploymentRegion?: string | null;
+  deploymentPlatform?: string[];
+
   // Meta
   tenantId: string;
   createdBy: string;

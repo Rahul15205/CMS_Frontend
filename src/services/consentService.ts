@@ -387,6 +387,17 @@ export const consentService = {
   /**
    * Fetch consent usage records.
    */
+  /**
+   * Backfill Usage rows from ConsentRecord entries that never created a usage row.
+   */
+  syncUsageFromConsents: async (params?: {
+    since?: string;
+    templateId?: string;
+  }): Promise<{ scanned: number; created: number; skipped: number; since: string }> => {
+    const res = await api.post('/api/v1/consent/usage-records/sync', null, { params });
+    return res.data;
+  },
+
   getUsageRecords: async (params?: {
     templateId?: string;
     status?: string;

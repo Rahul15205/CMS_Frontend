@@ -36,7 +36,6 @@ import {
 // Import new consent components
 import { ConsentAnalytics } from "@/components/consent/ConsentAnalytics";
 import { ConsentTemplateList } from "@/components/consent/ConsentTemplateList";
-import { ConsentDeployment } from "@/components/consent/ConsentDeployment";
 import { ConsentTemplateWizard } from "@/components/consent/ConsentTemplateWizard";
 import { TemplatePreviewDialog } from "@/components/consent/TemplatePreviewDialog";
 import { ConsentTemplate, DEFAULT_TEMPLATE } from "@/components/consent/types";
@@ -247,7 +246,7 @@ export default function ConsentManagement() {
           </TabsTrigger>
           <TabsTrigger value="distribution" className="flex items-center gap-2 py-2.5">
             <Send className="h-4 w-4" />
-            <span className="hidden sm:inline">Distribution</span>
+            <span className="hidden sm:inline">Widgets</span>
           </TabsTrigger>
           <TabsTrigger value="usage" className="flex items-center gap-2 py-2.5">
             <Activity className="h-4 w-4" />
@@ -320,22 +319,7 @@ export default function ConsentManagement() {
         </AlertDialog>
 
         <TabsContent value="distribution" className="m-0 focus-visible:ring-0">
-          <div className="space-y-6">
-            <Tabs defaultValue="deployments" className="w-full">
-              <div className="flex justify-between items-center border-b pb-2 mb-4">
-                <TabsList className="bg-muted/80 p-0.5 h-9">
-                  <TabsTrigger value="deployments" className="text-xs px-4 py-1.5">Consent Deployments</TabsTrigger>
-                  <TabsTrigger value="widgets" className="text-xs px-4 py-1.5">Consent Widgets</TabsTrigger>
-                </TabsList>
-              </div>
-              <TabsContent value="deployments" className="mt-0">
-                <ConsentDeployment templates={templates} />
-              </TabsContent>
-              <TabsContent value="widgets" className="mt-0">
-                <ConsentWidgetManager />
-              </TabsContent>
-            </Tabs>
-          </div>
+          <ConsentWidgetManager />
         </TabsContent>
 
         <TabsContent value="usage" className="m-0 focus-visible:ring-0">
