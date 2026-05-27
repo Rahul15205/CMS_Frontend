@@ -27,7 +27,7 @@ import {
 } from "@/components/ui/sheet";
 import {
   Plus, Code, Edit, Trash2, Copy, CheckCircle, Settings,
-  Palette, Layout, Shield, Zap, AlertTriangle, Rocket,
+  Palette, Layout, Shield, Zap, AlertTriangle, Rocket, Power,
 } from "lucide-react";
 import {
   Tooltip, TooltipContent, TooltipTrigger,
@@ -46,7 +46,8 @@ import {
 // ─── Status Badge Helper ──────────────────────────────────
 function getWidgetStatusBadge(status: string) {
   switch (status) {
-    case "WIDGET_ACTIVE": return <StatusBadge status="active">Active</StatusBadge>;
+    case "WIDGET_ACTIVE": return <StatusBadge status="active">Live</StatusBadge>;
+    case "WIDGET_DISABLED": return <StatusBadge status="warning">Disabled</StatusBadge>;
     case "WIDGET_DRAFT": return <StatusBadge status="info">Draft</StatusBadge>;
     case "WIDGET_ARCHIVED": return <StatusBadge status="warning">Archived</StatusBadge>;
     default: return <StatusBadge status="info">{status}</StatusBadge>;
@@ -159,6 +160,26 @@ export function ConsentWidgetManager() {
       queryClient.invalidateQueries({ queryKey: ["consent-widgets"] });
       toast({ title: "Widget Archived", description: "The widget has been archived." });
     },
+  });
+
+  const toggleEnabledMutation = useMutation({
+    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
+      consentWidgetService.setWidgetEnabled(id, enabled),
+    onSuccess: (_data, { enabled }) => {
+      queryClient.invalidateQueries({ queryKey: ["consent-widgets"] });
+      toast({
+        title: enabled ? "Consent form enabled" : "Consent form disabled",
+        description: enabled
+          ? "Visitors will see the consent form on your website again."
+          : "The consent form is hidden on your website. Configuration is saved.",
+      });
+    },
+    onError: (err: any) =>
+      toast({
+        title: "Could not update",
+        description: err?.response?.data?.message || "Failed to change consent form status",
+        variant: "destructive",
+      }),
   });
 
   // Handlers
@@ -323,7 +344,7 @@ export function ConsentWidgetManager() {
               <div className="p-3 rounded-xl bg-emerald-500/10"><CheckCircle className="h-5 w-5 text-emerald-500" /></div>
               <div>
                 <p className="text-2xl font-bold">{widgets.filter((w) => w.status === "WIDGET_ACTIVE").length}</p>
-                <p className="text-xs text-muted-foreground">Active Widgets</p>
+                <p className="text-xs text-muted-foreground">Live on Website</p>
               </div>
             </CardContent>
           </Card>
@@ -387,6 +408,21 @@ export function ConsentWidgetManager() {
                           <Badge variant="outline" className="text-xs text-amber-600">Not published</Badge>
                         )}
                       </div>
+                      {(widget.status === "WIDGET_ACTIVE" || widget.status === "WIDGET_DISABLED") && (
+                        <div className="flex items-center justify-between pt-2 mt-2 border-t border-dashed">
+                          <div className="flex items-center gap-2">
+                            <Power className="h-3.5 w-3.5 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">Consent on website</span>
+                          </div>
+                          <Switch
+                            checked={widget.status === "WIDGET_ACTIVE"}
+                            disabled={toggleEnabledMutation.isPending}
+                            onCheckedChange={(enabled) =>
+                              toggleEnabledMutation.mutate({ id: widget.id, enabled })
+                            }
+                          />
+                        </div>
+                      )}
                     </div>
                     <div className="flex gap-2 pt-3 border-t">
                       <Tooltip><TooltipTrigger asChild>

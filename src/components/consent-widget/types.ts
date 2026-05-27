@@ -2,7 +2,7 @@
 
 export type WidgetDisplayMode = 'POPUP' | 'INLINE' | 'SIDEBAR' | 'BOTTOM_BAR' | 'FLOATING';
 export type WidgetTrigger = 'PAGE_LOAD' | 'BUTTON_CLICK' | 'FORM_SUBMIT' | 'MANUAL' | 'SCROLL';
-export type WidgetStatus = 'WIDGET_ACTIVE' | 'WIDGET_DRAFT' | 'WIDGET_ARCHIVED';
+export type WidgetStatus = 'WIDGET_ACTIVE' | 'WIDGET_DISABLED' | 'WIDGET_DRAFT' | 'WIDGET_ARCHIVED';
 
 export interface ConsentWidgetConfig {
   id: string;

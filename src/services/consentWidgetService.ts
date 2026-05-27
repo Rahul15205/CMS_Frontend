@@ -82,4 +82,9 @@ export const consentWidgetService = {
       deployment: res.data.deployment,
     };
   },
+
+  setWidgetEnabled: async (id: string, enabled: boolean): Promise<ConsentWidgetConfig> => {
+    const res = await api.post(`/api/v1/consent-widgets/${id}/${enabled ? 'enable' : 'disable'}`);
+    return mapBackendWidget(res.data);
+  },
 };
