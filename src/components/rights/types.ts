@@ -238,3 +238,28 @@ export const DEFAULT_WORKFLOW_STEPS: WorkflowStep[] = [
   { id: '6', name: 'Response Sent', order: 6, status: 'pending' },
   { id: '7', name: 'Closed', order: 7, status: 'pending' },
 ];
+
+// PHASE 5 CHANGE
+export interface RejectPayload {
+  reason: 'INSUFFICIENT_ID' | 'DUPLICATE' | 'OUT_OF_SCOPE' | 'FRAUDULENT' | 'OTHER';
+  comment?: string;
+}
+
+// PHASE 5 CHANGE
+export interface EscalatePayload {
+  target: 'SENIOR_OFFICER' | 'DPO' | 'LEGAL';
+  rationale: string;
+}
+
+// PHASE 5 CHANGE
+export interface RequestInfoPayload {
+  message: string;
+}
+
+// PHASE 5 CHANGE
+export interface PartialFulfilPayload {
+  fulfilled: string;
+  withheld: string;
+  legalJustification: string;
+}
+

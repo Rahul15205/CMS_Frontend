@@ -52,6 +52,8 @@ import {
 import { RightsRequest, RIGHTS_TYPE_INFO, REGULATION_INFO, STATUS_INFO, DEFAULT_WORKFLOW_STEPS, WorkflowStep, CaseNote, AuditEntry } from "./types";
 import { rightsService } from "@/services/rightsService";
 import { handleApiError } from "@/lib/errorHandler";
+import { FraudFlagBanner } from "@/rights-requests/components/FraudFlagBanner"; // PHASE 5 CHANGE
+import { QuickActionsPanel } from "@/rights-requests/components/QuickActionsPanel"; // PHASE 5 CHANGE
 
 interface RightsCaseViewProps {
   request: RightsRequest;
@@ -81,25 +83,41 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [showEscalateDialog, setShowEscalateDialog] = useState(false);
 
+  // PHASE 5 CHANGE
+  const [currentRequest, setCurrentRequest] = useState<RightsRequest>(request);
+
+  // PHASE 5 CHANGE
   useEffect(() => {
-    const fetchCaseData = async () => {
-      try {
-        setIsLoadingData(true);
-        const [wf, nt, al] = await Promise.all([
-          rightsService.getWorkflow(request.id),
-          rightsService.getNotes(request.id),
-          rightsService.getAuditTrail(request.id)
-        ]);
-        setWorkflowSteps(wf);
-        setNotes(nt);
-        setAuditLog(al);
-      } catch (error) {
-        handleApiError(error, 'Rights Case Details');
-      } finally {
-        setIsLoadingData(false);
+    setCurrentRequest(request);
+  }, [request]);
+
+  // PHASE 5 CHANGE
+  const handleRefresh = async () => {
+    try {
+      setIsLoadingData(true);
+      const [reqData, wf, nt, al] = await Promise.all([
+        rightsService.getById(request.id),
+        rightsService.getWorkflow(request.id),
+        rightsService.getNotes(request.id),
+        rightsService.getAuditTrail(request.id)
+      ]);
+      setCurrentRequest(reqData);
+      setWorkflowSteps(wf);
+      setNotes(nt);
+      setAuditLog(al);
+      if (reqData.assignedTo) {
+        setAssignee(reqData.assignedTo);
       }
-    };
-    fetchCaseData();
+    } catch (error) {
+      handleApiError(error, 'Rights Case Details');
+    } finally {
+      setIsLoadingData(false);
+    }
+  };
+
+  // PHASE 5 CHANGE
+  useEffect(() => {
+    handleRefresh();
   }, [request.id]);
 
   const handleAddNote = async () => {
@@ -149,11 +167,11 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
           </Button>
           <div>
             <div className="flex items-center gap-3">
-              <h2 className="text-2xl font-bold text-foreground">{request.caseNumber}</h2>
-              <StatusBadge status={request.slaBreached ? "error" : "info"}>
-                {STATUS_INFO[request.status]?.label}
+              <h2 className="text-2xl font-bold text-foreground">{currentRequest.caseNumber}</h2>
+              <StatusBadge status={currentRequest.slaBreached ? "error" : "info"}>
+                {STATUS_INFO[currentRequest.status]?.label || currentRequest.status}
               </StatusBadge>
-              {request.fraudFlag && (
+              {currentRequest.fraudFlag && (
                 <Badge variant="destructive">
                   <AlertTriangle className="h-3 w-3 mr-1" />
                   Fraud Flag
@@ -161,72 +179,22 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
               )}
             </div>
             <p className="text-muted-foreground mt-1">
-              {RIGHTS_TYPE_INFO[request.type]?.label} • {REGULATION_INFO[request.regulation]?.label}
+              {RIGHTS_TYPE_INFO[currentRequest.type]?.label || currentRequest.type} • {REGULATION_INFO[currentRequest.regulation]?.label || currentRequest.regulation}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Download className="h-4 w-4 mr-2" />
-            Export
-          </Button>
-          <Dialog open={showAssignDialog} onOpenChange={setShowAssignDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <UserCheck className="h-4 w-4 mr-2" />
-                Assign
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Assign Case</DialogTitle>
-                <DialogDescription>
-                  Select a team member to assign this case to.
-                </DialogDescription>
-              </DialogHeader>
-              <Select onValueChange={handleAssign}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select assignee" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="jane">Jane Doe</SelectItem>
-                  <SelectItem value="raj">Raj Kumar</SelectItem>
-                  <SelectItem value="maria">Maria Santos</SelectItem>
-                  <SelectItem value="team">Privacy Team</SelectItem>
-                </SelectContent>
-              </Select>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowAssignDialog(false)}>Cancel</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          <Dialog open={showEscalateDialog} onOpenChange={setShowEscalateDialog}>
-            <DialogTrigger asChild>
-              <Button variant="outline" size="sm">
-                <ArrowUpRight className="h-4 w-4 mr-2" />
-                Escalate
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Escalate Case</DialogTitle>
-                <DialogDescription>
-                  This will escalate the case to the next level of authority.
-                </DialogDescription>
-              </DialogHeader>
-              <Textarea placeholder="Reason for escalation..." />
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowEscalateDialog(false)}>Cancel</Button>
-                <Button variant="destructive" onClick={() => setShowEscalateDialog(false)}>Escalate</Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-          <Button size="sm">
-            <CheckCircle className="h-4 w-4 mr-2" />
-            Complete Step
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={isLoadingData}>
+            <RotateCcw className={`h-4 w-4 mr-2 ${isLoadingData ? "animate-spin" : ""}`} />
+            Refresh
           </Button>
         </div>
       </div>
+
+      {/* // PHASE 5 CHANGE */}
+      {currentRequest.fraudFlag === true && (
+        <FraudFlagBanner />
+      )}
 
       {/* SLA & Progress */}
       <Card>
@@ -235,32 +203,32 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
             <div>
               <p className="text-sm text-muted-foreground">SLA Status</p>
               <div className="flex items-center gap-2 mt-1">
-                {request.slaBreached ? (
+                {currentRequest.slaBreached ? (
                   <AlertTriangle className="h-5 w-5 text-destructive" />
-                ) : request.daysRemaining <= 3 ? (
+                ) : currentRequest.daysRemaining <= 3 ? (
                   <Clock className="h-5 w-5 text-warning" />
                 ) : (
                   <CheckCircle className="h-5 w-5 text-success" />
                 )}
-                <span className={`text-lg font-semibold ${request.slaBreached ? "text-destructive" :
-                    request.daysRemaining <= 3 ? "text-warning" :
+                <span className={`text-lg font-semibold ${currentRequest.slaBreached ? "text-destructive" :
+                    currentRequest.daysRemaining <= 3 ? "text-warning" :
                       "text-success"
                   }`}>
-                  {request.slaBreached
-                    ? `${Math.abs(request.daysRemaining)} days overdue`
-                    : `${request.daysRemaining} days remaining`}
+                  {currentRequest.slaBreached
+                    ? `${Math.abs(currentRequest.daysRemaining)} days overdue`
+                    : `${currentRequest.daysRemaining} days remaining`}
                 </span>
               </div>
             </div>
             <div className="text-right">
               <p className="text-sm text-muted-foreground">Due Date</p>
-              <p className="text-lg font-semibold">{request.dueDate}</p>
+              <p className="text-lg font-semibold">{currentRequest.dueDate}</p>
             </div>
           </div>
           <Progress
-            value={request.slaBreached ? 100 : Math.max(0, 100 - (request.daysRemaining / 30) * 100)}
-            className={`h-3 ${request.slaBreached ? "[&>div]:bg-destructive" :
-                request.daysRemaining <= 3 ? "[&>div]:bg-warning" :
+            value={currentRequest.slaBreached ? 100 : Math.max(0, 100 - (currentRequest.daysRemaining / 30) * 100)}
+            className={`h-3 ${currentRequest.slaBreached ? "[&>div]:bg-destructive" :
+                currentRequest.daysRemaining <= 3 ? "[&>div]:bg-warning" :
                   "[&>div]:bg-success"
               }`}
           />
@@ -570,70 +538,49 @@ export function RightsCaseView({ request, onBack }: RightsCaseViewProps) {
 
         {/* Right Column - Quick Actions & Info */}
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-2">
-              <Button className="w-full justify-start" variant="outline">
-                <CheckCircle className="h-4 w-4 mr-2" />
-                Approve Request
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <XCircle className="h-4 w-4 mr-2" />
-                Reject Request
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <MessageSquare className="h-4 w-4 mr-2" />
-                Request More Info
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <Edit className="h-4 w-4 mr-2" />
-                Partial Fulfilment
-              </Button>
-              <Separator />
-              <Button className="w-full justify-start" variant="outline">
-                <Download className="h-4 w-4 mr-2" />
-                Generate Data Extract
-              </Button>
-              <Button className="w-full justify-start" variant="outline">
-                <FileText className="h-4 w-4 mr-2" />
-                Download Audit Report
-              </Button>
-            </CardContent>
-          </Card>
+          {/* // PHASE 5 CHANGE */}
+          <QuickActionsPanel request={currentRequest} onStatusUpdate={handleRefresh} />
 
+          {/* // PHASE 5 CHANGE */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Case Information</CardTitle>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base font-semibold">Case Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-3 text-sm">
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Case ID</span>
-                <span className="text-sm font-medium">{request.caseNumber}</span>
+                <span className="text-muted-foreground">Case ID</span>
+                <span className="font-medium">{currentRequest.caseNumber}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Created</span>
-                <span className="text-sm font-medium">{formatDate(request.createdAt)}</span>
+                <span className="text-muted-foreground">Created</span>
+                <span className="font-medium">{formatDate(currentRequest.createdAt)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Last Updated</span>
-                <span className="text-sm font-medium">{formatDate(request.updatedAt)}</span>
+                <span className="text-muted-foreground">Last Updated</span>
+                <span className="font-medium">{formatDate(currentRequest.updatedAt)}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Assigned To</span>
-                <span className="text-sm font-medium">{request.assignedTo || "Unassigned"}</span>
+                <span className="text-muted-foreground">Assigned To</span>
+                {currentRequest.assignedTo ? (
+                  <span className="font-medium text-foreground">{currentRequest.assignedTo}</span>
+                ) : (
+                  <span className="font-medium text-muted-foreground italic">Unassigned</span>
+                )}
               </div>
-              <Separator />
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Regulation</span>
-                <Badge style={{ backgroundColor: `${REGULATION_INFO[request.regulation]?.color}20`, color: REGULATION_INFO[request.regulation]?.color }}>
-                  {REGULATION_INFO[request.regulation]?.label}
-                </Badge>
+              <Separator className="my-1" />
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Regulation</span>
+                <div className="flex items-center gap-1.5 font-medium">
+                  <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: REGULATION_INFO[currentRequest.regulation]?.color || "#71717a" }} />
+                  <span>{REGULATION_INFO[currentRequest.regulation]?.label || currentRequest.regulation}</span>
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-muted-foreground">Rights Type</span>
-                <Badge variant="outline">{RIGHTS_TYPE_INFO[request.type]?.label}</Badge>
+              <div className="flex justify-between items-center">
+                <span className="text-muted-foreground">Rights Type</span>
+                <div className="flex items-center gap-1.5 font-medium">
+                  <span className="h-2.5 w-2.5 rounded-full bg-primary" />
+                  <span>{RIGHTS_TYPE_INFO[currentRequest.type]?.label || currentRequest.type}</span>
+                </div>
               </div>
             </CardContent>
           </Card>

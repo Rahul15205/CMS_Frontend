@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom"; // PHASE 5 CHANGE
 import { DashboardProvider } from "@/contexts/DashboardContext";
 // Pages
 import Dashboard from "./pages/Dashboard";
@@ -58,6 +58,7 @@ const App = () => (
                   <Route path="/reports" element={<ProtectedRoute permissionKey="REPORTS"><Reports /></ProtectedRoute>} />
                   <Route path="/logs" element={<ProtectedRoute permissionKey="LOGS"><Logs /></ProtectedRoute>} />
                   <Route path="/help" element={<Help />} />
+                  <Route path="/analytics" element={<Navigate to="/rights#analytics" replace />} /> {/* // PHASE 5 CHANGE */}
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

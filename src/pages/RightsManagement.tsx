@@ -70,7 +70,7 @@ export default function RightsManagement() {
     >
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
         {/* Mobile Tab Selector */}
-        <div className="sm:hidden mb-4">
+        <div className="sm:hidden mb-4 border-b pb-4">
           <Select value={activeTab} onValueChange={setActiveTab}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Select view" />
@@ -100,18 +100,12 @@ export default function RightsManagement() {
                   <span>Evidence</span>
                 </div>
               </SelectItem>
-              <SelectItem value="analytics">
-                <div className="flex items-center gap-2">
-                  <PieChart className="h-4 w-4" />
-                  <span>Analytics</span>
-                </div>
-              </SelectItem>
             </SelectContent>
           </Select>
         </div>
 
         {/* Desktop Tabs List */}
-        <TabsList className="hidden sm:grid w-full grid-cols-5 h-auto p-1 bg-muted/50">
+        <TabsList className="hidden sm:grid w-full grid-cols-4 h-auto p-1 bg-muted/50"> {/* // PHASE 5 CHANGE */}
           <TabsTrigger value="dashboard" className="flex items-center gap-2 py-2.5">
             <LayoutDashboard className="h-4 w-4" />
             <span className="hidden sm:inline">Dashboard</span>
@@ -127,10 +121,6 @@ export default function RightsManagement() {
           <TabsTrigger value="evidence" className="flex items-center gap-2 py-2.5">
             <Shield className="h-4 w-4" />
             <span className="hidden sm:inline">Evidence</span>
-          </TabsTrigger>
-          <TabsTrigger value="analytics" className="flex items-center gap-2 py-2.5">
-            <PieChart className="h-4 w-4" />
-            <span className="hidden sm:inline">Analytics</span>
           </TabsTrigger>
         </TabsList>
 
@@ -158,10 +148,6 @@ export default function RightsManagement() {
 
         <TabsContent value="evidence" className="m-0 focus-visible:ring-0">
           <RightsEvidence />
-        </TabsContent>
-
-        <TabsContent value="analytics" className="m-0 focus-visible:ring-0">
-          <RightsAnalytics />
         </TabsContent>
       </Tabs>
 

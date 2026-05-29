@@ -1,4 +1,6 @@
 import api from '@/lib/api';
+import { RejectPayload, EscalatePayload, RequestInfoPayload, PartialFulfilPayload } from '@/components/rights/types'; // PHASE 5 CHANGE
+
 
 export const rightsService = {
   getAll: async (params?: Record<string, unknown>) => {
@@ -69,6 +71,42 @@ export const rightsService = {
   },
   getAnalytics: async () => {
     const res = await api.get('/api/v1/rights/analytics');
+    return res.data;
+  },
+
+  // PHASE 5 CHANGE
+  approve: async (id: string) => {
+    const res = await api.post(`/api/v1/rights/requests/${id}/approve`);
+    return res.data;
+  },
+
+  // PHASE 5 CHANGE
+  reject: async (id: string, body: RejectPayload) => {
+    const res = await api.post(`/api/v1/rights/requests/${id}/reject`, body);
+    return res.data;
+  },
+
+  // PHASE 5 CHANGE
+  escalate: async (id: string, body: EscalatePayload) => {
+    const res = await api.post(`/api/v1/rights/requests/${id}/escalate`, body);
+    return res.data;
+  },
+
+  // PHASE 5 CHANGE
+  requestMoreInfo: async (id: string, body: RequestInfoPayload) => {
+    const res = await api.post(`/api/v1/rights/requests/${id}/request-info`, body);
+    return res.data;
+  },
+
+  // PHASE 5 CHANGE
+  partialFulfil: async (id: string, body: PartialFulfilPayload) => {
+    const res = await api.post(`/api/v1/rights/requests/${id}/partial-fulfil`, body);
+    return res.data;
+  },
+
+  // PHASE 5 CHANGE
+  generateExtract: async (id: string) => {
+    const res = await api.post(`/api/v1/rights/requests/${id}/generate-extract`);
     return res.data;
   },
 };
